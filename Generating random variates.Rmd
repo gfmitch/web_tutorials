@@ -1,0 +1,175 @@
+---
+title: "Generating Random Variates"
+author: "Gary Mitchell"
+date: "April 17, 2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+There are multiple ways to generate random numbers that follow a specified probability distribution. Some of these can become quite involved in pursuit of finding highly efficient algorithms for generating the random values. 
+
+However, we will use the *Inverse Transform Method* to generate our random values. As long as we can calculate the inverse cumulative probability for a distribution, we can generate a random value from that distribution using the inverse transform method.
+
+## Built-in probability distributions in R
+
+R provides a large number of distributions in its base installation. These include the normal, Poisson, binomial, and exponential to name a few. Here is a more complete list (distribution abbreviation given in parentheses):
+
+  - beta (beta)
+  - binomial (binom)
+  - Cauchy (cauchy)
+  - chi-squared (chisq)
+  - exponential (exp)
+  - F (f)
+  - gamma (gamma)
+  - hypergeometric (hyper)
+  - log-normal (lnorm)
+  - multinomial (multinom)
+  - negative binomail (nbinom)
+  - normal (norm)
+  - Poisson (pois)
+  - Student's t (t)
+  - continuous uniform (unif)
+  
+Even more distributions are available through freely downloadable *packages*. Since an inverse cumulative distribution function is provided for all of these, we can easily generate random values for any of these.
+
+### Using the inverse transfer method with built-in distributions
+
+The basic approach for generating a random value from *any* distribution using the inverse transform method is the same for *all* distributions. For a random variable $X$, we generate a *realization*, i.e. a random value from the distribution, using the following
+
+$$x = F^{-1}(U)$$
+
+where $U \sim unif[0,1]$ is a uniform random number between 0 and 1 and $F^{-1}(\alpha)$ is the inverse cumulative probability function for the random variable $X$. So, let's say we determine that University of Portland student height is normally distributed with a mean of 69 inches and a standard deviation of 9 inches. Then we could generate a random value for a UP student's height as follows:
+
+```{r, eval=FALSE}
+x<-qnorm(U, 69, 9)
+```
+
+Of course, this assumes that we have a value of $U \sim unif[0,1]$ For example, if $U = 0.543$ then we would calculate:
+
+```{r}
+x<-qnorm(0.543, 69, 9)
+x
+```
+
+We can also generate multiple values for $x$ at one time since R's inverse cumulative probability functions are vector aware. For example, we can generate random values for 10 student heights by peforming the calculation with a *multi-valued* $U$ variable. For example:
+
+```{r}
+U<-c(0.140103549929336, 0.283711776835844, 0.583030595211312, 0.165025892201811, 0.0963011106941849, 0.428613091353327, 0.355761565733701, 0.844933539861813, 0.260132473660633, 0.023144492181018)
+
+x<-qnorm(U, 69, 9)
+x
+```
+
+## Using R's random number generating functions
+
+If our analysis will be done entirely in R (i.e. we do not have to use specific $U \sim unif[0,1]$), then we can use R's random number generating functions. As with the *d*, *p*, and *q* probability functions, R's *r* functions all work in a consistent way:
+
+  - First argument is the number of random values you want to generate
+  - Remaining arguments will be the parameters for your distribution (e.g. $\mu$ and $\sigma$ for a normal distribution, $\lambda$ for a Poisson distribution, etc.)
+  
+In this case, we could generate 10 random student heights using the following:
+
+```{r}
+x<-rnorm(10, 69, 9)
+print(x)
+```
+
+It really is *that* easy!
+
+Note: you will have to use the inverse transform method when taking your online quiz. Since R's *r* random number functions all generate $U \sim unif[0,1]$ as the first step in generating the random number, you cannot use them to generate random numbers for specific $U$ values. This will generally only be an issue when doing your online quizzes. For your simulations, you may use R's *r* random number functions.
+
+
+## Generating random values for empirical distributions
+
+Generating random values from empirical distributions requires a *little* more effort. For example, consider the following distribution of sandwiches ordered at a local fast food restaurant:
+
+```{r, echo=FALSE}
+suppressMessages(require(kableExtra))
+
+X<-c("Cheese Burger", "Chili Dog", "Hamburger", "Hot Dog")
+p<-c(0.52, 0.09, 0.27, 0.12)
+
+dist<-data.frame(X, p)
+colnames(dist)<-c('$X$', "$Pr\\{X = x\\}$")
+
+kable(dist) %>%
+  kable_styling(bootstrap_options="striped", full_width = FALSE)
+
+```
+
+ 
+To generate a customer's sandwich order randomly, we can use the inverse transform method just as we did before. However, now there is no built-in distribution to use. Instead, we can use the *qempir* and *rempir* empirical probability functions provided in *prob.r* on the course website. These two functions allow us to calculate inverse cumulative probabilities and generate random values, rexpectively, for any distribution for which we have a table of possible outcomes and their corresponding probabailities.
+
+If we have a specific $U \sim unif[0,1]$ we would generate a random sandwich order as follows:
+
+```{r}
+source("prob.r")
+
+X<-c("Cheese Burger", "Chili Dog", "Hamburger", "Hot Dog")
+p<-c(0.52, 0.09, 0.27, 0.12)
+
+U<-0.539
+x<-qempir(U, X, p)
+x
+```
+
+or a number of random sandwich orders:
+
+```{r}
+U<-c(0.140103549929336, 0.283711776835844, 0.583030595211312, 0.165025892201811, 0.0963011106941849, 0.428613091353327, 0.355761565733701, 0.844933539861813, 0.260132473660633, 0.023144492181018)
+
+x<-qempir(U, X, p)
+x
+```
+
+*prob.r* also provides an empirical random value generating function. So, if you do not have to use specific $U \sim unif[0,1]$, you can use *rempir*:
+
+```{r}
+x<-rempir(10, X, p)
+x
+```
+
+And, to see that this really works, let's generate 10,000 sandwich orders and calculate a table to compare the resulting probabilities (from our randomly generated values) to the actual probabilities for the distribution.
+
+```{r}
+n<-10000
+x<-rempir(n, X, p)
+
+probs<-cbind(aggregate(x, by=list(x), function(x) length(x)/n), p)
+colnames(probs)<-c("Sandwich", "Empirical Probability", "Actual Probability")
+
+```
+
+Here's the result. 
+
+```{r, echo=FALSE}
+
+suppressMessages(require(kableExtra))
+
+# print formated comparison table
+kable(probs) %>%
+  kable_styling(bootstrap_options="striped", full_width = FALSE)
+
+```
+
+From the comparison table, we see that the probabilities calculated from our randomly generated sandwich orders are very close to the original distribution. As the number of random trials gets larger, the values will more closely approach the actual probabilities. Here's a comparison for 1,000,000 random trials:
+
+```{r, echo=FALSE}
+n<-1000000
+x<-rempir(n, X, p)
+
+probs<-cbind(aggregate(x, by=list(x), function(x) length(x)/n), p)
+colnames(probs)<-c("Sandwich", "Empirical Probability", "Actual Probability")
+
+# print formated comparison table
+kable(probs) %>%
+  kable_styling(bootstrap_options="striped", full_width = FALSE)
+
+```
+
+
+

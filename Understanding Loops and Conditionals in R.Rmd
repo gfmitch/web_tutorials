@@ -1,0 +1,290 @@
+---
+title: "Understanding Loops and Conditionals in R"
+author: "Gary Mitchell"
+date: "2023-08-30"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Most coding tasks of any complexity require the code to make decisions, behaving differently on the basis of some condition evaluated. We refer to these as *conditionals*, and the code behavior as *conditional execution*. Additionally, it's common to have to perform some tasks repetitively (or iteratively). This behavior is referred to as *looping* and the code that performs it is referred to as a *loop*.
+
+## Conditionals in R
+
+For all intents and purposes, R has a single conditional structure, the *if* statement. Virtually all programming languages provide an if statement for writing conditionals, but some provide additional types of conditionals (e.g., select case, switch, etc.). R's providing a single conditional limits our choices for implementing conditional execution, but also simplifies things because we have fewer control structures to learn.
+
+### Calculating $L_q$ for an M/M/1 queue
+
+In its simplest form, an *if* statement is illustrated in the following code which calculates that average number of customers waiting for an M/M/1 queue (don't worry about the formula, we just needed *something* to illustrate the conditional):
+
+$$L_q = \frac{\lambda^2}{\mu(\mu-\lambda)}$$
+
+```{r}
+lambda<-20    # 20 customers/hour
+mu<-25        # 25 customers/hour
+
+if (lambda >= mu)
+{
+  stop("Infeasible queue: lambda >= mu.")
+}
+
+lq<-lambda^2 / (mu * (mu - lambda))
+print(lq)
+
+```
+
+The result, $L_q = `r lq`$ indicates that, on average, there are $`r lq`$ customers waiting in line. So why did we need the conditional, and what does it do? 
+
+For a queue to be feasible, its capacity (i.e., it's ability to serve customers) must *strictly* exceed the demand (i.e., the rate at which customers arrive). The queue's capacity is given by its service rate $\mu$ (mu), and the queue's demand is given by its arrival rate $\lambda$ (lambda). If a queue is infeasible, then the average number of customers waiting will eventually grow to infinity. It isn't a question of whether or not it will grow to infinity, it is only a question of how long it will take.
+
+So, the code above uses an *if* statement to compare $\lambda$ and $mu$. If $\lambda \geq \mu$, then queue is infeasible and the program terminates with an error message (the stop command instructs R to terminate the program immediately). However, if $\lambda < \mu$, then the queue is *feasible* and the code continues, calculating the value of $\Lq$.
+
+### if-else
+Let's look at the *if* statement in general terms:
+
+```{r, eval=FALSE}
+
+if (condition)
+{
+  Statements to execute if condition is TRUE
+} else
+{
+  Statements to execute if condition is FALSE
+}
+
+```
+
+The condition can be any R expression that returns a TRUE or FALSE answer. We say that conditions must have binary outcomes. The *curly braces* surround the *if body*. 
+
+All statements between the open curly brace ({) and the close curly brace (}) will be executed when the condition is TRUE. If the condition evaluates FALSE, then the statements in the if body will be skipped and execution will continue at the first statement following the closing curly brace. 
+
+In the general case shown above, the next statement is an *else*, which indicates that there is different code to execute when *condition* is FALSE than when it is TRUE. However, in the M/M/1 queue example code, we omitted the *else*; *else* clauses are optional. By omitting the *else*, we instructed R to execute the *if body* only when $\lambda \geq \mu$, but to *do nothing* special when $\lambda < \mu$.
+
+The ability to omit *else* clauses gives us the flexibility to either do *something* only when condition is FALSE or to do *nothing* when condition is FALSE.
+
+### Creating *switch* statements
+
+Unlike some languages, R does not provide a *switch* (or *case*) statement; switch statements are handing when there are more than two paths of conditional execution, rather than just two. For example, let's say our code determines ticket prices. Ticket prices for Monday through Thursday are \$100, ticket prices for Friday and Saturday are \$200, and Sunday ticket prices are \$150. In this example, we have 3 separate paths of execution. 
+
+Here's how we handle this:
+
+```{r, eval=FALSE}
+if (day %in% c("Mon", "Tue", "Wed", "Thu"))
+{
+  price<-100
+  
+} else if (day %in% c("Fri", "Sat"))
+{
+  price<-200
+  
+} else if (day %in% c("Sun"))
+{
+  price<-150
+  
+} else
+{
+  price<-NA
+}
+
+print(price)
+```
+
+We simply follow an else with a new conditional to check another condition. In reality, these *ifs* are *nested*, shown in the following code:
+
+```{r, eval=FALSE}
+if (day %in% c("Mon", "Tue", "Wed", "Thu"))
+{
+  price<-100
+  
+} else 
+{
+  # if day isn't Mon-Thu, then we have to check for Fri, Sat
+  if (day %in% c("Fri", "Sat"))
+  {
+    price<-200
+    
+  } else 
+  {
+    # if day isn't Fri, Sat, then we have to check for Sun
+    if (day %in% c("Sun"))
+    {
+      price<-150
+      
+    } else
+    {
+      # This is an error, day has an invalid value
+      price<-NA
+    }
+  }
+}
+
+print(price)
+```
+
+Both ways of writing this *switch* are valid, but I prefer the first option (i.e., writing it as a switch). The *switch* form of the code makes it clear that we have one thing that we're testing (day) and mutually exclusive execution paths depending on day's value. I reserve using *nested* conditionals for those situations where the nested conditionals involve testing *different* conditions (not just looking for different values in a single condition).
+
+## Loops
+
+In programming, we think about looping under two different conditions:
+
+- When we know the number of iterations/repetitions 
+- When the number of iterations/repetitions is unknown.
+
+Different programming languages provide various statements to handle looping. In general, we might have:
+
+- when the number of iterations is known
+  - for - loops a specified number of times
+  - foreach - loops for each member in a collection`
+- when the number of iterations is unknown
+  - while - tests a condition at the top of the loop and executes the loop body if TRUE
+  - do-until - executes the loop body and continues looping if a condition evaluated at the *bottom* of the loop is true
+  - do - repeats until the loop is explicitly terminated (i.e., code in the loop body forces loop termination)
+  
+Not every language provides all of these alternatives.
+
+### for/foreach in R (when the number of iterations is known)
+
+Technically, *every* for loop in R is a foreach, but R gives us an easy mechanism to make it behave like a traditional for loop (i.e., for i = 1 to 10):
+
+```{r, eval=FALSE}
+for (i in 1:10)
+{
+  statements to execute for each value of i
+}
+
+```
+
+Note that the loop control statement must be surrounded by parentheses.
+
+When execution enters the top of the loop, the *loop control variable*, i in this example, is set to the first value in the sequence 1:10 (which R expands to 1, 2, ..., 10). After setting i to 1, R executes the statements in the loop body (all of the statements between the curly braces). R then returns execution to the top of the loop and sets i to the next value in the sequence, 2 in this example. 
+
+In the last iteration of the loop, i will be set to 10 and the loop body executed. When R returns to the top of the loop, it determines that there are no more values of i remaining, and the loop is terminated, with execution continuing at the first statement following the closing curly brace.
+
+Because the loop executes once for each value in the collection, the number of iterations is none at the beginning of the loop.
+
+If we want to execute for a sequence of non-consecutive numbers, we just provide R with a different sequence collection. For example, to loop over even numbers between 2 and 20, we could use the following:
+
+```{r, eval=FALSE}
+for (i in seq(2,20,2))
+{
+  statements
+}
+
+```
+
+Here, we used the *seq* function to generate a sequence of numbers starting at 2, ending at 20, and incremented by 2:
+
+```{r}
+seq(2, 20, 2)
+
+```
+
+To implement a *traditional foreach* we still use the for statement:
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+require(DescTools)
+```
+
+```{r}
+for (day in day.name)
+{
+  print(day)
+}
+
+```
+
+Here, day.name is a builtin collection of days of the week names:
+
+```{r}
+day.name
+```
+
+
+### while/repeat loops (when the number of iterations is unknown)
+
+R provides *while* and *repeat* loops; a repeat loop is R's version of a *do* loop often seen in other languages. Here, we explain and illustrate the use of both.
+
+#### while loop
+
+In a while loop, the condition is tested at the top of the loop body and determines whether looping continues:
+
+```{r, eval=FALSE}
+while(condition)
+{
+  statements
+}
+
+```
+
+If the condition is FALSE when the loop body is first encountered, the loop will be bypassed. If the condition is TRUE, then the loop body is executed. When the bottom of the loop body is reached, control returns to the top of the loop and the condition is tested and the loop body proceeds if condition is true. 
+
+In a while loop, we think of the condition as a *continuation condition*, i.e., the loop continues to execute if the condition is true.
+
+Here's an example of a while loop. The loop will continue printing random numbers as long as the random number is less than $7$:
+
+```{r, eval=TRUE}
+while((x<-runif(1,1,10)) < 7)
+{
+  print(x)
+}
+
+```
+
+In this code, a single uniformly distributed random number between $1$ and $10$ (i.e., $x \sim unif[1,10]$) is assigned to $x$ (each time the while condition is evaluated); $x < 7$ is the continuation condition. Because of the order of operations, the new random number is generated and assigned to $x$ *before* $x < 7$ is evaluated. This loop will continue until $x$ is finally assigned a value greater than or equal to $7$.
+
+#### repeat loop
+
+A *repeat* loop is an *endless* loop. By itself, the repeat will never terminate; the loop body will be executed for ever. By itself, it's not very useful, but we'll combine it with a *break* statement in a conditional to terminate the loop.
+
+To illustrate, we'll use the *do-until* version of the while loop above (i.e., the looping condition will be evaluated at the bottom of the loop):
+
+```{r}
+repeat
+{
+  x<-runif(1, 1, 10)
+  print(x)
+  
+  if (x >= 7)
+  {
+    break
+  }
+}
+```
+
+Let's review the differences. The while loop evaluates the condition at the top of the loop so if $x >= 7$ when the while loop is encountered, then no random values will be printed. In contrast, the *termination* condition is evaluated at the *bottom* of the repeat loop (making it behave like a do-until). So if a random value of $7$ or more is generated, the value will print, *then* the termination condition will be evaluated and the loop will terminate (because *break* causes instant termination).
+
+### break and next
+
+*break* and *next* (frequently called *continue* in other languages) may be used in conjunction with *any* of the R's loops (i.e., for, while, and repeat):
+
+- break - causes instant termination of the loop
+- next - loop execution *immediately* returns to the top of the loop (i.e., the rest of the loop body is skipped)
+  - for - the next value in the collection is assigned to the loop control variable, then the loop proceeds
+  - while - the continuation condition is evaluated and, if TRUE, the loop proceeds
+  - repeat - execution resumes at the top of the loop.
+  
+Let's look at a *next* example:
+
+```{r}
+
+for (i in 1:20)
+{
+  cat(i)     # print i without a linefeed
+  x<-runif(1, 1, 10)
+  
+  if(x > 7)
+  {
+    cat("\n")   # we're proceeding to the next iteration, so print linefeed
+    next
+  }
+  
+  cat(" - ", x, "\n")
+}
+
+```
+
+Here we see that all 20 iterations were started, but only in those where $x < 7$ was the value of $x$ printed.
+
+

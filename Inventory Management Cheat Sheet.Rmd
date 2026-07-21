@@ -1,0 +1,2041 @@
+---
+title: "Inventory Management Models Cheat Sheet"
+author: "Gary Mitchell"
+date: "9/17/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE)
+library(kableExtra)
+source("../../../WeBWork_Library/General/inv_mgt_functions.R")
+```
+
+The purpose of this *cheat sheet* is to provide a single, consolidated reference of the inventory models used in BUS 457/547. This should not be treated as a comprehensive reference (there are many other inventory models available for different problem settings), nor should it be considered as *teaching* material, as it merely *presents* the material without discussion or explanation.
+
+# Notational Conventions and Fundamental Terms
+
+Notation/Term            | Description/Expression/Implication
+-------------------------|----------------------------------------------------------------------
+$\hat{x}$                | Notational convention indicating that $\hat{x}$ is an estimate of $x$
+$x^*$                    | Notational convention indicating that $x^*$ is an optimal (or near-optimal) value of $x$
+$[x]^+$                  | $max(0,x)$
+$\lfloor x\rfloor$       | Floor of $x$, i.e. largest integer $\le x$
+$\lceil x\rceil$         | Ceiling of $x$, i.e. the smallest integer $\ge x$
+$\sum_{i=1}^{n}x_i$      | Summation of $x_i$ for all $i = 1,..., n$, $x_1 + x_2 + ... + x_n$
+$\sum_{i \in \textbf I}x_i$      | Summation of $x_i$ for every $i$ in set $\textbf I$
+$\prod_{i=1}^{n}x_i$     | Product of $x_i$ for all $i = 1,..., n$, $x_1 \times x_2 \times \cdots \times x_n$
+$x \in y$                | $x$ is a member of set $y$
+$\forall$                | For each, for every. Typically used in an expression such as $\forall i \in \textbf{I}$ where $\textbf{I}$ represents the set of items. This would be read as for every item $i$ in the set of items $\textbf{I}$
+$a_i$                    | Item order placement or setup cost (i.e. *minor* setup cost)
+$A$                      | Aggregate order placement cost, *independent* of order quantity (i.e. *major* setup cost)
+$ASPRC$                  | Acceptable shortages per replenishment cycle. Same as $SSO$
+$ATC(Q)$                 | Annual total cost associated with ordering quantity Q. $TRC(Q) + $Dv$ where $Dv$ represents the purchase cost incurred to satisfy annual demand $D$
+$B_1$                    | Shortage cost per shortage/stockout occasion
+$B_2$                    | Shortage cost per unit shorted
+$B_3$                    | Shortage cost per unit shorted per unit time shorted
+$B_4$                    | Shortage cost per *line* shorted
+buildup-period           | $\frac{Q}{p}$ or $\frac{Q}{M}$. The time interval required to produce a quantity $Q$, or the time required to receive quantity $Q$ under phased delivery. The time units are determined by the production rate time units. For example, *weeks* when using $\frac{Q}{p}$ where $p$ is production rate in $\frac{units}{week}$
+$C_e$                    | Unit cost of excess
+$C_s$                    | Unit shortage cost
+continuous review        | $rt = 0$. Replenishment need is evaluated at each inventory level change
+critical fractile        | $F(Q^*)$ in the Classic Newsvendor model; i.e. $Pr\{D \le Q^*\}$
+$D$                      | Actual demand, specified in $\frac{units}{time}, e.g. units per year
+$\hat{D}$                | Estimated demand.
+$\bar{d}$, $d_1$, $\hat{x}$  | Average daily demand, \frac{units}{day}
+deterministic            | Known with certainty. Described by a probability distribution consisting of a single outcome with probability 1.0 (e.g. $\sigma = 0$)
+$dts$                    | Desired time supply. Alternate term for *target* $T$ used in industry.
+$EOQ$                    | Economic order quantity. Differs from $EPQ$ in that delivery is assumed to occur *instantaneously$, e.g. all units arrive at the same instance
+$EPQ$                    | Econmic production quantity. Differs from $EOQ$ in that delivery is assumed to occur at a constant rate $p$ or $M$
+$ESO$                    | Expected stockouts per replenishment cycle. May be stated in units or currency.
+$ESPRC$                  | Expected shortages per replenishment cycle. Same as $ESO$
+$f(x)$                   | Probability density for a continuous destirbution
+$F(x)$                   | Cumulative probability, i.e. $Pr\{X \le x\}$
+$\overline{F}(x)$ or $F^c(x)$ | Complementary cumulative probability, i.e. $1 - F(x)$
+fill rate                | Industry term for $p_2$, the fraction of demand satisfied from stock during a replenishment cycle.
+$h$                      | Context dependent. In EOQ explicit storage cost models represents the unit storage requirements, typically in $ft^3$; the space require to store one unit. In the Classic Newsvendor model, represents the unit acquisition cost (similar to $v for EOQ models)
+$g$                      | Unit salvage value (negative value for disposal cost) per unit. May be shown as $l$ in some models, but will be shown here as $g$ to avoid confusion with lead time
+$GM$                     | Gross margin ($selling \thinspace price - acquisition \thinspace cost$)
+$GM_{loss}$              | The percentage of the gross margin lost on shorted units
+$I_{max}$                | Peak inventory (i.e. units on hand) associated with an order policy.
+inventory turns          | $\frac{1}{T} = \frac{Q}{D}$. The number of times the inventory is *sold thru* during a year (assuming an annual time interval for $T$ and $D$).
+$k$                      | Safety factor. Specifies the number of standard deviation of demand to be held as safety stock. Sometimes denoted as $k_tsl$ to indicate the value of $k$ corresponding to a specific $tsl$
+$k_{implied}$            | The safety factor implied by the inventory position $IP$ during an exposure interval $e$, $k_{implied}$ = IP - fcst(e)$
+$L$ or $lt$              | Lead time, i.e. the elapsed time between placing an order and the product being available for use/sale
+line service level       | The fraction of order lines filled complete. This method of measuring service is used infrequently.
+$M$                      | Production rate (alternate notation), generally assumed to be specified in $\frac{units}{year}
+$m(Q)$                   | Order quanitity rounded for full shipping multiples (i.e. full packs) and the item minimum order quantity, $Q_{min}$
+$OP$                     | Order point; the inventory position at or below which an order should be placed.
+$OUTL$                   | Order-up-to-level; the level to which inventory position will be raised after an order is placed.
+$p$                      | Production rate, specified in $\frac{units}{time}, e.g. units per year
+$p_{u\ge}(k)$            | Same as $\bar{F}(k) = 1 - F(k)$
+$p_1$                    | The probability of satisfying demand from stock.
+$p_2$                    | The fraction of demand satisfied from stock during a replenishment (i.e. order) cycle
+$pack$                   | Item shipping multiple (e.g. case). Items must be ordered in full multiples of $pack$
+periodic review          | $rt > 0$. Replenishment need is evaluated every $rt$ periods
+$plus$                   | Profit lost per unit short
+$Q^*$                    | Optimal order quantity calculated/approximated using an optimal/heuristic model
+$Q_{min}$                | Minimum order quantity, may be imposed by supplier or by a management policy
+$r$                      | Unit holding cost percentage rate
+$rt$                     | Review time, i.e. time between opportunities to place orders
+$s$                      | Order point, typically used in academic papers/models
+$S$                      | Order-up-to-level, typically used in academic papers/models
+$SSO$                    | Specified stockouts per replenishment cycle. May be stated in units or currency.
+sellthru period          | The time interval required to consume an amount of inventory. Frequently associated with the time required to consume the peak inventory associated with an order policy.
+service level            | Industry term for $p_1$, the probability of satisfying demand from stock during a replenishment cycle.
+$\sigma$                 | Notational convention repesenting the standard deviation. When multiple standard deviations are involved, may be subscripted for specificity, e.g. $\sigma_{lt}$ would indicate demand standard deviation in a time interval of length $lt$
+Seasonality              | Generic term used to describe predictable variations by time period (e.g. weekly variations associated with the time of the year, within-week variations relating to predictable variations by day of week, etc.)
+stationary               | Characterized by the *absence* of seasonality or trend
+stochastic               | Characterized by uncertainty and described by a probability distribution. $\sigma > 0$.
+target service level     | Industry term for $P_1$, the probability of satisfying demand directly from stock
+$T$ or $TS$              | Time supply. Also known as cycle time, order cycle, etc. Given $Q$, $T=\frac{Q}{D}$
+trend                    | Long term sustained rate of change. To qualify as trend, the change must remain reasonably consistent over a long period of time (e.g. 3 months, 6 months). Short term changes do not qualify as trend.
+type I service level     | Alternative way of referring to $p_1$
+type II service level    | Alternative way of referring to $p_2$
+$TBS$                    | Time between stockouts (stated in the same time units as demand). Effectively, this is the same as DTS, indicating the length of an order cycle. 
+$TRC(Q)$                 | Total relevant cost associated with ordering quantity $Q$. Represents the costs incurred due to the inventory policy (e.g. holding cost, ordering costs, shortage costs, etc.). Excludes acquisition cost
+turns                    | Same as inventory turns
+$TSL$ or $tsl$           | Target service level (same as $P_1$)
+$v$                      | Unit acquisition cost, i.e. the cost to *purchase* one unit from a supplier
+$w$                      | Context dependent. May represent Working days per year. In the EOQ explicit storage cost models, represents the unit storage cost (e.g. cost per $ft^3$)
+$\hat{z}$                | Average number of units ordered per customer order line
+
+
+# Deterministic demand models
+
+## EOQ and EPQ
+
+Assumptions common to both models:
+
+  - Demand is deterministic, constant, and stationary 
+  - Infinite planning horizon
+  - Inventory costs incurred:
+    - Holding costs (incurred as a function of average inventory investment)
+    - Order placement costs incurred per order placed (independent of the order size)
+  - All parameters are assumed deterministic
+  - Continuous review (this can be easily relaxed)
+  - Zero lead time (this can be easiliy relaxed)
+  - No quantity discounts
+  - No constraints on space, inventory investment, etc.
+  - Items are replenished independently of other items
+  
+Assumption differences:
+
+  - EOQ: instantaneous delivery, $M = \infty$ (i.e. $p = \infty$)
+  - EPQ: non-instantaneous delivery, $M$ finite (i.e. $p$ finite)
+  
+The following general definitions apply to both EOQ and EPQ.
+  
+  Interval         |       Expression           
+-------------------|-------------------
+cycle time $(T)$   |$\frac{Q}{D}$ or $\frac{Q}{d}$ or $buildup + sellthru$
+$buildup$          |$\frac{Q}{M}$ or $\frac{Q}{p}$
+$sellthru$        |$\frac{I_{max}}{D}$ or $\frac{I_{max}}{d}$
+$I_{max}$          |$Q\frac{p-d}{p}$ or $Q\frac{M-D}{M}$
+$TRC(Q)$           | $\frac{I_{max}}{2}vr + \frac{DA}{Q}$
+$ATC(Q)$           | $TRC(Q) + Dv = \frac{I_{max}}{2}vr + \frac{DA}{Q} + Dv$
+
+Because EOQ is the limiting case where $p = \infty$ $(M = \infty)$ (assuming intervals are calculated on daily basis):
+  
+Metric             |       $EOQ$                                        |       $EPQ$        
+-------------------|----------------------------------------------------|-----------------------
+$cycle \space time\space (T)$   |$\frac{Q}{d}$                                       |$\frac{Q}{d}$ 
+$buildup$          |$\frac{Q}{\infty} = 0$                              |$\frac{Q}{p}$
+$sellthru$        |$\frac{I_{max}}{d} = Q\frac{p-d}{d p} = Q\frac{\infty - d}{\infty} = Q$ |$\frac{I_{max}}{d} = Q\frac{p-d}{d p}$
+$I_{max}$          |$Q\frac{p-d}{p} = Q\frac{\infty - d}{\infty} = Q$   |$Q\frac{p-d}{p}$
+$TRC(Q)$           |$\frac{Q}{2}vr + \frac{DA}{Q}$                      | $\frac{Q}{2}vr\big(\frac{p-d}{p}\big) + \frac{DA}{Q}$
+$TRC(Q*)$          |$\sqrt{2DAvr}$                                      $\sqrt{2DAvr}\sqrt{\frac{p-d}{p}}$
+  
+### Inventory behavior
+
+Based on the model assumptions, the inventory levels over time can be characterized by the patterns shown in the illustrations below. The EOQ graph below differs slightly from the diagrams typically shown in textbooks. This graph was generated using R and consequently can show only a single value per day. The graphs typically shown in textbooks show the inventory reaching 0 and then increasing to $Q$ instantly, thereby showing 2 values for the inventory level on one day.
+
+```{r, echo=FALSE}
+D<-1000
+M<-2000
+w<-250
+d<-D/w
+p<-M/w
+
+Q<-200
+t<-1:w
+
+cycle<-Q/d
+
+```
+
+For the examples below, we assume:
+
+
+$$D = `r M`$$
+$$M = `r M`$$
+$$w = `r w`$$
+Therefore, we have $d = \frac{`r D`}{`r w`} = `r d`$, $p = \frac{`r M`}{`r w`} = `r p`$.
+
+
+```{r, echo=FALSE, out.width='100%'}
+par(mfrow=c(1,2))
+
+
+eoqoh<-Q
+
+cycle<-Q/d
+
+for (i in 2:w)
+{
+  eoqoh[i]<-eoqoh[i-1] - d
+  if (eoqoh[i] <= 0)
+  {
+    eoqoh[i]<-Q
+  }
+}
+
+tlim<-1.5*cycle
+t<-1:tlim
+
+buildup<-p-d
+epqoh<-numeric(w)
+epqoh[1]<-buildup
+
+building<-TRUE
+imax<-Q*(p-d)/p
+produced<-numeric(w)
+produced[1]<-p
+
+for (i in 2:w)
+{
+  #cat("i: ", i, " => ")
+  if (epqoh[i-1] <= 0)
+  {
+    building<-TRUE
+    produced[i]<-0
+  }
+  
+  if (building)
+  {
+    epqoh[i]<-min(Q, epqoh[i-1] + buildup)
+    produced[i]<-min(produced[i-1] + p, Q)
+    
+    #cat("i: ", i, ",  produced: ", produced[i], "\n")
+    
+    if (produced[i] >= Q)
+    {
+      building<-FALSE
+    }
+  }else
+  {
+    epqoh[i]<-max(0, epqoh[i-1] - d)
+    #cat("i: ", i, ",  remaining: ", epqoh[i], "\n")
+    
+    
+  }
+}
+
+#print(data.frame(produced, epqoh))
+
+plot(1:tlim, eoqoh[1:tlim], type="l", main="EOQ", ylab="Units OH", xlab="t")
+plot(1:tlim, epqoh[1:tlim], type="l", main="EPQ", ylab="Units OH", xlab="t", ylim=c(0,Q))
+
+par(mfrow=c(1,1))
+```
+
+The cycle time (also referred to as production cycle time, time supply, etc.) for both models is given by $\frac{Q}{d} = \frac{`r Q`}{`r d`} = `r cycle`$ days (because we used $d$ instead of $D$). For the EPQ case, we have
+
+$$buildup \space period = \frac{Q}{p} = \frac{`r Q`}{`r p`} = `r Q/p`$$
+$$sellthru \space period = \frac{Q\frac{p-d}{p}}{d} = \frac{`r Q*(p-d)`}{(`r p`) (`r d`)} = `r Q*(p-d)/(p*d)`$$
+
+The fact that $buildup \space period = sellthru \space period$ in this example is a coincidence resulting from the specific values of $D$ and $M$ and should not be assumed as a general relationship.
+
+
+## EOQ with explicit storage costs
+
+We have two variations:
+
+  - Fixed slotting assignments - spaces is reserved for peak inventory position
+  - Floating slotting assignments - space is assigned dynamically, so unused locations can be reassigned to other items.
+  
+In these variations, the holding cost percentage rate $r$ no longer includes the cost of storage, but still includes:
+
+  - Money
+  - Insurance
+  - Taxes
+  - Shrink
+  - Obsolescence.
+  
+### Fixed slotting assignments
+
+$$TRC(Q) = \frac{Qvr}{2} + Qhw + \frac{D A}{2}$$
+where $h$ is the unit storage requirement (typically in $ft^3$), and $w$ is the storage cost per storage unit (e.g. $\frac{\$}{ft^3}$). This yields an optimal order quantity:
+
+$$Q^* = \sqrt{\frac{2DA}{vr + 2hw}}$$
+
+### Floating slotting assignments
+
+$$TRC(Q) = \frac{Qvr}{2} + \frac{Qhw}{2} + \frac{D A}{2}$$
+with correspondign optimal order quantity:
+
+$$Q^* = \sqrt{\frac{2DA}{vr + hw}}$$
+## Joint replenishment with EOQ
+
+In general
+
+$$TRC(T) = \frac{TD_1}{2}v_1 r_1 + \frac{TD_2}{2}v_2 r_2 + \cdots + \frac{1}{T}A = \frac{1}{2}\sum_{i=1}^{n}T_i D_i v_i r_i + \frac{1}{T}A$$
+$$T^* = \sqrt{\frac{2A}{\sum_{i=1}^{n}D_i v_i r_i}}$$
+and
+
+$$Q_i^* = T^*D_i$$
+
+## Joint replenishment with a single constraint
+
+Given a single constraint of the form:
+
+$$\sum_{i=1}^{n}f_i Q_i^* \le F$$
+
+We can adjust order quantities to ensure the constraint is satisfied (required only when the constraint is not satisfied):
+
+$$Q_i^c = Q_i^* \frac{F}{\sum_{i=1}^{n}f_i Q_i^*}$$
+For optimality, the $Q_i^*$ should have been calculated as jointly optimal order quantities.
+
+## Ordering with order multiples
+
+$$TRC(Q^*) = \underset{Q^* \in \{Q_l, Q_u\}}{\arg \min}\{TRC(Q_l), TRC(Q_u)\}$$
+$$Q_l=\Bigl\lfloor \frac{EOQ}{n} \Bigr\rfloor n$$
+
+$$Q_u=\Bigl\lceil \frac{EOQ}{n} \Bigr\rceil n$$
+where $n$ is the order multiple (in units).
+
+## Sensitivity of the $EOQ$
+
+$$\frac{TRC(Q)}{TRC(Q^*)} = \frac{1}{2} \Bigg[ \frac{Q}{Q^*}+\frac{Q*}{Q} \Bigg]$$
+$$\frac{TRC(Q(\hat{D}))}{TRC(Q^*)} = \frac{1}{2} \Bigg[ \sqrt{\frac{\hat{D}}{D}} + \sqrt{\frac{D}{\hat{D}}} \Bigg]$$
+
+## All units quantity discounts
+
+Given a quantity pricing bracket as follows:
+
+```{r, echo=FALSE}
+Qmin<-c(0, 101, 501)
+v<-c(10, 9, 8)
+D<-1200
+A<-50
+r<-0.35
+
+Qstar<-sqrt(2 * D * A / (v * r))
+Qb<-ifelse(Qstar >= Qmin, Qstar, Qmin)
+
+ATCQb<-Qb/2 * v * r + D * A / Qb + D * v
+
+ATCmin<-min(ATCQb)
+bidx<-which(ATCQb == ATCmin)
+Qopt<-Qb[bidx]
+
+df<-data.frame(Qmin, v, Qstar, Qb, ATCQb)
+colnames(df)<-c("Qmin", "Unit Cost", "Q*", "Qb", "ATC(Qb)")
+df[,1:2] %>%
+  kable() %>%
+  kable_styling(full_width=FALSE)
+
+```
+
+We can use the following algorithm to determine the optimal order quantity:
+
+  1. Calculate the EOQ for every bracket (i.e. using the unit cost for each bracket)
+  2. Determine $Q_i^b$ for each bracket $i$:
+  $$Q_i^b = \begin{cases}
+    Q_i^*& \text{if } Q_i^*\geq Q_i^{min}\\
+    Q_i^{min}              & \text{otherwise}
+    \end{cases}$$
+  3. Calculate $ATC(Q_i^b) \space \space\forall \space i$
+  4. Choose
+  
+  $$Q_o^* = \underset{Q_i^b}{\arg \min}\{{ATC(Q_i^b)\}}$$
+In the table below, the values in the $Q^*$ column were determined in step 1, those in the $Q^b$ column were determined in step 2, and the $ATC(Q^b)$ values were determined in step 3.
+
+```{r, echo=FALSE}
+df %>%
+  kable() %>%
+  kable_styling(full_width = FALSE, )
+```
+  
+Finally, we determine that we should purchase in bracket `r bidx`, with $Q_o^*$ equal to `r Qopt` and minimum annual total cost `r sprintf("$%7.2f", ATCmin)`. In this case, we purchased the bracket minimum because $Q_3^* \le Q_3^{min}$.
+
+In contrast, in the example below
+
+
+```{r, echo=FALSE}
+Qmin<-c(0, 101, 501)
+v<-c(9.25, 9, 8.90)
+D<-1200
+A<-50
+r<-0.35
+
+Qstar<-sqrt(2 * D * A / (v * r))
+Qb<-ifelse(Qstar >= Qmin, Qstar, Qmin)
+
+ATCQb<-Qb/2 * v * r + D * A / Qb + D * v
+
+ATCmin<-min(ATCQb)
+bidx<-which(ATCQb == ATCmin)
+Qopt<-Qb[bidx]
+
+df<-data.frame(Qmin, v, Qstar, Qb, ATCQb)
+colnames(df)<-c("Qmin", "Unit Cost", "Q*", "Qb", "ATC(Qb)")
+df %>%
+  kable() %>%
+  kable_styling(full_width=FALSE)
+
+```
+we would purchase in bracket `r bidx`, ordering `r round(Qb[bidx])` units, instead of the bracket minimmum `r Qb[bidx]`, because $Q_2^* \ge Q_2^b$, yielding a corresponding minimum $ATC$ of `r sprintf("$%7.2f", ATCmin)`.
+
+## Lot Sizing Problem
+
+When demand is deterministic, but non-stationary, we have a lot sizing problem:
+
+  - Finite planning horizon (in demand periods)
+  - Deterministic, time-varying demand
+  - Other assumptions of the EOQ continue to hold.
+  
+In this case, the 12 period demand for an item might appear as follows:
+
+```{r, echo=FALSE}
+D<-c(140, 281, 118, 242, 285, 230, 192, 118, 288, 105, 132, 269)
+A<-500
+v<-12.95
+r<-0.35/12
+
+dmat<-matrix(D, nrow=1)
+colnames(dmat)<-1:12
+rownames(dmat)<-"Demand"
+
+dmat %>%
+  kable() %>%
+  kable_styling(full_width = FALSE)
+```
+
+The lot sizing heuristics calculate *all* order quantities for the entire planning horizon. Be sure to use a *periodic* $r$ when doing the calculations for these heuristics (as opposed to the *annual* $r$ we used in the standard EOQ/EPQ models).
+
+### Wagner-Whitin Algorithm
+
+An optimal solution to the lot sizing problem can be found using the Wagner-Whitin algorithm, which involves solving the following recursion relation:
+
+$$f_k=\underset{j > k}{min}(c_kj + f_j) \space \space \forall \space k=1,\ldots, n$$
+and boundary condition:
+
+$$f_{n+1} = 0$$
+where $f_k$ is the minimum cost through the end of the planning horizon, starting at period $k$ and assuming that an order is placed in period $k$, and $c_{kj}$ is the cost associated with placing an order in period k to satisfy demand for periods $k, \ldots, j$.
+
+While the Wagner-Whitin algorithm is guaranteed to yield an optimal solution, it is extremely costsly/time-consuming to utilize for all but small *toy* problems. Consequently, the heuristics described in the following sections are more practical for every day use.
+
+### Lot-for-Lot (L4L) Heuristic
+
+Order in period $j$ to exactly satisfy demand for period $j$:
+
+$$Q_j = D_j$$
+where $j$ indicates the demand period number. The L4L heuristic would have total relevant cost of $`r round(A * length(D),2)` for this planning horizon. 
+
+### Fixed EOQ
+
+This heuristic is based on purchasing the integer periods of demand such that the sum will be *close* to the $FEOQ$.
+
+$$FEOQ=\sqrt{\frac{2A\bar{D}}{vr}}$$
+
+
+  1. Calculate $FEOQ$
+  2. $j = 1$, $T = 0$
+  3. $T = T + 1$
+  4. $D_j(T) = D_j(T-1) + d_{j+T-1}$
+  5. IF $Q_j(T) \le FEOQ$ THEN GOTO step 3
+  6. $T = \underset{t \in \{T-1, T\}}{\arg \min} \big\{FEOQ - D_j(T-1), FEOQ-D_j(T) \big\}$
+  7. $Q_j$ = D_j(T)
+  8. $j = j + t$, $T = 0$
+  9. IF $j > n$ THEN STOP
+  
+     ELSE GOTO step 3
+  
+$D_j(0) = 0$ by convention. For all $j=1, \ldots, n$, $D_j(T)$ is the cumulative demand for $T$ periods beginning in period $j$.
+
+```{r, echo=FALSE}
+n<-length(D)
+Q<-numeric(n)
+AHC<-numeric(n)
+AOC<-numeric(n)
+
+FEOQ<-sqrt(2*mean(D)*A / (v * r))
+
+j<-1
+T<-0
+DjT<-numeric(2)
+
+while (j <= n)
+{
+  T<-T+1
+  DjT[1]<-DjT[2]
+  
+  DjT[2]<-DjT[1] + D[j+T-1]
+  
+  if (DjT[2] >= FEOQ)
+  {
+    Qdiff<-abs(DjT - FEOQ)
+    
+    idx<-which(Qdiff == min(Qdiff))
+    
+    Q[j]<-DjT[idx]
+    
+    t<-ifelse(idx == 1, T-1, T)
+    AHC[j]<-sum((0:(t-1))*D[j:(j+t-1)])*v*r
+    AOC[j]<-A
+   
+    j<-j + t
+    DjT<-numeric(2)
+    T<-0
+  }
+  
+  if((j + T - 1) >= n)
+  {
+    # we're at the end, need to order DjT[2] and exit
+    Q[j]<-DjT[2]
+    AHC[j]<-sum((0:(n-j)) * D[j:n])*v*r
+    AOC[j]<-A
+    break
+  }
+  
+}
+
+Qmat<-matrix(c(Q[Q>0], AHC[Q>0], AOC[Q>0]), nrow=3, byrow=TRUE)
+rownames(Qmat)<-c("Q", "Holding Cost", "Order Cost")
+colnames(Qmat)<-which(Q>0)
+TRC<-sum(c(AHC, AOC))
+
+```
+
+For the 12-period planning horizon shown above, we have $FEOQ = `r FEOQ`$ and total relevant cost of `r round(TRC,2)` with the following order placements (by period):
+
+```{r, echo=FALSE}
+Qmat %>%
+  kable() %>%
+  kable_styling(full_width = FALSE)
+```
+
+  
+### PEOQ(Fixed TEOQ)
+
+In this heuristic, we calculate:
+
+$$T = \frac{Q^*}{\bar{D}}$$
+and place an order for $Q_j = D_j(T)$ every $j$ time periods.
+
+```{r, echo=FALSE}
+Traw<-FEOQ / mean(D)
+T<-round(Traw)
+Q<-numeric(n)
+AHC<-numeric(n)
+AOC<-numeric(n)
+
+for (j in seq(1, n, T))
+{
+  Q[j]<-sum(D[j:min(n,(j+T-1))])
+  AHC[j]<-sum((0:(T-1))*D[j:(j+T-1)])*v*r
+  AOC[j]<-A
+}
+
+Qmat<-matrix(c(Q[Q>0], AHC[Q>0], AOC[Q>0]), nrow=3, byrow=TRUE)
+rownames(Qmat)<-c("Q", "Holding Cost", "Order Cost")
+colnames(Qmat)<-which(Q>0)
+TRC<-sum(c(AHC, AOC))
+
+```
+
+For the example planning horizon, this yields a total relevance cost of `r round(TRC,2)` with $T = `r Traw` \approx `r T`$ (rounded to the nearest integer) and an order schedule as follows:
+
+```{r, echo=FALSE}
+Qmat %>%
+  kable() %>%
+  kable_styling(full_width = FALSE)
+```
+
+### Silver-Meal heuristic
+
+In this method, we use the total relevant cost per unit of time $(TRCUT)$ to determine when top replenish:
+
+$$TRCUT_j(T)=\frac{A + \sum_{k=j+1}^{j+T-1}\sum_{i=k}^{j+T-1}D_i v_i r_i}{T}$$
+This is equivalent to the following, which simplifies calculation in Excel and R:
+
+$$TRCUT_j(T)=\frac{A + \sum_{i=j+1}^{j+T-1}(i-j)D_i v_i r_i}{T}$$
+The algorithm is as follows:
+
+  1. $j=1$
+  2. $T=0$, $TRCUT_j(0)=M>>0$
+  3. $T = T + 1$
+  4. $TRCUT_j(T)=\frac{A + \sum_{i=j+1}^{j+T-1}(i-j)D_i v_i r_i}{T}$
+  5. if $T == n - j + 1$ THEN 
+  
+     $Q_j = \sum_{i=j}^{n}D_i$
+     
+     STOP
+  6. if $TRCUT_j(T) > TRCUT_j(T-1)$ THEN
+  
+     $Q_j = \sum_{i=j}^{j+T-2}D_i$
+     
+     $j = j + T$ - 1, $T = 0$
+     
+     GOTO step 3
+
+
+You can see how the iterations are functioning in the output below:
+
+```{r, echo=FALSE}
+n<-length(D)
+Q<-numeric(n)
+AHC<-numeric(n)
+AOC<-numeric(n)
+t<-0
+j<-1
+
+while (j <= n)
+{
+  TRCUT<-numeric(n+1)
+  TRCUT[1]<-10^10
+  
+  
+  cat("\n\nj = ", j, ", TRCUT:\n", sep="")
+  for (t in 1:(n - j + 1))
+  {
+    TRCUT[t+1]<-(A + sum((0:(t-1)) * D[j:(j + t - 1)]) * v * r)/t
+    cat("T = ", t, ": ", sprintf("%5.2f", TRCUT), "\n")
+    
+    if (TRCUT[t+1] > TRCUT[t])
+    {
+      Q[j]<-sum(D[j:(j+t-2)])
+      AHC[j]<-sum((0:(t-2))*D[j:(j+t-2)])*v*r
+      AOC[j]<-A
+      
+      j<-j+t-1
+      t<-0
+      break
+    }
+    
+    if (t == (n - j + 1))
+    {
+      Q[j]<-sum(D[j:n])
+      AHC[j]<-sum((0:(n-j)) * D[j:n])*v*r
+      AOC[j]<-A
+      j<-n+2
+      break
+    }
+    
+  }
+  
+}
+
+Qmat<-matrix(c(Q[Q>0], AHC[Q>0], AOC[Q>0]), nrow=3, byrow=TRUE)
+rownames(Qmat)<-c("Q", "Holding Cost", "Order Cost")
+colnames(Qmat)<-which(Q>0)
+TRC<-sum(c(AHC, AOC))
+```
+
+For the planning horizon above, the total relevant cost is $`r round(TRC,2)` and the algorithm determines the following order quantities:
+
+```{r, echo=FALSE}
+Qmat %>%
+  kable() %>%
+  kable_styling(full_width = FALSE)
+```
+
+
+### Least unit cost heuristic
+
+Identical to the Silver-Meal heuristic except we calculate $TRCU_j(T)$, the total relevant cost per unit. The *only* difference between $TRCUT_j(T)$ and $TRCU_j(T)$ is the denominator:
+
+$$TRCU_j(T)=\frac{A + \sum_{k=j+1}^{j+T-1}\sum_{i=k}^{j+T-1}D_i v_i r_i}{\sum_{i=j}^{j+T-1}D_i}$$
+This is equivalent to the following, which simplifies calculation in Excel and R:
+
+$$TRCU_j(T)=\frac{A + \sum_{i=j+1}^{j+T-1}(i-j)D_i v_i r_i}{\sum_{i=j}^{j+T-1}D_i}$$
+The algorithm is as follows:
+
+  1. $j=1$
+  2. $T=0$, $TRCUT_j(0)=M>>0$
+  3. $T = T + 1$
+  4. $TRCU_j(T)=\frac{A + \sum_{i=j+1}^{j+T-1}(i-j)D_i v_i r_i}{\sum_{i=j}^{j+T-1}D_i}$
+  5. if $T == n - j + 1$ THEN 
+  
+     $Q_j = \sum_{i=j}^{n}D_i$
+     
+     STOP
+  6. if $TRCU_j(T) > TRCU_j(T-1)$ THEN
+  
+     $Q_j = \sum_{i=j}^{j+T-2}D_i$
+     
+     $j = j + T$ - 1, $T = 0$
+     
+     GOTO step 3
+
+
+You can see how the iterations are functioning in the output below:
+
+```{r, echo=FALSE}
+n<-length(D)
+Q<-numeric(n)
+AHC<-numeric(n)
+AOC<-numeric(n)
+t<-0
+j<-1
+
+while (j <= n)
+{
+  TRCU<-numeric(n+1)
+  TRCU[1]<-10^10
+  
+  
+  cat("\n\nj = ", j, ", TRCU:\n", sep="")
+  for (t in 1:(n - j + 1))
+  {
+    TRCU[t+1]<-(A + sum((0:(t-1)) * D[j:(j + t - 1)]) * v * r)/sum(D[j:(j+t-1)])
+    cat("T = ", t, ": ", sprintf("%5.2f", TRCU), "\n")
+    
+    if (TRCU[t+1] > TRCU[t])
+    {
+      Q[j]<-sum(D[j:(j+t-2)])
+      AHC[j]<-sum((0:(t-2))*D[j:(j+t-2)])*v*r
+      AOC[j]<-A
+      
+      j<-j+t-1
+      t<-0
+      break
+    }
+    
+    if (t == (n - j + 1))
+    {
+      Q[j]<-sum(D[j:n])
+      AHC[j]<-sum((0:(n-j)) * D[j:n])*v*r
+      AOC[j]<-A
+      j<-n+2
+      break
+    }
+    
+  }
+  
+}
+
+Qmat<-matrix(c(Q[Q>0], AHC[Q>0], AOC[Q>0]), nrow=3, byrow=TRUE)
+rownames(Qmat)<-c("Q", "Holding Cost", "Order Cost")
+colnames(Qmat)<-which(Q>0)
+TRC<-sum(c(AHC, AOC))
+```
+
+For the planning horizon above, the total relevant cost is $`r round(TRC,2)` and the algorithm determines the following order quantities:
+
+```{r, echo=FALSE}
+Qmat %>%
+  kable() %>%
+  kable_styling(full_width = FALSE)
+```
+
+### Part-period balancing (PPB) heuristic
+
+The PPB heuristic attempts to conceptually follow the EOQ by finding the number of periods for which the aggregate order placement cost $A$ most closely matches the holding cost $$\sum_{k=j+1}^{j+T-1}\sum_{i=k}^{j+T-1}D_i v_i r_i = \sum_{i=j+1}^{j+T-1}(i-j)D_i v_i r_i$$
+
+The algorithm is as follows:
+
+  1. $j=1$
+  2. $t = 1$
+  3. IF $\sum_{i=j+1}^{j+T-1}(i-j)D_i v_i r_i < A$ THEN
+  
+     $t = t + 1$
+     REPEAT step 3
+  
+  4. Find $T$ (see below)
+  5. $j = j + T$
+  6. IF $j > n$ THEN STOP
+     
+     ELSE GOTO step 2
+
+In step 4, we find $T$ using the following expression:
+
+$$T = \underset{t}{\arg \min} \bigg\{ \Big|A - \sum_{i=j+1}^{j+T-2}(i-j)D_i v_i r_i \Big| ,  \Big|A - \sum_{i=j+1}^{j+T-1}(i-j)D_i v_i r_i \Big| \bigg \} $$
+You can see how the iterations function for the example planning horizon in the output below:
+
+```{r, echo=FALSE}
+n<-length(D)
+Q<-numeric(n)
+AHC<-numeric(n)
+AOC<-numeric(n)
+t<-0
+j<-1
+
+while (j <= n)
+{
+  AggHC<-numeric(n)
+  hct<-numeric(n)
+  
+  cat("\n\nj = ", j, ":\n", sep="")
+  for (t in 1:(n - j + 1))
+  {
+    hct[t]<-sum((0:(t-1)) * D[j:(j + t - 1)]) * v * r
+    cat("T = ", t, ": ", sprintf("%5.2f", hct), "\n")
+    
+    if (hct[t] > A)
+    {
+      # time to compute T
+      Adiff<-abs(A - hct)
+      tmin<-which.min(Adiff)
+      
+      Q[j]<-sum(D[j:(j + tmin - 1)])
+      AHC[j]<-sum((0:(t-2))*D[j:(j+t-2)])*v*r
+      AOC[j]<-A
+      
+      j<-j + tmin
+      break
+      
+    }
+    if (t == n - j + 1)
+    {
+      # we're out of periods
+      Q[j]<-sum(D[j:n])
+      AHC[j]<-sum((0:(n-j)) * D[j:n])*v*r
+      AOC[j]<-A
+      j<-n+1
+    }
+  }
+  
+}
+
+Qmat<-matrix(c(Q[Q>0], AHC[Q>0], AOC[Q>0]), nrow=3, byrow=TRUE)
+rownames(Qmat)<-c("Q", "Holding Cost", "Order Cost")
+colnames(Qmat)<-which(Q>0)
+TRC<-sum(c(AHC, AOC))
+```
+
+For the planning horizon above, the total relevant cost is $`r round(TRC,2)` and the algorithm determines the following order quantities:
+
+```{r, echo=FALSE}
+Qmat %>%
+  kable() %>%
+  kable_styling(full_width = FALSE)
+```
+
+# Stochastic demand models
+
+The models assume that demand is stochastic and stationary and can be described by a probability distribution with probability density function $f(x)$ and cumulative probability function $F(x)$. We will typically assume that demand follows a normal distribution *because this is the supporting assumption for most of the calculations shown in your text*. However, in practice, demand can and does follow other probability distributions, especially for slow moving items and items selling at retail where the volumes are necessarily lower than those in a distribution center or warehouse.
+
+## Classic NewsVendor model
+
+This is the most basic of our stochastic demand models. Assumptions:
+
+  1. Single opportunity to purchase quantity $Q$
+  2. Single period (season) in which inventory is sold
+  3. Demand is stochastic (but stationary)
+  4. Any units left over incur a *cost of excess*, $C_e$ per unit
+  5. Any demand not satisifed (i.e. shorted) incurs a unit shortage cost $C_s$
+  6. No backorders.
+  
+In many cases (for traditional inventory applications), we can utilize the following:
+
+$$C_e=h-g$$
+and
+
+$$C_s = r - h$$
+The NewsVendor cost function:
+
+$$E \Big[TC(Q) \Big] = C_e E \Big[Q-D \Big]^{+} + C_s E \Big[D-Q \Big]^{+}$$
+Substituting integrals for the expected values, we have:
+
+$$E \Big[TC(Q) \Big] = C_e \int_{0}^Q (Q-x)f(x)dx + C_s \int_{Q}^{\infty} (x-Q)f(x)dx$$
+From this cost equation, we obtain the NewsVendor result:
+
+$$F(Q^*) = \frac{C_s}{C_s + C_e}$$
+The fraction $\frac{C_s}{C_s + C_e}$ is referred to as the *critical fractile*. From this we determine the expression for $Q^*$:
+
+$$Q^* = F^{-1}\Bigg( \frac{C_s}{C_s + C_e} \Bigg)$$
+
+The expression above for $Q*$ assumes that you are using an inverse cumulative probabilty distribution corresponding to the item's demand distribution. If you are instead using a standard normal inverse cumulability, then you would instead calculate:
+
+$$z^* = F^{-1}\Bigg( \frac{C_s}{C_s + C_e} \Bigg)$$
+$$Q^* = \mu + z^* \sigma$$
+## Customer service oriented safety stock
+
+In general, safety stock can be calculated as:
+
+$$ss = k \sigma_{ep}$$
+Where the safety factor, $k$, is determined according to the specific safety stock model.
+
+### $P_1$ (Type I) Safety stock
+
+For a $P_1$ service criterion:
+
+$$p_{u\ge}(k)=1-P_1$$
+In other words
+
+$$[1-F(k)] = 1-P_1 \Rightarrow F(k) = P_1$$
+To calculate safety stock, *choose* $k$ s.t. $F(k) = $P_1$:
+
+$$k = F^{-1}(P_1)$$
+
+```{r, echo=FALSE}
+D<-1000
+sigmaL<-250
+P1<-.975
+
+k<-qnorm(P1)
+ss<-k * sigmaL
+```
+
+
+For example, let's say we want to calculate safety stock requirements for an item with $\sigma_{ep} = `r sigmaL`$ and $P_1 = `r P1`$. To find the inverse cumulative probability, we would use *qnorm* in R or *norm.s.inv* in Excel.
+
+In this example, we have:
+
+$$k = F^{-1}(P_1) = F^{-1}(`r P1`) = `r k`$$
+$$ss = k \sigma_{ep} = (`r k`)(`r sigmaL`) = `r ss`$$
+
+```{r, echo=FALSE}
+
+# declare inventory functions for subsequent use
+
+UnitNormalLossFunction<-function(k)
+{
+  # returns the unit normal loss function, Gu(k) in Silver, Pyke, and Peterson
+  
+  return(dnorm(k) - k * (1-pnorm(k)))
+
+}
+
+
+
+NormalLossFunction<-function(k, sigmat)
+{
+  #returns the normal loss function for distribution with standard deviation sigmat
+  
+  return(UnitNormalLossFunction(k) * sigmat)
+  
+}
+
+
+InvUnitNormalLossApprox<-function(Gk)
+{
+  # returns k such that gk <- G(k) where G(k) is the normal unit loss function
+  # accurate to 3 decimal places
+  
+  a0 <- -5.3925569
+  a1 <- 5.6211054
+  a2 <- -3.883683
+  a3 <- 1.0897299
+  b0 <- 1
+  b1 <- -0.72496485
+  b2 <- 0.507326622
+  b3 <- 0.0669136868
+  b4 <- -0.00329129114
+  
+  # log(x) returns natural log of x
+  
+  rad<-log(25 / (Gk ^ 2))
+  
+  if (any(rad < 0))
+  {
+    # the expected shortage is SO large, we can't really find
+    # a reasonable k value - it's too largely negative
+    return(NA)
+  }
+
+  z <- sqrt(rad)
+  
+  num <- (a0 + a1 * z + a2 * z ^ 2 + a3 * z ^ 3)
+  den <- (b0 + b1 * z + b2 * z ^ 2 + b3 * z ^ 3 + b4 * z ^ 4)
+  k <- num / den
+  
+  return(round(k, 3))
+  
+}
+
+
+SquaredUnitNormalLossFunction<-function(k)
+{
+  # Returns the squared unit normal loss function, Ju(k) in Silver, Pyke, and Peterson
+  
+  return((1 + k ^ 2) * (1 - pnorm(k)) - (k * dnorm(k)))
+
+}
+
+#THE FOLLOWING  SQUARED NORMAL LOSS FUNCTION MAY NOT BE CORRECT.
+#NEED TO FIGURE OUT THE CORRECT WAY TO CALCULATE/APPROXIMATE AND REPLACE THIS
+#FUNCTION
+
+SquaredNormalLossFunction<-function(k, sigmat)
+{
+  # returns the normal loss function for distribution with standard deviation sigmat
+
+    SquaredNormalLossFunction <- UnitNormalLossFunction(k) * sigmat^2
+
+}
+
+
+
+InvSquaredUnitNormalLossApprox<-function(jk)
+{
+  # returns k such that jk <- Ju(k) where Ju(k) is the squared normal unit loss function
+  # accurate to 2 decimal places
+  
+  if (jk > 0.5)
+  {
+    z <- jk
+    a0 <- 1.1259464
+    a1 <- -1.3190021
+    a2 <- -1.8096435
+    a3 <- -0.11650097
+    b0 <- 1
+    b1 <- 2.8367383
+    b2 <- 0.6559378
+    b3 <- 0.0082204352
+  }else
+  {
+    # log(x) returns natural log of x
+  
+    z <- sqrt(log(1 / jk ^ 2))
+    a0 <- -0.41884136
+    a1 <- -0.2554697
+    a2 <- 0.51891032
+    a3 <- 0
+    b0 <- 1
+    b1 <- 0.21340807
+    b2 <- 0.044399342
+    b3 <- -0.0026397875
+  }
+  
+  num <- (a0 + a1 * z + a2 * z ^ 2 + a3 * z ^ 3)
+  den <- (b0 + b1 * z + b2 * z ^ 2 + b3 * z ^ 3)
+  k <- num / den
+  
+  return(round(k, 2))
+  
+}
+
+
+ImpliedTypeIIServiceLevel<-function(Q, sigmartlt, Gk)
+{
+  # returns the service level implied by an expected loss value Gk
+
+  return(1 - (Gk * sigmartlt) / Q)
+
+}
+
+
+ImpliedNormalTypeIIServiceLevel<-function(Q, sigmartlt, ss)
+{
+  # returns the service level implied by the given safety stock under the assumption of
+  # normally distributed demand
+  
+  k <- ss / sigmartlt
+  Gk <- UnitNormalLossFunction(k)
+  
+  return(ImpliedTypeIIServiceLevel(Q, sigmartlt, Gk))
+
+}
+
+
+PoissonLossFunction<-function(s, lambdat, prec=0.00001)
+{
+  # Determine the expected loss of a Poisson demand item with s units and demand lambdat
+  
+  eloss = 0
+  
+  maxc = qpois(1 - prec, lambdat)
+  #p = dpois(0, lambdat)
+  
+  for (c in s:maxc)
+  {
+    eloss = eloss + (c - s) * dpois(c, lambdat)
+  }
+  
+  return(eloss)
+  
+}
+
+ImpliedPoissonTypeIIServiceLevel<-function(Q, lambdat, ss)
+{
+  # returns the service level implied by the given safety stock under the assumption of
+  # normally distributed demand
+  
+  Gk <- PoissonLossFunction(ss, lambdat)
+  
+  return(ImpliedTypeIIServiceLevel(Q, lambdat, Gk))
+
+}
+
+LeadTimeStandardDeviation<-function(ed, dvar=0, el, lvar=0)
+{
+  # ed = expected demand
+  # dvar = demand variance
+  # el = expected lead time
+  # lvar = lead time variance
+  return(sqrt(el * dvar + ed ^ 2 * lvar))
+}
+
+
+B1SeqHeuristic<-function(Q, D, B1, v, r, xl=0, sigmal=1, kmin=0)
+{
+  num<-D*B1
+  den<-Q*v*sigmal*r*sqrt(2*pi)
+  
+  # set default value
+  k<-kmin
+
+  if ((num > 0) && (den > 0))
+  {
+    temp<-num/den
+    if( temp >= 1)
+    {
+      k<-sqrt(2*log(temp))
+    }
+  }else
+  {
+    # an error occurred, can't calculate k
+    k<-NA
+  }
+  
+  return(k)
+  
+}
+
+B1TRC<-function(Q, k, B1, D, A, v, r, sigmal)
+{
+  trc<-D*A/Q + (Q/2 + k*sigmal)*v*r + D*B1/Q*(1-pnorm(k))
+  return(trc)
+}
+
+
+B1fromk<-function(k, Q, D, v, sigmal, r)
+{
+   if (D <=0)
+   {
+      return(Inf)
+   }
+
+   b1<-exp(k^2 / 2)*sqrt(2*pi)*Q*v*sigmal*r/D
+   
+   return(b1)
+}
+
+
+B2SeqHeuristic<-function(Q, D, B2, r, kmin=0)
+{
+  num<-Q*r
+  den<-D*B2
+  
+  k<-NA
+  
+  if((num > 0) && (den > 0))
+  {
+    puk<-num / den
+    if (puk > 1)
+    {
+      k<-kmin
+    }else
+    {
+      k<-qnorm(1-puk)
+    }
+  }
+  
+  return(k)
+}
+
+
+B2TRC<-function(Q, k, B2, D, A, v, r, sigmal)
+{
+  trc<-D*A/Q + (Q/2 + k*sigmal)*v*r + D/Q*B2*v*sigmal*UnitNormalLossFunction(k)
+  return(trc)
+}
+
+
+B2fromk<-function(k, Q, D, r)
+{
+   if ((D <= 0 ) || (k < 0))
+   {
+      return(Inf)
+   }
+   
+   b2<-Q*r/(D*(1-pnorm(k)))
+   return(b2)
+}
+
+
+
+B3SeqHeuristic<-function(Q, B3, r, sigmal=0, kmin=0)
+{
+   if (sigmal < 0)
+   {
+     return(NA)
+   }
+  
+  if((B3 + r) < 0)
+  {
+    return(NA)
+  }
+  
+  Guk<-Q/sigmal * (r/(B3+r))
+  if (Guk > UnitNormalLossFunction(0))
+  {
+    # no safety stock is required to achieve target
+    # so set k to kmin
+    k<-kmin
+  }else
+  {
+    k<-InvUnitNormalLossApprox(Guk)
+  
+    # k must be at least as large as kmin
+    k<-ifelse(k < kmin, kmin, k)
+  }
+  
+  return(k)
+}
+
+
+B3TRC<-function(Q, k, B3, D, A, v, r, sigmal)
+{
+  Guk<-UnitNormalLossFunction(k)
+  trc<-D*A/Q + (Q/2 + k*sigmal)*v*r + (B3*v*(sigmal*Guk)^2) / Q
+  
+  return(trc)
+}
+
+
+B3fromk<-function(k, Q, sigmal, r)
+{
+   if (sigmal <= 0)
+   {
+      return(Inf)
+   }
+   
+   Guk<-UnitNormalLossFunction(k)
+   
+   b3<-r*Q/(Guk*sigmal) - r
+   return(b3)
+}
+
+
+jointReplNoItemSetup<-function(D, A, v, r, a=0)
+{
+  if (any(D <= 0) ||
+      A <= 0 ||
+      any(v <= 0) ||
+      any(r <= 0))
+  {
+    # invalid problem parameters, return Infinity
+    return(Inf)
+  }
+  
+  tstar<-sqrt(2*A/sum(D*v*r))
+  Q=tstar*D
+  ahc<-sum(Q/2*v*r)
+  Aaoc<-1/tstar*A
+  aaoc<-1/tstar*sum(a)
+  aoc<-Aaoc + aaoc
+  trc<-Aaoc + ahc + aaoc
+  
+  return(list(tstar=tstar, 
+              Q=Q, 
+              m=rep(1,length(D)), 
+              TRC=trc,
+              AHC=ahc,
+              AOC=aoc,
+              MajorSetup=Aaoc,
+              MinorSetup=aaoc))
+}
+
+
+
+jointReplWithItemSetup<-function(D, A, v, r, a)
+{
+  if (any(D <= 0) ||
+      A <= 0 ||
+      any(v <= 0) ||
+      any(r <= 0))
+  {
+    # invalid problem parameters, return Infinity
+    return(Inf)
+  }
+  
+  # calculate the ai/divi values
+  airatio<-a/(D*v)
+  
+  # choose item "1"
+  idx<-which(airatio == min(airatio))[1]
+  m<-rep(1, length(D))
+  
+  # calculate D1V1/(A+a1) for reuse
+  item1ratio<-D[idx]*v[idx] / (A + a[idx])
+  
+  # calculate order multiples
+  m<-pmax(1, round(sqrt(a/(D*v)*item1ratio)))
+  
+  # ensure item 1 has m of 1
+  m[idx]<-1
+  
+  tstar<-sqrt(2*(A+sum(a/m))/sum(D*m*v*r))
+  Q=tstar*D*m
+  ahc<-sum(Q/2*v*r)
+  Aaoc<-1/tstar*A
+  aaoc<-1/tstar*sum(a/m)
+
+  aoc<-Aaoc + aaoc
+  trc<-Aaoc + ahc + aaoc
+  
+  return(list(tstar=tstar, 
+              Q=Q, 
+              m=m, 
+              TRC=trc,
+              AHC=ahc,
+              AOC=aoc,
+              MajorSetup=Aaoc,
+              MinorSetup=aaoc))
+}
+
+
+testEOQJointReplenishment<-function(func)
+{
+  d<-c(8600, 1000, 6000, 100)
+  A<-40
+  v<-c(10, 12.5, 0.5, 14)
+  r<-0.24
+  a<-rep(15,4)
+  
+  print(func(d, A, v, r, a))
+  
+}
+
+
+
+
+
+
+
+```
+
+### $P_2$ (Type II) safety stock
+
+For a $P_2$ service criterion we employ a *loss* function to determine the safety factor $k$. The loss function indicates the *expected units shortaged* during a replenishment cycle (or other time interval). 
+
+In general, the loss function is given by:
+
+$$G(Q) = \int_{Q}^{\infty} (x-Q)f(x)dx$$
+
+Typically, we will use the *unit normal* loss function:
+
+$$G_u(k)=\int_{k}^{\infty}(x-k)f(x)dx$$
+
+This function assumes a unit normal distribution for the demand, so we will have to convert to/from the actual distribution with mean $\mu$ and standard deviation $\sigma$. Since, by definition, $G_u(k)$ is a long-run average, we can define the following alternative $G_u(k)$ expression:
+
+$$G_u(k) = \frac{Q}{\sigma_e}(1-P_2)$$
+In this form of $G_u(k), $Q$ defines the turn inventory units available during the exposure period and $\sigma_e$ is the standard deviation of demand during the *exposure period*. For order placement purposes, the exposure period is given by $rt + lt$. When $rt = 0$ this simplifies to $lt$ ($L$).
+
+To calculate safety stock for this policy:
+
+  1. Calculate $G_u(k)$ using $Q$, $\sigma_L$, and $P_2$
+  2. Select $k$ to satisfy $G_u(k) = \frac{Q}{\sigma_L}(1-P_2)$
+  3. $ss = k \sigma_L$
+  
+To find $k$ in step 2, we must calculate an inverse unit normal loss function for which there is no simple formula (you would have to numerically evaluate the integral). So, you will be using one of the following:
+
+  +  Excel: InvUnitNormalLossApprox - available through the OM Functions addin
+  
+  +  R: InvUnitNormalLossApprox - available in the inv_mgt_functions.R (Additional Useful Materials page).
+  
+  
+```{r, echo=FALSE}
+P2<-P1
+
+Guk<-D/sigmaL * (1-P2)
+
+k<-InvUnitNormalLossApprox(Guk)
+ss<-k * sigmaL
+
+```
+
+Let's calculate $P_2$ safety stock requirements for the same sampl item used in the $P_1$ safety stock calculation example. The item has $\sigma_L = `r sigmaL`$ and $P_2 = `r P2`$. To calculate $G_u(k), we need to know the order quantity $Q = `r D`$. To find the inverse cumulative probability, we would use *qnorm* in R or *norm.s.inv* in Excel.
+
+In this example, we have (by step):
+
+  1. $G_u(k) = \frac{Q}{\sigma_L}(1-P_2) = \frac{`r D`}{`r sigmaL`}(1-`r P2`) = `r Guk`$
+
+  2. $k = G_u^{-1}(G_u(k)) = G_u^{-1}(`r Guk`) = `r k`$
+
+  3. $ss = k \sigma_L = (`r k`)(`r sigmaL`) = `r ss`$
+
+## Implied service levels and fill rates
+
+A *very* useful application of these customer service oriented safety stock models is to calculate the service level and/or fill rate *implied* by an inventory position during an interval of length $e$. Since
+
+$$ss = k \sigma_e$$
+
+It must also be true that:
+
+$$k = \frac{ss}{\sigma_e} \Rightarrow P_{1,implied} = F\Big(\frac{ss_{implied}}{\sigma_e}\Big)$$
+
+So we need to calculate the safety stock units *implied* by the inventory position (note in this case, $IP$ should consiste only of OH plus units scheduled to arrive during the exposure interval):
+
+$$ss_{implied} = IP - fcst(e)$$
+This definition for implied safety units comes from the notion that *any* inventory units on hand when an order arrives represent *safety stock* (because they were surplus relative to satisfying demand). 
+
+Similarly, to find the *implied fill rate* we note that:
+
+$$G_u(k)=\frac{Q}{\sigma_e}(1-P_2) \Rightarrow P_{2,implied} = 1- \frac{G_u(k_{implied}) \sigma_e}{fcst(e)}$$
+
+## Multi-period methods
+
+In order to deal with demand uncertainty, stochastic demand order policies must determine *two* policy parameters:
+
+- Order quantity (or order up to level from which the order quantity can be determined)
+  
+- Order point.
+  
+Unfortunately, when we apply the standard approach (formulate a cost equation and use calculus to find an expression for the optimal policy parameter value), we find the following:
+
+- The optimal order quantity is a function of the order point
+  
+- The optimal order point is a function of the order quantity.
+  
+Consequently, we cannot determine simple *formulas* for the order quantity and order point. Because of this, we have two approaches for determining the order policy:
+
+- Sequential heuristics
+  
+- Simultaneous methods.
+  
+Both of these approaches will determine the order point as and order quantities on the basis of the following cost equations:
+
+$$B_1: \space \space E\big[TRC(s,Q)\big] = \bigg(\frac{Q}{2} + k\sigma_{ep}\bigg)vr + \frac{DA}{Q} + p_{u\ge}(k)\frac{DB_1}{Q}$$
+$$B_2: \space \space E\big[TRC(s,Q)\big] = \bigg(\frac{Q}{2} + k\sigma_{ep}\bigg)vr + \frac{DA}{Q} + B_2v\sigma_{ep}G_u(k)\frac{D}{Q}$$
+
+  
+$$B_3: \space \space E\big[TRC(s,Q)\big] = \bigg(\frac{Q}{2} + k\sigma_{ep}\bigg)vr + \frac{DA}{Q} + \frac{B_3v\big[ \sigma_{ep}G_u(k)\big]^2}{Q}$$
+
+$$B_4: \space \space E\big[TRC(s,Q)\big] = \bigg(\frac{Q}{2} + k\sigma_{ep}\bigg)vr + \frac{DA}{Q} + B_4\frac{D \sigma_{ep}G_u(k)}{Q\hat{z}}$$
+
+where $\hat{z}$ is the average number of units ordered per customer line item. Note that these are known as $(s,Q)$ policies, even though the algorithms typically determine $k$ rather than $s$ and $s$ does not directly enter the cost equation. However, in practice these policies are implemented using $s$ which is a linear function of $k$.
+
+While the first two terms are identical in all four cost models, the third term, representing the expected annual shortage cost, is specific to the nature of the shortage cost.
+
+## Sequential Heuristics
+
+The concept behind the sequential heuristics is to first calculate an optimal order quantity which is then used to determine an *optimal* order point (i.e. an optimal order point *given* the order quantity).
+
+The first step in *all four* sequential heuristics is to determine the order quantity $Q$, typically done using the EOQ as the best approximation for an optimal order quantity (it's only an approximation in these cases because the EOQ model ignores shortage costs).
+
+In all of the following, $s$ represents the order point (consistent with the course text).
+
+### $B_1$ Shortage Cost
+
+  1. IF $\frac{DB_1}{\sqrt{2\pi}Qvr\sigma_{ep}} < 1$ THEN   (Shortage cost is not high enough to drive safety stock)
+
+     $k = k_{min}$
+     
+     GOTO  #4
+     
+  2. $k=\sqrt{2ln\Bigg(\frac{DB_1}{\sqrt{2\pi}Qvr\sigma_{ep}}\Bigg)}$
+  
+  3. IF $k < k_{min}$ THEN $k = k_{min}$
+  
+  4. $s = fcst(ep) + k\sigma_{ep}$
+
+### $B_2$ Shortage Cost
+
+  1. IF $\frac{Qr}{DB_2} > 1$ THEN   (Shortage cost is not high enough to drive safety stock)
+  
+     $k = k_{min}$
+     
+     GOTO  #4
+     
+  2. $k=F^{-1}\big(1-\frac{Qr}{DB_2}\big)$
+  
+  3. IF $k < k_{min}$ THEN $k = k_{min}$
+  
+  4. $s = fcst(ep) + k\sigma_{ep}$
+  
+### $B_3$ Shortage Cost
+
+  1. $k = G_u^{-1}\Bigg( \frac{Q}{\sigma_{ep}}\bigg(\frac{r}{B_3+r}\bigg)\Bigg)$
+  
+  2. IF $k < k_{min}$ THEN $k = k_{min}$
+  
+  3. $s = fcst(ep) + k\sigma_{ep}$
+
+### $B_4$ Shortage Cost
+
+  1. $k = \frac{Qrv\hat{z}}{B_4D}$
+  
+  2. IF $k < k_{min}$ THEN $k = k_{min}$
+  
+  3. $s = fcst(ep) + k\sigma_{ep}$
+  
+### Alternative Sequential Heuristic for $P_2$ policy
+
+This model differs from the previous *customer service* oriented $P_2$ policy, in that it attempts adjusts the $EOQ$ for demand uncertainty:
+
+  1. $k = G_u^{-1}\bigg( \frac{Q}{\sigma_{ep}}(1-P_2)\bigg)$
+  
+  2. $s = fcst(ep) + k\sigma_{ep}$
+  
+  3. $Q = \frac{1}{P_2}\sqrt{\frac{2DA}{vr} + \sigma_{ep}^2}$
+  
+## Simultaneous Methods
+
+These methods differ from the sequential heuristics in that they iteratively determine $Q$ and $k$ until $Q$ and $k$ have converged to a specified level of precision.
+
+### $B_1$ Shortage Cost
+
+  1. Initialize 
+  
+     $\eta = 1$
+     
+     $Q_0 = \sqrt{\frac{2DA}{vr}}, k_0=k_{min}$
+  
+  2. $R = 2 ln\Bigg[\frac{1}{2\sqrt{2\pi}}\bigg(\frac{B_1}{A}\bigg)\bigg(\frac{\sigma_{ep}}{Q_{\eta-1}}\bigg)\bigg(\frac{EOQ}{\sigma_{ep}}\bigg)^2\Bigg]$
+  
+  3. IF $R < 0$ THEN
+  
+      $k_{\eta} = k_{min}$
+   
+  	 ELSE
+  	   
+      $k_{\eta} = \sqrt{R}$
+   
+  4. $Q_{\eta} = EOQ\sqrt{1+\frac{B_1}{A}p_{u\ge}(k_\eta)}$
+  
+  5. IF $\big|Q_{\eta} - Q_{\eta-1}\big| \le \epsilon$ AND $\big|k_{\eta} - k_{\eta-1}\big| \le \epsilon$ THEN $\big(k_{\eta}, Q_{\eta} \big)$ are optimal to within tolerance
+  
+     $s = fcst(ep) + k_{\eta}\sigma_{ep}$
+    
+     STOP.
+     
+  6. $\eta = \eta + 1$
+  
+  7.	GOTO step 2
+
+The comparisons in step 5 must be performed to a specified level of precision to avoid issues relating to floating point arithmetic.
+
+### $B_2$ Shortage Cost
+
+Note: this algorithm finds $s$ directly rather than calculating $s = fcst(ep) + k\sigma_{ep}$. Note that in this algorithm, $\pi = B_2v$ (not the mathematical constant $\pi$), and $\bar{b}(s)=\sigma_{ep}G_{u}\Big(\frac{s-fcst(ep)}{\sigma_{ep}}\Big)\frac{D}{Q}$
+
+  1. Initialize 
+   
+     $\eta = 1$
+     
+     $Q_1 = \sqrt{\frac{2DA}{vr}}$
+   
+     $s_1 = F^{-1}\bigg(1-\frac{vrQ_1}{\pi D}\bigg)$
+  
+  2. $\eta = \eta + 1$
+  
+  3. $Q_{\eta} = \sqrt{\frac{2D[A+\pi\bar{b}(s_{\eta-1})]}{vr}}$
+  
+     $s_{\eta} = F^{-1}\Bigg( 1-\frac{vrQ_{\eta}}{\pi D} \Bigg)$
+   
+  4.	IF $\big|Q_{\eta} - Q_{\eta-1}\big| \le \epsilon$ AND $\big|s_{\eta} - s_{\eta-1}\big| \le \epsilon$ THEN STOP
+  5.	GOTO  #2
+
+## Additional Non-economic Decision Rules
+
+Besides the customer service  $\big(P_1 $ and $ P_2 \big)$ oriented rules, there are some additional interesting non-economic decision rules.
+
+### Time Between Stockouts
+
+This rule determines $k$ to achieve a target average time between stockouts $(TBS)$.
+
+  1. IF $\frac{Q}{D(TBS)} > 1$ THEN
+  
+     $k = k_{min}$
+     
+     GOTO #3
+     
+  2. $k = F^{-1}\Big( \frac{Q}{D(TBS)} \Big)$
+  
+  3. $s = fcst(ep) + k\sigma_{ep}$
+  
+### Relationship between $TBS$ and $B_2$
+
+There is an equivalence between $TBS$ and the $B_2$ costing method:
+
+$$TBS = \frac{B_2}{r}$$
+
+### Minimizing Expected Stockout Occasions per Year
+
+This leads to a decision rule that is identical to the $B_1$ policy because:
+
+$$E[stockout \space occasions] = p_{u\ge}(k)\Big( \frac{D}{Q} \Big)$$
+In the $B_1$ cost equation, we see that the expected shortage cost is a linear function of $p_{u\ge}(k)\Big( \frac{D}{Q} \Big)$, so this equivalence isn't really surprising.
+
+
+# Coordinated replenishment
+
+The goal of coordinated, i.e. *joint*, replenishment policies is to purchase comparable time supplies of a group of items (usually purchased from a single supplier or facility, e.g. a distribution center stocking items from multiple suppliers), so that they all run out at approximately the same time. Purchasing the items together as a group reduces the order placement cost per item by spreading this cost over a larger number of items, *and* makes it easier to satisfying constraints such as filling trucks and meeting vendor minimums.
+
+## Deterministic Coordinated Replenishment with major setups costs
+
+We originally looked at a simple EOQ-based model for coordinated replenishment that followed all of the basic assumptions for the EOQ. For that policy, we calculated an optimal time supply and then determine individual item order quantities:
+
+$$T^* = \sqrt{\frac{2A}{\sum_{i=1}^n{D_i v_i r_i}}}$$
+$$Q_i = T*D_i$$
+
+This model assumed the same order related costs as the basic EOQ. Specifically, we incur an aggregate order placement cost $A$ each time we place an order, *regardless of the number of itmes ordered or item quantities*.
+
+## Deterministic coordinated replenishment with minor setup costs
+
+Now we relax the prior assumption of only *major* setup costs. That is, we now add the assumption that each item purchased incurs a *minor* setup cost, $a_i$ for item $i$, regardless of the quantity of the item ordered. These minor setup costs could reflect ordering (or shipping and handling) charges by item, the costs associated with minor adjustments to or cleaning of production equipment required to process a different item (but less than a major changeover that would incur a *major* setup cost), etc.
+
+In this case, because the $a_i$ for some items may be more significant than for others, we no longer assume that every item will be ordered in each order cycle; that is, some items in the group may be ordered every cycle, some every other cycle, some every third cycle, etc. Letting $m_i$ represent the *cycle multiple* for item $i$, we form the new total relevant cost equation as a function of $T^*$ and $\textbf{m} = \{m_1, m_2, \dots, m_n\}$:
+
+$$TRC(T, \textbf{m}) = \frac{A + \sum_{i=1}^{n}a_i / m_i}{T} + \sum_{i=1}^n\frac{D_i m_i T v_i r_i}{2}$$
+The following algorithm is a heuristic solution to this problem:
+
+  1. Order the items such that $\frac{a_i}{D_i v_i} is smallest for item 1. Set $m_1 = 1$
+  
+  2. Calculate $m_i = \sqrt{\frac{a_i}{D_i v_i}\frac{D_1 v_1}{A + a_1}} \quad \forall{i = 2,\dots, n}$
+  
+  3. Calculate $T^* = \sqrt{\frac{2\big(A + \sum_{i=1}^{n}a_i / m_i  \big)}{\sum_{i=1}^n m_i D_i v_i r_i}}$
+  
+  4. Calculate $Q_i = m_i T^* D_i \quad \forall{i = 1, \dots, n}$
+
+### An example
+
+Consider the problem of replenishing the following items:
+
+```{r, echo=FALSE}
+D<-c(5000, 1250, 500, 75)
+v<-c(12.95, 25, 17.5, 125.99)
+r<-rep(0.35, length(D))
+a<-c(10, 25, 500, 200)
+A<-500
+
+jointrslt<-jointEOQwithMinorSetups(D, A, v, r, a)
+
+dat<-data.frame(D, v, r, a)
+dat %>%
+  kable() %>%
+  kable_styling(full_width=FALSE)
+
+```
+
+and major setup (i.e. aggregate order) cost $A = \$`r A`$. Applying the algorithm, we:
+
+  1. Identify item 1
+  2. Find the $m_i$'s for items $2$ through $`r length(D)`$
+  3. Find $T^*$
+  4. Calculate the $Q_i$'s
+  5. Calculating $TRC\big(T^*,\textbf{m})\big)
+  
+The table below shows the results of performing the algorithm. Column $i$ presents the ordered item numbers and the resulting *raw*, i.e. unrounded, order quantities calculated as $Q_i = m_i T^* D_i$.
+
+```{r, echo=FALSE}
+jointrslt$details %>%
+  kable() %>%
+  kable_styling(full_width=FALSE)
+
+```
+
+The resulting optimal time supply, recommended order quantities, and total relevant cost are given below:
+
+$$T^* = `r jointrslt[['T*']]`$$
+
+```{r, echo=FALSE}
+qtab<-data.frame(jointrslt$details$i, jointrslt$Q)
+colnames(qtab)<-c("i", "Q")
+
+qtab %>%
+  kable() %>%
+  kable_styling(full_width=FALSE)
+```
+
+
+$$TRC\big(T^*, \textbf{m}\big) = `r round(jointrslt$TRCQ, 2)`$$
+
+## Stochastic Coordinated Replenishment
+
+Our basic solution to the stochastic coordinated replenishment problem is a non-optimal heuristic method loosely based on a $P_2$ customer service order policy adjusted for joint replenishment. To find an *optimal* policy, we would need to jointly determine the optimal values for $dts$ and $P_2$ values for all items in the replenishment group.
+
+For this model, the order decision rules are as follows:
+
+<center> **Order when**  $SSO \leq ESO$ </center>
+
+
+<center> **Order quantity** $Q = OUTL - IP$</center>
+
+&nbsp;
+
+$$ESO = \sum_{i=1}^{n}ESO_i = \sum_{i=1}^{n}G_u\big(k_{implied}\big)\sigma_{ep} = \sum_{i=1}^{n}G_u\Bigg(\frac{IP-fcst(ep)}{\sigma_{ep}}\Bigg)\sigma_{ep}$$
+
+$$SSO = \sum_{i=1}^{n}SSO_i = \sum_{i=1}^{n}SOQ_i\big(1-P_2\big)$$
+
+$$OUTL = fcst(lt + dts) + safety\thinspace stock = fcst(lt+dts)+k \sigma_{ep}$$
+$$IP = OH + OO - BO - CS$$
+### Example
+
+Assume we have a replenishment group with the following characteristics:
+
+```{r, echo=FALSE}
+d7<-c(200, 100, 50, 5)
+s7<-c(150, 20, 20, 4)
+v<-c(12.95, 2.95, 5.95, 1000)
+r<-rep(0.35, length(d7))
+gmpct<-rep(0.5, length(d7))
+OH<-c(50, 20, 5, 0)
+OO<-c(25, 0, 15, 8)
+IP<-OH+OO
+P2<-rep(0.95, length(d7))
+
+dts<-14
+rt<-1
+lt<-2
+
+rslt<-stochasticJointOrder(d7, s7, v, r, gmpct, OH, OO, P2,
+  dts, rt, lt, prdcty=7)
+
+```
+
+$$dts = `r dts`$$
+
+$$rt = `r rt`$$
+
+$$lt = `r lt`$$
+Item details:
+
+
+```{r, echo=FALSE}
+rslt$details[,c("d7","s7","v","r","GM%","OH","OO","P2")] %>%
+  kable() %>%
+  kable_styling(full_width=FALSE)
+```
+
+Using this information, we can 
+
+  1. Find the $ESOs$ and $SSOs$
+  2. Apply the *when to order* decision rule (e.g. order when $SSO \leq ESO$)
+  3. Calculate order quantities (if ordering).
+  
+In this case we place an order because $$SSO = `r rslt$SSO` \leq `r rslt$ESO` = ESO$$.
+
+Here are the item level details:
+
+```{r, echo=FALSE}
+rslt$details %>%
+  kable() %>%
+  kable_styling(full_width=FALSE)
+```
+
+**Note: because the units of measure (UOM) for both ESO and SSO are units in the above calculation, we may refer to this particular case as using a *unit service* criteria.**
+
+## Handling *imbalanced* replenishment groups
+
+It's clear from this decision rule that we will, *on average* achieve the *target* shortages for the group *in the aggregate*. Some items may exceed their target $P_2$'s while others fall short. In fact, it's possible to have one or more items with $IP = 0$ and *still not place an order*.
+
+In the case where the replenishment group is imbalanced w.r.t. volume and/or value (i.e. big disparities in average demand and/or profitability), we may improve the *when to order* decision and eliminate, or at least reduce, the imbalance problem described above by using a *dollar service* criteria.
+
+The *dollar service* criteria differs only in how we calculate the $ESO_i$'s and $SSO_i$'s. If we let $ESO_{i,u}$ and $SSO_{i,u}$ be the *unit service* $ESO$ and $SSO$ respectively, i.e. the values we calculated above for the unit service criteria, then we calculate the *dollar* $ESO$ and $SSO$:
+
+
+$$ESO_{i,\$} = GM \cdot ESO_{i,u}$$
+
+$$SSO_{i,\$} = GM \cdot SSO_{i,u}$$
+
+At the item level, $ESO_{i,\$}$ and $SSO_{i,\$}$ yield the same order decision as $ESO_{i,u}$ and $SSO_{i,u}$. However, after aggregation, the dollar service criteria may lead to a different order/no order decision.
+
+
+# Inventory Analysis
+
+Analyzing inventory performance is an integral part of an inventory or supply chain analyst's job.
+
+## Inventory Turns
+
+Inventory turns are is probably the most well-known, and least well-understood (with respect to inventory cost/profit implications) of all the inventory metrics. In accounting, inventory turns is usually calculated as:
+
+$$Turns_{acct} = \frac{Sales \thinspace \$}{COGS}$$
+
+However, a more appropriate expression for inventory turns, from an operations analysis is:
+
+$$Turns = \frac{1}{\overline{T}}$$
+
+where $\overline{T}$ is the average time supply.In an EOQ setting, we would calculate this as:
+
+$$Turns=\frac{D}{Q}$$
+
+```{r, echo=FALSE}
+p2<-.99
+rt<-1
+lt<-30
+
+d7<-1000
+s7<-400
+
+```
+
+
+The problem with Turns as an inventory metric involves the relationship between average turn (cycle) inventory and safety stock. For example, consider the inventory levels for an item with Type II (i.e. $P_2$) safety stock as a function of time supply $T$, i.e. $\frac{1}{Turns}$ ($P_2 = `r p2`$, $rt = `r rt`$, $lt = `r lt`$, $d_7 = `r d7`$, $\sigma_7 = `r s7`$):
+
+```{r, echo=FALSE, fig.height = 3, fig.width = 6, warning=FALSE}
+suppressMessages(require(ggplot2))
+
+T<-seq(0.5,20,0.1)
+s_rtlt<-sqrt((rt+lt)/7) * s7
+
+
+Q<-d7/7 * T
+
+k<-InvUnitNormalLossApprox(Q * (1-p2)/s_rtlt)
+
+safety.stock<-k*s_rtlt
+
+average.turn.inventory<-Q/2
+
+df<-data.frame(c(T,T), c(safety.stock, average.turn.inventory), 
+               c(rep("Safety Stock", length(T)), rep("Average Turn Inventory", length(T))))
+colnames(df)<-c("T", "Inventory", "Class")
+
+ggplot(df, aes(x=T, y=Inventory)) + 
+  geom_area(aes(fill=Class), position='stack') +
+  scale_fill_manual(values=c("forestgreen", "red3")) +
+  ylab("Average Inventory") +
+  xlab("T (time supply)")
+
+
+```
+
+In the figure above, we see that for long time supplies, a decrease in the time supply (i.e. an increase in the inventory turns), will reduce average inventory. However, eventually, the average inventory will reach a minimum level at some optimal value of $T$. Further reductions in $T$ below this optimal time supply, i.e. *increasing turns$ further, will actually *increase* the average inventory and thus the annual holding costs.
+
+This simple example violates many practitioners' understanding of how inventory behaves and the significance of increasing inventory turns. While inventory turns is an important metric, because it is so widely utilized, we must be careful to avoid a naive inventory management strategy based on inventory turns.
+
+
+## Return on Investment
+
+For supply chain organizations, inventory should be managed as an investment, with a portfolio perspective. That means we should evaluate inventory performance using a return on investment metric, specifically, return on *inventory investment*. The ROI measure most commonly calculated is $GMROI$:
+
+$$GMROI = \frac{gross\thinspace margin}{inventory \thinspace \$}$$
+A more appropriate metric would be $ROII$, *return on inventory investment*:
+
+$$ROII = \frac{gross\thinspace margin - TRC}{inventory \thinspace \$}$$
+
+## ABC Anaysis (Distribution by Value)
+
+```{r, echo=FALSE}
+
+set.seed(100)
+n<-500
+means<-round(runif(n, 1, 10000), 2)
+cv<-runif(n, 0.10, 0.78)
+
+d7<-rnorm(means, cv * means)
+v<-runif(n,0.45, 125.99)
+gm<-runif(n, 0.07, 2.38)
+
+A<-500
+
+ohm<-sqrt(2*d7*A/(v * 0.35))
+
+oh<-ohm/2 * 1.15
+
+vwm<-d7 * 52 * gm * v
+tab<-data.frame(1:n, d7 * 52, v, gm, vwm, oh)
+colnames(tab)<-c("Item", "Demand", "Unit Cost", "Gross Margin", "Vol Wgt GM", "Avg Inv (units)")
+
+ordidx<-order(tab$Demand * tab$`Gross Margin` * tab$`Unit Cost`, decreasing=TRUE)
+tab<-tab[ordidx,]
+
+tab$vol.pct<-tab$Demand / sum(tab$Demand)
+tab$vol.cuml.pct<-cumsum(tab$vol.pct)
+tab$inv.pct<-tab$`Avg Inv (units)` * tab$`Unit Cost` / sum(tab$`Avg Inv (units)` * tab$`Unit Cost`)
+tab$inv.cuml.pct<-cumsum(tab$inv.pct)
+colnames(tab)[7:10]<-c("% GMWV", "Cuml % GMWV", "Pct Inv", "Cuml Pct Inv")
+
+top10<-which(tab$`Cuml % GMWV` <= 0.10)
+
+top10items<-length(top10)
+top10pct<-round(100 * top10items/n, 2)
+top10cinv<-round(100 * tab$`Cuml Pct Inv`[top10items], 2)
+
+
+bot50<-which(tab$`Cuml % GMWV` >= 0.50)
+bot50items<-length(bot50)
+bot50cinv<-round(100 * (1 - tab$`Cuml % GMWV`[bot50[1]]), 2)
+
+
+```
+
+
+Consider the following ABC analysis. In this case, we've ranked `r n` items by volume weighted gross margin, i.e. $D (v \cdot GM)$. Notice that the top `r top10items` items (`r top10pct`%) represent the top 10% of volume weighted GM and account for `r top10cinv`% of the inventory investment. Conversely, the last `r bot50items` items (`r 100 * bot50items / n`% of items) account for `r bot50cinv`% of the total inventory dollars.
+
+This example shows a reasonably well-balanced inventory. It's not unusual to find that a very small percentage of the items account for the top 10-20% of the volume weighted gross margin. Similarly, it is not unusual for the bottom 50% of items to account for significantly more than 50% of inventory. Neither is true in this example.
+
+The table below shows the top 10% of items ranked by volume weighted GM ($GMWV$).
+
+
+```{r, echo=FALSE}
+tab[top10,] %>%
+  kable() %>%
+  kable_styling(full_width=FALSE)
+```
+
+
+## Overstock analysis
+
+Most overstock analyses establish a cutoff based on *days of inventory*, i.e. *time supply*. For example, "anything over 4 weeks of inventory is overstock". However, this type of rule, while simple, has no relationship with the inventory policy for an item.
+
+A better approach is to establish an overstock threshold for each item, based on its $I_{max}$:
+
+$$I_{max} = m(Q) + k \sigma_{ep}$$
+
+then 
+
+$$overstock = OH - I_{max}$$
+
+In the expression for $I_{max}$, we introduced a new function $m(Q)$, which is *the order quantity rounded for shipping multiples and item minimums*. In other words
+
+$$m(Q) = max\Bigg( Q_{min}, \bigg \lceil \frac{Q}{pack} \bigg \rceil pack\Bigg)$$
+
+```{r, echo=FALSE}
+Q<-18
+Qmin<-12
+pack<-12
+
+mQ<-max(Qmin, ceiling(Q/pack) * pack)
+
+```
+
+For example, consider an item with $pack = `r pack`$, $Q_{min} = `r Qmin`$, and $Q = `r Q`$. Then
+
+$$m(Q) = max\Bigg( `r Qmin`, \bigg \lceil \frac{`r Q`}{`r pack`} \bigg \rceil `r pack`\Bigg) = `r mQ`$$
+
+```{r, echo=FALSE}
+D<-10000
+d7<-D / 52
+d1<-d7 / 7
+s7<-4000 / sqrt(52)
+p2<-0.97
+rt<-1
+lt<-28
+pack<-12
+Qmin<-12
+Toverstock<-28
+
+s_rtlt<-s7 * sqrt((rt+lt)/7)
+
+A<-500
+v<-12.95
+r<-0.35
+
+Q<-sqrt(2 * D * A / (v * r))
+T<-Q/D * 365
+
+k<-InvUnitNormalLossApprox(Q * (1-p2) / s_rtlt)
+
+Qimax<-round(max(Qmin, ceiling(Q/pack) * pack) + k * s_rtlt, 0)
+ImaxT<-Qimax / d1
+
+osdays<-ImaxT - Toverstock
+
+osdayspct<- round(osdays / ImaxT * 100, 2)
+
+thold<-ceiling(Toverstock * d1)
+
+```
+
+Let's consider the following item with an arbitrary overstock time supply specification:
+
+* Order Policy: EOQ with safety stock
+* $d_7 = `r d7`$
+* $\sigma_7 = `r s7`$
+* $P_2 = `r p2`$
+* $rt = `r rt`$
+* $lt = `r lt`$
+* $A = `r A`$
+* $v = `r v`$
+* $r = `r r`$
+* $pack = `r pack`$
+* $Q_{min} = `r Qmin`$
+* $T_{overstock} = 28$ days
+  
+In this case, we find that $I_{max} = `r Qimax`$. The overstock time supply $\big( T_{overstock}  \big)$ is `r Toverstock` days, giving an overstock threshold of `r thold` units. 
+
+It's easy to show that $I_{max} = `r Qimax` > `r thold`$ and the item would be classified as being overstocked *every time a replenishment is received*. In fact, the item would be considered as having overstock for `r osdays` days of every order cycle (i.e. for `r osdayspct`% of the order cycle).
+
+On the other hand, if we use our *policy based overstock threshold* $I_{max}$, then the item would not show as being overstocked unless $OH > `r Qimax`$ units. 
+
+### What to do with the overstock?
+
+Let's say that we have `r Qimax + 1` units on hand. Technically, the item is overstocked. However, with overstock of only 1 unit, it hardly makes sense to even bother with. So how much overstock is worth dealing with?
+
+The answer is conceptually simple, but the implementation will vary by company, industry segment, etc. Basically, we should deal with the overstock when it will cost us more to hold than to eliminate. Calculating the holding cost on the overstock is straightforward:
+
+$$HC_{overstock} = \big[OH-I_{max\big] v r \frac{m(Q)}{D} + \frac{[OH-I_{max}]}{2}vr\frac{[OH-I_{max}]}{D}=\big[OH-I_{max{}}\big] v r \frac{m(Q)}{D} + \frac{[OH-I_{max}]^2}{2D}vr$$
+
+Determining the cost associated with eliminating the overstock can be a bit more challenging, and should include:
+
+* Acquisition cost differences (i.e. the difference betwen the new acquisition cost per unit and $v$)
+* Fraction of aggregate order cost incurred
+* Labor costs associated with eliminating the overstock
+* Any industry segment or organization-specific costs.
+
+Acquistion cost differences can be calculated as:
+
+$$\Delta C_{acquisition}=[OH - I_{max}] (v_{curr}-v_{new})$$
+
+where $v_{curr}$ is the acquisition cost of the units currently on hand and $v_{new}$ is the replacement cost that will be incurred when making the next purchase.
+
+The fraction of the aggregate order cost additionally incurred if we eliminate the overstock (or alternatively, saved if we retain the overstock) can be calculated as:
+
+$$\Delta C_{order \thinspace placement}=A \frac{[OH-I_{max}]}{m(Q)}$$
+
+Labor and other costs are specific to the product type, industry segment, etc.
+
+So, we can calculate the cost of retaining overstock as:
+
+$$Cost_{retaining} = HC_{overstock} - \Delta C_{order \thinspace placement}$$
+
+and the cost of eliminating overstock is:
+
+$$Cost_{eliminating} = \Delta C_{acquisition} + \Delta C_{order \thinspace placement}$$
+
+and our decision rule becomes *eliminate overstock when*
+
+$$Cost_{eliminating} > Cost_{retaining}$$
+
+i.e. when
+
+$$\big[OH-I_{max{}}\big] v r \frac{m(Q)}{D} + \frac{[OH-I_{max}]^2}{2D}vr - A \frac{[OH-I_{max}]}{m(Q)} > [OH - I_{max}] (v_{curr}-v_{new}) + A \frac{[OH-I_{max}]}{m(Q)}$$
+
+
+
+## Expected Lost Profit Analysis
+
+Perhaps the *most useless* inventory analysis found in many (*most*?) companies is the traditional *stockout report*. By the time an item appears on this report, it's far too late to appropriately handle the problem. 
+
+Instead, we should identify the *potential* shortage *before* an actual shortage occurs. In this way, we can determine whether the shortage impact warrants action.
+
+Calculating the expected units short is fairly straightforward, given what we already know:
+
+$E[units\thinspace shorted] = G_u(k_{implied})\sigma_{ep} = G_u\bigg(\frac{IP-fcst(ep)}{\sigma_{ep}}\bigg)\sigma_{ep}$
+
+Now, to find the expected lost profit, we *simply* calculate $E[units \thinspace shorted] \cdot plus$, where $plus$ is the profit lost per unit short. However, *that's* the catch. We'll know the gross margin per unit, but in most cases $plus \neq GM$ . A customer not finding a desired item may 1) defer the purchase until the item is back in stock, or 2) purchase a substitute item (e.g. an alternate brand or size) in place of the shorted item. 
+
+Consequently, deferred and substitute purchases mean that we probably do not lose the entire gross margin when we short an item. In fact, the gross margin on some substitute items may be higher than on the shorted item (leading to the conclusion that *some shortages in lower margin items may be strategic*). A number of years ago, the Council of Logistics Management did and Andersen Consulting performed a study to evaluate the actual loss on a stockout. It was an interesting study that, as far as I know, has not been repeated (and *should* be). The study, performed in conjunction with a large supermarket chain, determined that due to substitute item and deferred purchases, *a stockout at retail resulted in an average loss of only 12% of the item's gross margin*.
+
+Now, if we know the average margin percent lost $(GM_{loss})$ for an item, then $plus = \big(GM \cdot GM_{loss} \big)$ and we can calculate the expected lost profit for an item:
+
+$$E[Lost\thinspace Profit] = \big(GM \cdot GM_{loss} \big) G_u\bigg(\frac{IP-fcst(ep)}{\sigma_{ep}}\bigg)\sigma_{ep}$$
+
+### Addressing expected lost profit
+
+There's a clear economic decision rule here:
+
+<center>Order when  $E[Lost Profit] \geq emergency \thinspace order \thinspace cost$ </center>
+
+&nbsp;
+
+The emergency order cost must be determined for every item and may include:
+
+* Order placement cost
+* Unit acquisition cost premium
+* Costs associated with *imbalancing* a coordinated replenishment group.
+
+Order placement costs may include labor associated with processing the order and fees assessed by the supplier to place an order (especially a secondary supplier). Unit acquisition cost premiums can result from purchasing in lower than normal order quantities, higher unit costs charged by a secondary supplier, etc.
+
+Line imbalancing costs are much more challenging to assess, and must consider the long term aggregate order placement and holding costs that may be incurred when:
+
+* Placing an emergency order only for the item
+* Placing an early order for the entire coordinated replenishment group.
+

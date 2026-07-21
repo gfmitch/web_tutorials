@@ -1,0 +1,190 @@
+---
+title: "Simple Time-Series Forecasting"
+author: "Gary Mitchell"
+date: "3/01/2024"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE)
+library(kableExtra)
+```
+
+The purpose of this tutorial is to provide a single, consolidated reference of simple time series methods commonly used in forecasting. This should not be treated as a comprehensive reference, nor should it be considered as *teaching* material, as it merely *presents* the material without discussion or explanation.
+
+# Notational Conventions and Fundamental Terms
+
+Notation/Term            | Description/Expression/Implication
+-------------------------|----------------------------------------------------------------------
+$t$                | Period identifier, typically a week, month, or day (e.g. period 5)
+$L_t$              | Average (or *level* of demand) at the end of period $t$.
+$P_{t+m}$          | Forecast *projection* for period $t+m$ where using metrics calculated at the end of period $t$. Sometimes referenced as $F_{t+m}$
+$A_t$              | *Actual* value for period $t$
+$D_t$              | *Deseasonalized* actual for period $t$
+$T_t$              | Periodic trend measured at the end of period $t$
+$S_t$              | Seasonal index for period $t$, indicating how period $t$ demand varies from average demand
+$\alpha$           | Smoothing constant/factor, $0 \leq \alpha \leq 1$. In multi-smoothing models, $\beta$ and $\gamma$ are frequently used as additional smoothing constants
+
+## Time Subscripting
+
+From now on, we’ll interpret the time subscript, $t$ in the following way:
+
+- At the end of period, e.g. period $5$, we will calculate $L_5$ (and possibly additional  metrics) using actual data (e.g. $A_5$) from period $5$
+- When preparing a demand forecast project for June using $L_5$, $m=1$ in the forecast projection formula
+
+$$P_{t+m} = S_{t+m}[L_t + mT_t]$$
+
+# Decomposition Models and MSAT
+
+Most simple time series models fall into the category of decomposition methods. These methods separate the observed demand into its component parts:
+
+- Level (i.e., average demand)
+- Trend (i.e., rate of change over an extended time period)
+- Seasonality (fluctuations relative to the average demand that occur at recuglar intervals)
+
+Additional components, such as *cycles*, are harder to assess as they occur irregulary and tend to be omitted from decomposition models.
+
+Decomposition models must make assumptions about the relationship among the demand components. The forecast projection formula shown above is an MSAT model, i.e., multiplicative seasonality, additive trend, which describes exactly how we recombine the separate components to make a forward projection. Regardless of which updating method we are using (several are described below), this is the only *projection* formula we need. When demand does not exhibit:
+
+- Seasonality, $S_t = 1.0$ for all $t$
+- Trend, $T_t = 0$ for all $t$
+
+This allows us to use a common model for making forward projections, simplifying our work and our understanding of forecasting.
+
+
+# Moving Averages
+
+Moving averages determine the average demand by calculating a *rolling* average using the most recent $n$ actuals, i.e., using $A_t, A_{t-1}, ..., A_{t-n+1}$
+
+## Simple Moving Average - $MA_t(n)$
+
+A simple moving average equally weights each of the values comprising the average. Typically referred to as an $MA_t(n)$, meanging an $n$ period moving average as of period $t$, it requires $n$ values to calculate, specifically, the most recent $n$ actuals:
+
+$$MA_t(n) = \frac{1}{n}\sum_{i=0}^{n-1}A_{t-i}$$
+
+## Weighted Moving Average - $WMA_t(n,\mathbf{w})$
+
+A weighted moving average differentially weights each of the values comprising the average. Typically referred to as an $WMA_t(n, \mathbf{w})$, with weights $\mathbf{w}=\{w_1, \dots, w_n\}$, meaning an $n$ period moving average as of period $t$, it requires $2n$ values to calculate, specifically, the most recent $n$ actuals and $n$ weights:
+
+$$MA_t(n,\mathbf{w}) = \frac{\sum_{i=0}^{n-1}w_{n-i}A_{t-i}}{\sum_{i=1}^{n}w_{i}}$$
+For example, a 3-period weighted moving average with weights $\mathbf{w}=\{w_1, w_2, w_3\}$ at the end of period $t$ would be calculated as:
+
+$$WMA_t(3,\mathbf{w}) = \frac{w_3 A_t + w_2 A_{t-1} + w_3 A_{t-2}}{w_1 + w_2 + w_3}$$
+To more clearly illustrate, assume we are calculating $MA_3(7)$ where $A_7 = 100$, $A_6  = 112$, and $A_5 = 94$, and $\mathbb{w} = \{3, 4, 5\}$, then
+
+```{r, echo=FALSE}
+ma3<-c(100, 112, 94) %*% c(5, 4, 3) / sum(c(5,4,3))
+```
+
+
+$$MA_7(3,\mathbf{w}) = \frac{5(100) + 4 (112) + 3(94)}{3 + 4 + 5} = `r ma3`$$
+An alternative way of thinking of a weighted moving average involves treating the weights as percentages, $\mathbf{p}=\{p_1, \dots, p_n\}$. Then:
+
+
+$$MA_t(n, \mathbf{p}) = \sum_{i=0}^{n-1}{p_{n-i}A_{t-i}}$$
+
+where $0 \leq p_i \leq 1$ and $\sum_{i=1}^np_i = 1$. If we let $p_i = \frac{w_i}{\sum_{j=1}^nw_j}$, then the two forms are equivalent. Some find it easier to choose weights that are percentages (i.e., $p_i$), rather than the seemingly arbitrary $w_i$. You may use whichever from you find more intuitive.
+
+# Exponential Smoothing - $ES_t(\alpha)$
+
+Exponential smoothing is a very straightforward and useful averaging method. As we will see, we may approximate moving averages with exponential smoothing. The big advantage of exponential smoothing is that it requires only 3 data points ($\alpha$, $A_t$, and $L_{t-1}$), whereas an $MA_n(t)$ requires $n$ data points, and a $WMA_n(t,\mathbf{w})$ requires $2n$ data points.
+
+$$L_t = \alpha A_t + (1-\alpha)L_{t-1}$$
+As we can see in the expression above, an $ES_t(\alpha)$ is a weighted average of the most recent actual value and the *old average* (i.e. the average calculated at the end of the prior period); actuals *prior* to period $t$ are incorporated through $L_{t-1}$, the *old average*.
+
+## Approximating Moving Averages
+We can approximate an $n$ period moving average using an $ES_t(\alpha)$, by choosing $\alpha$ as follows:
+
+$$\alpha = \frac{2}{n+1}$$
+
+Moreover, we can determine the approximate *length* (i.e., the number of periods) of an $n$ period moving average using:
+
+$$n \approx \frac{2-\alpha}{\alpha}$$
+
+## Double Exponential Smoothing (Holt's Method)
+
+Holt's method uses exponential smoothing to update two metrics in each update cycle:
+
+- $L_t$ - average demand
+- $T_t$ - trend
+
+In Holt's method, we perform the following update calculations, *in order*:
+
+
+$$L_t = \alpha A_t + (1-\alpha)(L_{t-1} + T_{t-1})$$
+$$T_t = \beta (L_t - L_{t-1}) + (1-\beta)T_{t-1}$$
+where $\beta$, $0 \leq \beta \leq 1$, is a smoothing factor used to update Trend. In the *trend* calculation, $L_t - L_{t-1}$ represents the *current period trend*, i.e., the *actual* value in the exponentially smoothed average.
+
+## Triple Exponential Smoothing (Winter's Method)
+
+Where Holt's method allowed us to accommodate demand exhibiting trend, Winter's method allows us to additionally accommodate seasonality, applying exponential smoothing to each of level, trend, and seasonality:
+
+$$L_t = \alpha \Bigg(\frac{A_t}{S_{t-p}}\Bigg) + (1-\alpha)(L_{t-1} + T_{t-1})
+$$
+$$T_t = \beta (L_t - L_{t-1}) + (1-\beta)T_{t-1}$$
+$$S_t = \gamma \Bigg(\frac{A_t}{L_t}\Bigg) + (1-\gamma)S_{t-p}$$
+where $p$ is the periodicity, i.e., the number of periods in a year (e.g., for weekly forecasting, $p = 52$), and $\gamma$, $0 \leq \gamma \leq 1$, is a smoothing factor.
+
+Note first that the average demand and trend calculations for Winter's method are almost identical to those for Holt's method. The only difference is in the *actual* term for the average demand. Here we are *deseasonalizing* the actual demand; we divide $A_t$ by the seasonal index for period $t$ calculated in the prior year, $S_{t-p}$, which effectively removes *our estimate* for seasonality from the actual demand.
+
+The third exponential smoothing expression calculates the seasonal index for period $t$. When we divide $A_t$ by average demand, we determine the seasonal multiplier reflecting how $A_t$ deviated from the average demand (i.e., our seasonal index); the calculation averages our current estimate of seasonality with our previous estimate of seasonality (i.e. our *old average*) using exponential smoothing.
+
+
+# Determining Forecasting Accuracy
+
+We discussed a number of error metrics in class. Here are the *definitional* formulas for these calculations.
+
+## Mean Absolute Deviation (MAD)
+
+A frequently calculated measure of forecasting accuracy, or more accurately, forecast error. MAD may be interpreted as the size of the average forecast error. We will typically use the following formula to calculate a single MAD for all periods (e.g. when trying to select a forecasting method).
+
+$$MAD = \frac{1}{n}\sum_{t=1}^n{|A_t - L_t|}$$
+Note that if the demand exhibits seasonality, we should replace $A_t$ in all of these calculations with $D_t = \frac{A_t}{S_{t-p}}$ (i.e., we should compare the *deseasonalized* demand to the calculated average for assessing accuracy).
+
+## Mean Signed Deviation (MSD)
+
+A measure of forecasting accuracy, most meaningfully used in conjunction with MAD.
+
+$$MSD = \frac{1}{n}\sum_{t=1}^n{(A_t - L_t)}$$
+
+## Mean Absolute Percentage Error (MAPE)
+
+MAPE  is a measure of forecast error frequently used to discriminate between forecasting methods (i.e. to determine which forecasting method yields the least error).
+
+$$MAPE = \frac{1}{n}\sum_{t=1}^n{\frac{|A_t - L_t|}{A_t
+}}$$
+
+## Mean Squared Error (MSE)
+
+A measure of forecasting accuracy that weights large deviations more severely than small deviations (i.e. penalizes outliers).
+
+
+$$MSE = \frac{1}{n}\sum_{t=1}^n{(A_t - L_t)^2}$$
+
+## MAD as Percentage of Average (MADP)
+
+MADP serves a similar purpose as MAPE, but is more computational efficient. If using only MAPE, there is no computational savings. But, if using both MAD and MAPE (which should most always be the case), then using MADP instead of MAPE will cut the calculations to obtain both by nearly half.
+
+$$MADP = \frac{MAD}{L_t}$$
+
+## Tracking Signal (TS)
+
+The tracking signal measures how well a forecast is tracking (i.e. how well it is centered) the actuals. 
+
+
+$$TS = \frac{MSD}{MAD}$$
+
+Many sources cite a tracking signal that uses the Root Mean Square Error (RMSE) in the numerator (RMSE is simply $\sqrt{MSE}$). However, this RMSE-based metric lacks the ability to indicate whether the forecasts are systematically high or systematically low (i.e., it can only indicate the relative degree of systematic error). Therefore, it is better to use the MSD-based metric shown above.
+
+## Calculating Error Metrics using Exponential Smoothing
+
+The definitional formulas are for the error metrics are not very computationally efficient and can be problematic for large scale operations. Consequently, many large-scale forecasting systems calculate these same metrics using exponential smoothing instead of moving averages as suggested by the definitional formulas:
+
+$$MAD_t(\alpha) = \alpha |A_t - L_t| + (1-\alpha)MAD_{t-1}$$
+
+$$MSD_t(\alpha) = \alpha (A_t - L_t) + (1-\alpha)MSD_{t-1}$$
+
+$$MAPE_t(\alpha) = \alpha \frac{|A_t - L_t|}{L_t} + (1-\alpha)MAPE_{t-1}$$
+
+$$MSE_t(\alpha) = \alpha (A_t - L_t)^2 + (1-\alpha)MSE_{t-1}$$
+In these calculations, $\alpha$ does not have to be the same value as $\alpha$ used in the $ES_t(\alpha)$ or Holt's or Winter's Methods.

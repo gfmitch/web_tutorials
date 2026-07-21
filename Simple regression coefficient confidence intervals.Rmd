@@ -1,0 +1,37 @@
+---
+title: "Simple Regression Coefficient Confidence Intervals"
+author: "Gary Mitchell"
+date: "2024-02-13"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Confidence interval for $\beta_i$
+
+The $(1-\alpha)$% confidence interval interval for $\beta_1$ is given by:
+
+$$\beta_1 - t_{\frac{\alpha}{2},n-2}S_{\beta_1}\leq \beta_1 \le \beta_1 + t_{\frac{\alpha}{2},n-2}S_{\beta_1}$$
+where $t_{\frac{\alpha}{2}}$ is the Student's *t*-distribution value for $\frac{\alpha}{2}$ with $n-2$ degrees of freedom (i.e. for $k=1$).
+
+In R, you can obtain $t_{\frac{\alpha}{2}}$ using **qt($\alpha/2$, $n-2$)**. Now:
+
+$$S_{\beta_1} = \frac{S}{\sqrt{SXX}}$$
+
+where $S = S_e = S_{YX} = \sqrt{\frac{SSE}{n-2}}=\sqrt{\frac{\sum_i{(y_i - \hat y_i)^2}}{n-2}}$ and $SSX = \sum_i{(x_i - \bar x)^2}$
+
+The $S$ denominator, $n-2$ can be more generally thought of as the degrees of freedome of the regression, $n - k - 1$, where $k$ is the number of independent variables in the model. In the case of simple regression, $k=1$ and the denominator simplifes to $n-2$ as shown above.
+
+Unfortunately, different statistics books will often emphasize different acronyms for the various regression metrics, so it may be necessary to match the notation you are seeing with the notation you learned.
+
+## Confidence interval for $\beta_0$
+
+The $(1-\alpha)$% confidence interval interval for $\beta_0$ is given by:
+
+$$\beta_0 - t_{\frac{\alpha}{2},n-2}S_{\beta_0}\leq \beta_0 \le \beta_0 + t_{\frac{\alpha}{2},n-2}S_{\beta_0}$$
+
+where
+
+$$S_{\beta_0} = S \sqrt{\frac{1}{n}+\frac{\bar x^2}{SXX}} = \sqrt{\frac{\sum_i{(y_i - \hat y_i)^2}}{n-2}} \sqrt{\frac{1}{n}+\frac{\bar x^2}{\sum_i{(x_i - \bar x)^2}}}$$

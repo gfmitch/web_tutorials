@@ -1,0 +1,198 @@
+---
+title: "Generating Random Variates"
+author: "Gary Mitchell"
+date: "April 17, 2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+There are multiple ways to generate random numbers that follow a specified probability distribution. Some of these can become quite involved in pursuit of finding highly efficient algorithms for generating the random values. 
+
+However, we will use the *Inverse Transform Method* to generate our random values. As long as we can calculate the inverse cumulative probability for a distribution, we can generate a random value from that distribution using the inverse transform method.
+
+## Built-in probability distributions in R
+
+R provides a large number of distributions in its base installation. These include the normal, Poisson, binomial, and exponential to name a few. Here is a more complete list (distribution abbreviation given in parentheses):
+
+  - beta (beta)
+  - binomial (binom)
+  - Cauchy (cauchy)
+  - chi-squared (chisq)
+  - exponential (exp)
+  - F (f)
+  - gamma (gamma)
+  - hypergeometric (hyper)
+  - log-normal (lnorm)
+  - multinomial (multinom)
+  - negative binomail (nbinom)
+  - normal (norm)
+  - Poisson (pois)
+  - Student's t (t)
+  - continuous uniform (unif)
+  
+Even more distributions are available through freely downloadable *packages*. Since an inverse cumulative distribution function is provided for all of these, we can easily generate random values for any of these.
+
+### Using the inverse transfer method with built-in distributions
+
+The basic approach for generating a random value from *any* distribution using the inverse transform method is the same for *all* distributions. For a random variable $X$, we generate a *realization*, i.e. a random value from the distribution, using the following
+
+$$x = F^{-1}(U)$$
+
+where $U ~ unif[0,1]$ is a uniform random number between 0 and 1 and $F^{-1}(\alpha)$ is the inverse cumulative probability function for the random variable $X$. So, let's say we determine that University of Portland student height is normally distributed with a mean of 69 inches and a standard deviation of 9 inches. Then we could generate a random value for a UP student's height as follows:
+
+```{r, eval=FALSE}
+x<-qnorm(U, 69, 9)
+```
+
+Of course, this assumes that we have a value of $U ~ unif[0,1]$ For example, if $U = 0.543$ then we would calculagte:
+
+```{r}
+x<-qnorm(0.543, 69, 9)
+x
+```
+
+We can also generate multiple values for $x$ at one time since R's inverse cumulative probability functions are vector aware. For example, we can generate random values for 10 student heights by peforming the calculation with a *multi-valued* $U$ variable. For example:
+
+```{r}
+U<-c(0.140103549929336, 0.283711776835844, 0.583030595211312, 0.165025892201811, 0.0963011106941849, 0.428613091353327, 0.355761565733701, 0.844933539861813, 0.260132473660633, 0.023144492181018)
+
+x<-qnorm(U, 69, 9)
+x
+```
+
+## Using R's random number generating functions
+
+If our analysis will be done entirely in R (i.e. we do not have to use specific $U ~ unif[0,1]$), then we can use R's random number generating functions. As with the *d*, *p*, and *q* probability functions, R's *r* functions all work in a consistent way:
+
+  - First is the number of random values you want to generate
+  - Remaining parameters will be the parameters for your distribution (e.g. $\mu$ and $\sigma$ for a normal distribution, $\lambda$ for a Poisson distribution, etc.)
+  
+In this case, we could generate 10 random student heights using the following:
+
+```{r}
+x<-rnorm(10, 69, 9)
+print(x)
+```
+
+It really is *that* easy!
+
+Note: you will have to use the inverse transform method when taking your online quiz. Since R's *r* random number functions all generate $U ~ unif[0,1]$ as the first step in generating the random number, you cannot use them to generate random numbers for specific $U$ values. This will generally only be an issue when doing your online quizzes. For your simulations, you may use R's *r* random number functions.
+
+
+
+
+
+
+```{r cars, echo = FALSE}
+source("prob.r")
+```
+
+All of the R probability functions follow the same conventions. The first letter of the function name identifies the *probability calculation* performed by the function:
+
+* d - probability density for continuous distributions, probability mass for discrete distributions
+* p - cumulative probability
+* q - inverse cumulative probability
+* r - generate random numbers.
+
+The remainder of the function name is an abbreviation specifying the distribution (e.g. norm for the normal distribution, pois for the Poisson distribution).
+
+Parameter usage is also consistent across the functions. For example, to calculate cumulative normal probabilities, you would use the pnorm function requires the following parameters:
+
+* $x$ - a vector of values for which the cumulative probability will be calculated
+* $\mu$ - the mean for the normally distributed random variable
+* $\sigma$ - the standard deviation for the normally distributed random variable.
+
+Note that *all* probabilities are calculated for a value $x$. Consequently, *all* R cumulative probability functions require $x$ as the first parameter. Additional parameters are required based on the distribution. Since the normal distribution is characterized by a mean and standard deviation, we specify both of those. A Poisson probability, which requires only a single parameter lambda, would be invoked with $x$ and $\lambda$ instead of $\mu$ and $\sigma$.
+
+For example:
+
+Given $X~norm(100, 30)$ (i.e. a normally distributed random variable with mean 100 and standard deviation 30), would would calculate $Pr\{X \leq 120\}$ as follows:
+
+
+
+```{r echo=TRUE}
+mu<-100
+sigma<-30
+x<-120
+pnorm(x, mu, sigma)
+```
+
+We could calculate the probabilities associated with 100, 110, ..., 200 just as easily. First we'll create a vector *x* with the sequence of values from 100 to 200, then we'll calculate the probabilities:
+
+```{r}
+x<-seq(100,200,10)
+pnorm(x, mu, sigma)
+```
+
+We can even construct a simple table quite easily.
+
+```{r}
+x<-seq(100,200,10)
+px<-pnorm(x,mu,sigma)
+tab<-data.frame(x,px)
+print(tab)
+```
+
+Using the other functions is similarly straightforward. For example, let's say we believe the number of patents that will arrive at a hospital emergency room on a Friday evening follows a Poisson distribution with a rate (i.e. lambda) of 12 per hour. Based on our current staffing, we can treat an average of 14 per hour. We want to know the likelihood that we will not be able to treat all of the arriving patients.
+
+In other words, we want to calculate $Pr\{X > 14\} = 1 - Pr\{X \leq 14\}$. R can calculate the cumulative probability for us, so we can easily calculate:
+
+```{r}
+lambda<-12
+1-ppois(14, lambda)
+```
+
+So we have an almost 1 in 4 chance of not being able to handle the patient volume. You can imagine that this only produce a backlog that would increase hourly (and queuing theory confirms this). It definitely sounds as if we need more emergency room staff!
+
+What if we wanted to know the maximum number of patients we would expect with 98% confidence? That's simply the inverse cumulative probability, i.e. $x:Pr\{X \leq x\} = 0.98$, and easily calculated using qpois:
+
+```{r}
+qpois(0.98, lambda)
+```
+
+Wow! To be 98% sure, we'd need to be able to treat 20 patients/hour. Let's dig a little deeper. How many would we need to be 90%, 95%, 97%, 98%, 99%, 99.9% sure?
+
+```{r}
+px<-c(.9, .95, .97, .98, .99, .999)
+x<-qpois(px, lambda)
+data.frame(px, x)
+```
+
+Now, let's say we wanted to simulate patient arrival counts for the next 1,000 hours (Friday night hours only, of course). Then we would use (the first parameter is the number of random variates we want to generate, and the call to hist just produces a histogram so we can see the shape of our distribution):
+
+```{r}
+x<-rpois(1000, lambda)
+hist(x, col="lightblue")
+
+```
+
+## Generating random values for empirical distributions
+
+Generating random values from empirical distributions requires a *little* more effort. For example, consider the following distribution of sandwiches ordered at a local fast food restaurant:
+
+$x$           |$Pr\{X = x\}$  
+--------------|-------------
+Cheese Burger |0.52
+Chili Dog     |0.09
+Hamburger     |0.27
+Hot Dog       |0.12
+ 
+To generate a customer's sandwich order randomly, we can use the inverse transform method just as we did before. However, now there is no built-in distribution to use. Instead, we can use the *qempir* and *rempir* empirical probability functions provided in *prob.r* on the course website. These two functions allow us to calculate inverse cumulative probabilities and generate random values, rexpectively, for any distribution for which we have a table of possible outcomes and their corresponding probabailities.
+
+If we have a specific $U ~ unif[0,1]$ we would generate a random sandwich order as follows:
+
+```{r}
+source("prob.r")
+
+X<-c("Cheese Burger", "Chili Dog", "Hamburger", "Hot Dog")
+p<-c(0.52, 0.09, 0.27, 0.12)
+
+x<-qempir(0.539, X, p)
+x
+```
+
+

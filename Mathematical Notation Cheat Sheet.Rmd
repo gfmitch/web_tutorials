@@ -1,0 +1,73 @@
+---
+title: "Mathematical Notation Cheat Sheet"
+author: "Gary Mitchell"
+date: '`r format(Sys.Date(), "%m/%d/%Y")`'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE)
+library(kableExtra)
+```
+
+The purpose of this *cheat sheet* is to provide a convenient reference for common notational conventions used in OTM. This should not be treated as a comprehensive reference, nor should it be considered as *teaching* material; it merely *presents* the material without discussion or explanation. Moreover, this reference should not be considered as *replacing* or *invalidiating* a different notational convention used in a textbook or other reference material.
+
+# Notational Conventions and Fundamental Terms
+
+Notation/Term            | Description/Expression/Implication
+-------------------------|----------------------------------------------------------------------
+$\hat{x}$                | Notational convention indicating that $\hat{x}$ is an estimate of $x$
+$x^*$                    | Notational convention indicating that $x^*$ is an optimal (or near-optimal) value of $x$
+$[x]^+$                  | $max(0,x)$
+$x\bigvee{y}$            | $max(x,y)$
+$[x]_-$                  | $min(0,x)$
+$x\bigwedge{y}$          | $min(x,y)$
+$\lfloor x\rfloor$       | Floor of $x$, i.e. largest integer $\le x$
+$\lceil x\rceil$         | Ceiling of $x$, i.e. the smallest integer $\ge x$
+$\sum_{i=1}^{n}x_i$      | Summation of $x_i$ for all $i = 1,..., n$, $x_1 + x_2 + ... + x_n$
+$\sum_{i \in \textbf I}x_i$      | Summation of $x_i$ for every $i$ in set $\textbf I$
+$\prod_{i=1}^{n}x_i$     | Product of $x_i$ for all $i = 1,..., n$, $x_1 \times x_2 \times \cdots \times x_n$
+$x \in y$                | $x$ is a member of set $y$, $x$ in $y$
+$x \notin y$             | $x$ is not a member of set $y$, $x$ not in $y$
+$\forall$                | For each, for every. Typically used in an expression such as $\forall i \in \textbf{I}$ where $\textbf{I}$ represents the set of items. This would be read as "for every item $i$ in the set of items $\textbf{I}$"
+$\hat{x}$                | Estimated value of x.
+$f(x)$                   | Probability density for a continuous destirbution
+$F(x)$                   | Cumulative probability, i.e. $Pr\{X \le x\}$
+$\overline{F}(x)$ or $F^c(x)$ | Complementary cumulative probability, i.e. $1 - F(x)$
+$F^{-1}(p)$              | Inverse cumulative probability, $x : Pr\{X \leq x\} = p$ (i.e. the value of $x$ such that the probability that $X \leq x$ is equal to the probability $p$)
+$\lambda$                | By convention, lambda $(\lambda)$ is used to represent the rate of Poisson and exponential distributions
+$m(x)$                   | Probability mass function of x, $Pr\{X = x\}$. For a discrete distribution, $f(x) = m(x)$
+RV                       | A random variable
+set                      | A collection of items, values, etc.
+$\sigma$                 | Notational convention repesenting the standard deviation. When multiple standard deviations are involved, may be subscripted for specificity, e.g. $\sigma_{lt}$ would indicate demand standard deviation in a time interval of length $lt$
+stochastic               | Characterized by uncertainty and described by a probability distribution. $\sigma > 0$.
+$\mu$                    | Notational convention representing the population or distribution mean.
+$\bar{x}$                | Notational convention representing the *sample* mean. $\bar{x}$ is only and estimate of $\mu$
+$x!$                     | $x$ *factorial*, $x! = \prod_{i=1}^x{i} = 1 \cdot 2 \cdots x$
+$\delta$                 | Greek letter delta, notational convention frequently used to denote a small difference
+$\Delta$                 | Greek letter capital delta, notational convention frequently used to denote a change or difference
+$\epsilon$               | Greek letter epsilon, notational convention frequently used to denote a very small difference or error
+$\equiv$                 | Equivalent or identically equal
+$\exists$                | There exists, e.g. $\exists \>x$
+s.t.                     | Such that or subject to
+$x: condition$           | $x$ such that $condition$ is satisfied
+$x < y$                  | $x$ is less than $y$
+$x \leq y$               | $x$ is less than or equal to $y$
+$x > y$                  | $x$ is greater than $y$
+$x \geq y$               | $x$ is greater than or equal to $y$
+$x \neq y$               | $x$ is not equal to $y$
+$x \approx y$            | $x$ is approximately equal to $y$
+$x | y$                  | $x$ *given* $y$ or $x$ conditional upon $y$
+$[x, y]$                 | Interval of values between $x$ and $y$, *inclusive* (i.e. $x$ and $y$ included)
+$(x, y)$                 | Interval of values between $x$ and $y$, *exclusive* (i.e. $x$ and $y$ not included)
+$\infty$                 | Infinity
+$\int_{x}^{y}{f(x)dx}$   | The integral of $f(x)$ evaluated over the interval $[x, y]$
+$|x|$                    | When $x$ is a number, the absolute value of $x$, i.e. $x = |x|$ and $x = |-x|$ for $x \geq 0$ and $x = -|x|$ for $x < 0$
+$log_b(x)$               | Logarithm to base $b$ of $x$
+$log(x)$                 | Logarithm to base $10$ of $x$. The inverse of $10^x$, i.e. $log(10^x) = x$
+$ln(x)$                  | Natural logarithm of $x$, i.e. $log_e(x)$. $ln(e) = 1$
+$e$                      | A constant sometimes refered to as the natural number or Euler's number, $e \approx 2.718282$
+$e^x$                    | Exponential of $x$. The inverse of $ln(x)$, i.e. $e^{ln(x)} = x$
+$x \cap y$               | Intersection of $x$ and $y$
+$x \cup y$               | Union of $x$ and $y$
+$\binom{n}{r}$            | $n$ choose $r$. This is the binomial coefficient and represents the number of combinations of $n$ items chosen $r$ at a time, when order doesn't matter. $\binom{n}{r} = \frac{n!}{r!(n-r)!}$

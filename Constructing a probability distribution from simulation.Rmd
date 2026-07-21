@@ -1,0 +1,443 @@
+---
+title: "Constructing a Probability Distribution via Simulation"
+author: "Gary Mitchell"
+date: "November 23, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Some probabilities can be so complex to calculate directly that it is much easier to construct a probability distribution using simulation. How is this possible? *Because every trial in a simulation occurs with equal probability*. Why does this make finding the probabilities easier? Because every trial occurs with equal probability, using the simulated data to calculate probabilities and inverse probabilities is just like calculating probabilities from frequencies!
+
+## Lead Time Demand
+
+A common application in supply chain management (SCM) is calculating safety stock. The typical textbook calculation of safety stock is:
+
+$$ss = k \sigma_L$$
+where $k$ is the *safety factor* and $\sigma_L$ is the standard deviation of demand during the lead time. $k$ can be calculated in various ways depending on item characteristics, cost considerations, etc. This calculation assumes that lead time is constant and known and demand is uncertain. The problem is that *lead time is not constant and known* in practice. Therefore, to be accurate, safety stock needs to be calculated using a standard deviation of both demand and lead time.
+
+There is a relatively straightforward way to calculate this combined standard deviation when both demand and lead time are normally distributed. However, unless lead times are very long, they are usually not normally distributed.
+
+If you are interested in supply chain and/or inventory management, you can learn more in our Introduction to Supply Chain Management (BUS 546) and Advanced Inventory Theory and Practice (BUS 547) courses.
+
+## Simulation to the Rescue
+
+So how can we resolve this problem? First, we need to recognize what the safety stock represents. If we assume that we are using a Type I service criteria, then we find $k$ using a *target service level*, $tsl$, which specifies the target probability of satisfying all demand from stock. In this case, *safety stock* calculation, as shown above, is equivalent to:
+
+$$ss = F_{ltd}^{-1}(tsl) - \mu_{ltd}$$
+
+where $F_{ltd}^{-1}(p)$ represents the inverse cumulative probability of lead time demand (i.e. the combined distribution of lead time and demand) and $\mu_{ltd}$ is the average lead time demand. To calculate both of these terms, we need the lead time demand distribution.
+
+Assume that:
+
++  Weekly demand is normally distributed with mean 1,000 and standard deviation 200
++  Lead time follows a shifted exponential distribution with minimum 2 days and and an average of 4 days (i.e. a minimum constant portion of 2 days and exponentially distributed variable portion with and average of 2 days).
+
+We can use the two distributions to *generate the lead time demand distribution*:
+
++  Generate random lead times
++  Generate random demands over the random lead times.
+
+To do this in R, we first generate the random lead times according to a shifted exponential distribution. Here we generate 10,000 such lead times:
+
+```{r}
+n<-10000
+meanLt<-2
+
+# calculate the rate of the exponential distribution from the mean
+lamda<-1/meanLt
+
+# generate n random lead times
+lt<-2 + rexp(n, lamda)
+
+# look at the first lts
+head(lt)
+
+# the mean lead time should be 4
+mean(lt)
+```
+
+Here we see that the mean of the generated lead times, `r mean(lt)` is reasonably close to the specified mean of 4. The simulated mean will converge to the theoretical mean as the number of simulated lead times is increased.
+
+Next, we calculate a random demand for each lead time. However, the given demand distribution is weekly, and we really need a daily demand distribution. For this, we will calculate the mean $(\mu_d)$ and standard deviation $(\sigma_d)$ of daily demand:
+
+$$\mu_d = \frac{\mu}{7}$$
+$$\sigma_d = \sigma\sqrt{\frac{1}{7}}$$
+The form of the daily standard deviation is related to the algebra of variances. We cannot use a simple linear transformation as we did for the mean because standard deviations do not scale linearly. However, variances *do* scale linearly, so:
+
+$$\sigma^2_d = \frac{1}{7} \sigma^2 \Longrightarrow \sqrt{\sigma^2_d} = \sqrt{\frac{1}{7} \sigma^2} \Longrightarrow \sigma_d = \sigma\sqrt{\frac{1}{7}}$$
+Here's the R code to generate the *lead time demands*:
+
+```{r}
+mu<-100
+sigma<-30
+
+# calculate the daily demand mean and standard deviation
+mud<-mu / 7
+sigmad<-sigma * sqrt(1/7)
+
+# generate the lead time demands (random average daily demand * random lead time)
+ltd<-rnorm(n, mud, sigmad) * lt
+
+# let's look at the lead time demands
+hist(ltd)
+```
+
+Note that the resulting lead time demands do not appear to be normally distributed, even though the demand distribution is normal. This is the impact of the variable lead times on the lead time demand. Clearly, if we were to assume that lead time demand is normally distributed (as do most commercial supply chain management software packages), we would be making a serious mistake every time we calculated a safety stock value!
+
+The lead time demand (LTD) values we calculated now represent a lead time demand distribution. We can use them to calculate anything we need for our inventory policy.
+
+## Calculating Safety Stock from our LTD distribution
+
+Our safety stock calculation now involves calculating the difference between two terms. The second term, $\mu_{ltd}$ is easily calculated from our lead time demand distribution. Because *every trial in a simulation occurs with equal probability* we can calculate the mean lead time demand using a simple arithmetic mean:
+
+```{r}
+muLtd<-mean(ltd)
+muLtd
+```
+
+Now we need to calculate the inverse cumulative probability of lead time demand for a specified target service level, say 95%. To do so, we *could*:
+
++  Order the data from smallest to largest
++  Find the value such that 95% of all lead time demands are $\leq$ the value
+
+```{r}
+sort(ltd)[9500]
+```
+
+However, R provides an even easier method for finding the inverse cumulative probability: the quantile function. We can use the quantile function and specify our desired percentile (i.e. our target service level of 95%):
+
+```{r}
+ltd95<-quantile(ltd, .95)
+```
+
+Now we can calculate our safety stock:
+
+```{r}
+ss<-ltd95 - muLtd
+ss
+```
+
+That's it! What would have been extremely messy otherwise (involving double integrals, etc.), is easily and quickly accomplished using simulation!
+
+## A More Challenging Example
+
+Recall the single server M/M/1 queue simulation from an earlier web tutorial. During the simulation, we tracked the number of customers in the system at every state. At the end of the simulation, we calculated the average number of customers waiting, the average number of customers in the system (i.e. waiting and in service), etc. Here's that M/M/1 queue simulation:
+
+```{r}
+# sample queue simulation 
+set.seed(100)
+
+# nevents = number of events (either arrivals or service completions we will simulate)
+nevents<-10000
+
+# simtime is the running simulation clock
+simtime<-0
+
+# allocate vectors for recording events
+n<-numeric(nevents)
+event<-list()
+customer<-list()
+custcurr<-0
+custlast<-0
+lastcomplete<-0
+largeNumber<-10^15
+
+# current number of customers in system
+ncurr<-0
+
+# server_available of TRUE indicates that the server is ready for a new customer
+server_available<-TRUE
+
+# the first event HAS to be an arrival, so we generate the random arrival time, but
+# set the next service completion time to VERY large number. This guarantees that
+# the first event is an arrival
+
+nextArrival<-rexp(1,20/60) 
+nextServiceCompletion<-largeNumber
+
+for (i in 1:nevents)
+{
+  # generate exponential inter-arrival (rate 20 cust/hr) and service times (rate 25 cust/hr)
+  # dividing the rate by 60 to deal with times in minutes rather than f4ractions of hours
+  
+  #iatime<-rexp(1, 20/60)
+  #svctime<-rexp(1, 25/60)
+  
+  n[i]<-ncurr
+   
+  # determine next event type
+  if ( nextArrival < nextServiceCompletion )
+  {
+    # if time to next arrival is shorter than time to next service completion
+    # then event is an arrival
+
+    simtime<-nextArrival
+    event_type<-"Arrival"
+    
+    # now we need to generate the time of the "next" arrival
+    nextArrival<-nextArrival + rexp(1,20/60)
+    
+  } else
+  {
+    # If the event isn't an arrival, then it's a service completion
+    simtime<-nextServiceCompletion
+    event_type = "Service Completion"
+  }
+  
+  if ( event_type == "Arrival" )
+  {
+    # Process arrival
+    ncurr<-ncurr+1
+
+    # create the customer
+    custlast<-custlast+1
+    customer[[custlast]]<-list(custno=custlast)
+    customer[[custlast]]$arrival_time<-simtime
+    
+  } else
+  {
+    # service completed so we must update # cust in system
+    ncurr<-ncurr-1
+    
+    # need to update customer's record with completion time
+    customer[[custcurr]]$complete_service_time<-simtime
+    lastcomplete<-custcurr
+    
+    # now, mark the server as available
+    server_available<-TRUE
+    
+    # FINALLY, since there's no customer in service, at least at this
+    # instant, set the nextServiceCompletion to a very large number
+    nextServiceCompletion<-largeNumber
+    
+    
+  }
+  
+  # now, need to see if a customer needs to enter service
+  
+  if ( server_available & ( ncurr > 0 ) )
+  {
+    # there's a customer waiting and the server is available
+    # update customer's enter service time
+    custcurr<-custcurr+1
+    customer[[custcurr]]$enter_service_time<-simtime
+    
+    # customer is entering service, determine completion time
+    nextServiceCompletion<-simtime + rexp(1, 25/60)
+    server_available<-FALSE
+  }
+  
+  
+  # create/save the event - udate the event log and the state log
+  event[[i]]<-list(type=event_type,
+                   time=simtime,
+                   n=ncurr)
+
+}
+
+customer<-customer[1:lastcomplete]
+
+buildRow<-function( x )
+{
+  if ( !is.null(x$arrival_time) & !is.null(x$enter_service_time) & !is.null(x$complete_service_time) )
+  {
+    custdat<-c(x$arrival_time, x$enter_service_time, x$complete_service_time)
+    names(custdat)<-c("Arrival.Time","Enter.Service","Complete.Service")
+    return((custdat))
+  }
+}
+
+# create dataframe with customer details
+# first, we convert the list to a dataframe
+
+cols<-length(customer[[1]])
+custdf<-data.frame(matrix(unlist(customer), ncol=cols,byrow=TRUE))
+colnames(custdf)<-c("Cust.No","Arrival.Time","Enter.Service","Complete.Service")
+
+# now calculate waiting time and time in system for each customer
+Wait.Time<-custdf$Enter.Service - custdf$Arrival.Time
+System.Time<-custdf$Complete.Service - custdf$Arrival.Time
+
+# add the times just calculated to the data frame
+custdf<-cbind(custdf, Wait.Time, System.Time)
+print(head(custdf))
+
+# calculate and print the average customers waiting and in system
+print(paste("Average Wait Time: ", mean(custdf$Wait.Time),sep=""))
+print(paste("Average System Time: ", mean(custdf$System.Time, sep="")))
+
+# plot the number of customers in the system over time
+barplot(n, main="Customers in System", xlab="Time (minutes)", ylab="Number of Customers")
+
+
+# now calculate average customers in system - time weighted average
+time<-sapply( event, function(x){x$time})
+state_time<-time-c(0,time[1:(length(time)-1)])
+
+L<-( n %*% state_time ) / sum(state_time)
+print(paste("Average Customers In System: ", L, sep=""))
+
+nbuffer<-(n-1)
+nbuffer[nbuffer < 0]<-0
+
+Lq<-( nbuffer %*% state_time ) / sum( state_time )
+print(paste("Average Customers Waiting: ", Lq, sep=""))
+
+```
+
+
+Now let's say that we want to be able to calculate the probability that more than 5 customers are waiting. Logically, using our straightforward definition of probability, this would be equal to:
+
+$$\frac{simulated\> time\> during\> which\> 6\> or\> more\> customers\> were\> waiting}{total\> time\> simulated}$$
+R makes this easy:
+
++  Use the aggregate function to sum time by number of customers waiting
++  Use straightforward R commands/arithmetic to calculate the desired probability.
+
+In the call to the aggregate function, we will specify that we want to sume the values in the state_time vector (which contains the duration associated with each state, i.e. the number of customers in the system, during the simulation) *by*, or within, the number of customers waiting (nbuffer). The aggregate function orders the state_time values by the nbuffer values with which they are associated (there is an nbuffer value for every state_time value), and then performs the desginated function (sum in this case) on every group of state_times.
+
+```{r}
+aggTimeByN<-aggregate(state_time, by=list(nbuffer), sum)
+colnames(aggTimeByN)<-c("n.buffer","state_time")
+aggTimeByN
+
+```
+
+The aggTimeByN table now represents our probability distribution (an empirical distribution)! Let's say we want to know the probability of exactly 5 customers waiting:
+
+$$Pr\{n\>waiting=5\} = \frac{t_5}{\sum_{i=0}^{n}t_i}$$
+
+where the $t_i$ values are the state times in the aggTimeByN vector corresponding to $i$ customers waiting.
+
+```{r}
+aggTimeByN$state_time[aggTimeByN$n.buffer==5] / sum(aggTimeByN$state_time)
+```
+
+Or, if we want to calculate the probability of 5 or fewer customers waiting:
+
+$$Pr\{n\>waiting\leq5\} = \frac{\sum_{i\leq5}{t_i}}{\sum_{i=0}^{n}t_i}$$
+
+```{r}
+sum(aggTimeByN$state_time[aggTimeByN$n.buffer<=5]) / sum(aggTimeByN$state_time)
+```
+
+Or, the probability that more than 6 are waiting:
+
+$$Pr\{n\>waiting>6\}=1-Pr\{n\>waiting\leq5\} =1- \frac{\sum_{i\leq5}{t_i}}{\sum_{i=0}^{n}t_i}$$
+
+```{r}
+1-sum(aggTimeByN$state_time[aggTimeByN$n.buffer<=5]) / sum(aggTimeByN$state_time)
+```
+
+Calculating inverse cumulative probabilities can be done in a similar fashion. In this case, because we are using using a tabular form of the distribution (rather than the simulated trials directly), we treat aggTimeByN as an empirical distribution. Consequently, we can use the empirical distribution functions provided in *prob.r* to calculate our probabilities (including simplifying the calculatinons above).
+
+For example, 
+
+
+For example, if we want to calculate $F^{-1}(0.7)$, i.e. we want to find the number of customers waiting such that $Pr\{n\>waiting\} >= 0.7$), we use the following (assuming we've already *sourced* "prob.r"; the use of the functions in prob.r to calculate empirical probabilities is discussed in a separate web tutorial):
+
+```{r, echo=FALSE, hide=TRUE}
+# empirical distribution functions
+# 
+
+dempir<-function(x, xdist, pdist)
+{
+   # returns Pr{X == x}
+
+   results<-0
+   
+   for(i in 1:length(x))
+   {
+      idx<-xdist==x[i]
+      if (any(idx))
+      {
+         results[i]<-pdist[xdist==x[i]]
+      }else
+      {
+         results[i]<-0
+      }
+
+   }
+   
+   return(results)
+}
+
+pempir<-function(x, xdist, pdist)
+{
+   # returns Pr{X <= x}
+   # xdist and pdist must be ordered pairs (in ascending sequence of xdist values)
+   
+   results<-0
+   
+   for(i in 1:length(x))
+   {
+      idx<-(xdist <= x[i])
+      if (any(idx))
+      {
+         last<-max(which(idx))
+         results[i]<-sum(pdist[1:last])
+      }else
+      {
+         results[i]<-0
+      }
+   }
+   
+   return(results)
+   
+}
+
+qempir<-function(p, xdist, pdist)
+{
+   # returns x:Pr{X <= x} = p
+   # returns NA if there are no outcomes for which Pr{X<=x} >= p
+   # xdist and pdist must be ordered pairs (in ascending sequence of xdist values)
+   
+   
+   results<-numeric(length(p))
+   
+   for(i in 1:length(results))
+   {
+      cprob<-cumsum(pdist)
+      idx<-(cprob >= p[i])
+      if (any(idx))
+      {
+         results[i]<-xdist[min(which(idx))]
+      }else
+      {
+         results[i]<-NA
+      }
+   }
+   
+   return (results)
+}
+
+rempir<-function(n, xdist, pdist)
+{
+   # generates a vector of n random variates drawn from the specified distribution
+   # xdist and pdist must be ordered pairs (in ascending sequence of xdist values)
+
+   
+   U<-runif(n,0,1)
+   
+   pwork<-c(0, pdist[-length(pdist)])
+   
+   return(qempir(U, xdist, pwork))
+
+}
+```
+
+
+```{r}
+
+prob<-aggTimeByN$state_time / sum(aggTimeByN$state_time)
+cumsum(prob)
+qempir(0.7, aggTimeByN$n.buffer, prob)
+
+```
+
+## Summary
+
+Constructing probability distributions from simulation results is straightforward and requires very little work (beyond the work to construct the simulation itself). In many cases, this is the only practical technique for constructing a probability distribution, especially when multiple random variables are involved (as in the case of the lead time demand distribution) or when the probabilities are the result of complex system behavior (as in the probabilities associated with our M/M/1 queue).

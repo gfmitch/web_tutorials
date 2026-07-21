@@ -1,0 +1,441 @@
+---
+title: "Joint Distributions"
+author: "Gary Mitchell"
+date: "October 30, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+LN 10 - When Two Outcomes Occur Together discusses joint distributions. A joint distribution occurs when we have values of two random variables that occur together. The lecture notes do a nice job of providing a joint probability overview. This tutorial focuses on showing you how to apply the concepts and calculations relating to joint distributions in R.
+
+Let's say that we want to determine the probability that the Mariners win 80 or fewer games *and* score more than 800 runs in a season, i.e. $Pr\{wins \leq 80 \cap total \; runs \geq 800\}$. This is an example of a joint probability:
+
+> The probability of two random events occurring together.
+
+*If* the two random variables (i.e. # of wins in season, # of runs in season) are independent, then we could calculate
+
+$$Pr\{wins \leq 80 \cap total \; runs \geq 800\}=Pr\{wins \leq 80\} \cdot Pr\{runs \geq 800\}$$
+
+However, if the variables are not independent, or if we do not know whether they are independent, then we would need to use a joint distribution.
+
+## Joint Distributions
+
+So what is a joint distribution? In its simplest form, it is a set of outcomes for *two* random variables and the corresponding probabilities that the outcomes occur together. For example, the table below represents the joint probability distribution of Mariner runs and wins in a season. The frequency (freq) and probability (p) column values aren't all that interesting in this case, because each combination of runs and wins occurs only once. Well see a more interesting case in a moment.
+
+```{r, echo=FALSE, results="markup"}
+
+# load the teams dataset
+teams<-read.csv("teams.csv")
+
+# inlcude only complete cases (i.e. drop observations with missing data)
+subcc<-teams[complete.cases(teams),]
+
+# create mariners subset for easy handling
+mariners<-subcc[subcc$teamID=="SEA",]
+n<-dim(mariners)[1]
+
+freq<-sum((mariners$R <= 400) & (mariners$W <= 80))
+
+# We only need Runs (R) and Wins (W) for THIS analysis, so we'll keep only those columns
+mdat<-mariners[,c('R','W')]
+
+# Get a feel for the data with the str function
+#str(mdat)
+
+# count frequency by Runs and Wins
+mdist<-aggregate(mdat, by=list(RUNS=mdat$R, WINS=mdat$W), length)
+colnames(mdist)<-c("R","W","freq","W.freq")
+
+# calculate probabilities from the frequencies
+mdist$p<-mdist$freq/sum(mdist$freq)
+
+# The Win frequencies will be exactly equal to the Run frequencies.
+# We don't need both, so we'll just drop the Win frequencies
+mdist<-mdist[, c("R","W","freq","p")]
+
+# Now, calculate summary metrics
+
+mmuR<-mdist$R %*% mdist$p 
+mmuW<-mdist$W %*% mdist$p
+
+msigma2R<-mdist$p %*% (mdist$R - as.vector(mmuR))^2
+msigma2W<-mdist$p %*% (mdist$W - as.vector(mmuW))^2
+
+msigmaR<-sqrt(msigma2R)
+msigmaW<-sqrt(msigma2W)
+
+#plot(mdist$R, mdist$W, xlab='Runs', ylab='Wins')
+
+mcovRW<-mdist$p %*% ((mdist$R - as.vector(mmuR))*(mdist$W - as.vector(mmuW)))
+mcorRW<-mcovRW / (msigmaR * msigmaW)
+
+# sum(mdist$p[(mdist$R >= 800) & (mdist$W <= 80)])
+# sum(mdist$p[mdist$R >= 800])
+# sum(mdist$p[mdist$W <= 80])
+# sum(mdist$p[mdist$R >= 800]) * sum(mdist$p[mdist$W <= 80])
+
+kableExtra::kable_styling(knitr::kable(mdist), full_width = FALSE)
+```
+
+## Using the Joint Distribution
+
+Now that we have the joint distribution, we can find any joint probability we want. For example, to calculate $Pr\{wins \leq 80 \cap total \; runs \geq 800\}$, we would do the following:
+
+$$Pr\{wins \leq 80 \cap total \; runs \geq 800\} = \sum_{w \leq 80} \sum_{r \geq 800} Pr\{W \leq w \; and \;R \geq r\} $$
+
+Calculating this in R is straightforward once we have our distribution table (saved as mdist in our code). Because we have constructed the joint distribution table such that each row is one *joint* outcome with its corresponding probability, we need only sum the probabilities for the events that satisfy our criteria (i.e. $W \leq 80$ and $R \geq 800$):
+
+$$Pr\{wins \leq 80 \cap total \; runs \geq 800\} = \sum_{i \in \{W \leq 80, R \geq 800\}} p_i $$
+
+This is easily accomplished with the following R code which shows that the Mariner's have a less than 5% chance of scoring more than 800 runs while racking up 80 or fewer wins.
+
+```{r}
+sum(mdist$p[((mdist$W <=80) & (mdist$R>=800))])
+```
+
+
+We can also use the joint distribution to calculate a marginal probability (i.e. the probability of runs scored or the probability of wins). For example, $Pr\{wins \leq 80\}$ is calculated simply using:
+
+```{r}
+sum(mdist$p[mdist$W <= 80])
+```
+
+and $Pr\{runs \geq 800\}$ is calculated with:
+
+```{r}
+sum(mdist$p[mdist$R >= 800])
+```
+
+
+## Constructing the Joint Distribution
+
+Let's look at the process of constructing the distribution. We start with a data set available for free download at http://www.seanlahman.com/baseball-archive/statistics/. Specifically, the data we want is in the *teams* table. In the CSV version we are using, the data is found in the file teams.csv. We start by reading teams.csv into a dataframe.
+
+```{r}
+teams<-read.csv("teams.csv")
+
+```
+
+Having looked at the data previously, I know that some of the observations have missing data. To ensure that we have only observations with no missing data, we extract the observations where no columns have missing data (which R flags with an NA value). R's complete complete.cases function is useful for this. complete.cases looks at all columns in a row and returns TRUE if every column has data, FALSE if *any* column has an NA.
+
+```{r}
+subcc<-teams[complete.cases(teams),]
+
+```
+
+Just for grins, let's have a look at that data. We can use the str and head functions to get a nice overview of the data. str analyzes the structure of the data object and gives us a complete rundown including the number of observations and a list of columns, data types, and sample data. The head function prints the first *n* rows of the data in a nice table format (similar to an Excel worksheet). By default, head prints the first 6 rows, but you can designate any number of rows to print with an optional second parameter.
+
+```{r}
+str(subcc)
+head(subcc)
+```
+
+Now we have complete cases for a *lot* of teams. The next step thereofre is to reduce the data to include only observations for the Seattle Mariners. Noting from the output of str and head that the datasethas a teamID column (and knowing that the Mariner's abbreviation is SEA), we can easily create a Mariner's data subset:
+
+```{r}
+mariners<-subcc[subcc$teamID=="SEA",]
+```
+
+Since we *may* have removed some observations due to missing data, let's check the years of data we have in our Mariners subset. If we have consecutive years, then we didn't lose any data to NAs:
+
+```{r}
+mariners$yearID
+```
+
+A quick scan shows all the data is there. However, there's an easy R way to check this. We'll substract the *lagged* years (lag 1) from the years. If any values are missing, then the difference will be more than 1.
+
+```{r}
+require(quantmod)
+mariners$yearID - Lag(mariners$yearID,1)
+```
+All 1's, except the first one which cannot be calculated, so it is confirmed. We have complete data for the Mariners.
+
+The str and head functions showed us that we had a large number of columns. Since we only need the R and W columns (for runs and wins) for our current purposes, we can simplify our work by creating a subset that contains only those two columns:
+
+```{r}
+mdat<-mariners[,c('R','W')]
+
+# Get a feel for the data with the str function
+str(mdat)
+
+
+```
+
+That looks better! Now we're ready to go. The first step in constructing the joint distribution is to count the occurrence frequencies of all possible outcomes (i.e. the pairs of runs and wins). The aggregate method is *really* useful here and will do most of the work for us. We'll name the key columns RUNS and WINS. aggregate will name the results columns R and W (which will include the frequencies), so we initially need to name our *key* columns something else (we don't want two columns with the same names). Then, we'll rename the columns to more meaningful names:
+
+```{r}
+mdist<-aggregate(mdat, by=list(RUNS=mdat$R, WINS=mdat$W), length)
+colnames(mdist)<-c("R","W","freq","W.freq")
+
+```
+
+aggregate will extract the data for each unique pair of R and W, the *by* variables. Normally, we would use the sum function, or another summary statistic function, to calculate summary metrics for the subset. However, in this case, we only want to *count* the number of observations. In this way, we will calculate the frequency of occurrence for *every* pair of R and W. The values in the *freq* and *W.freq* columns will end up being identical since they are counts of the same observations, so we'll drop the W.freq column.
+
+```{r}
+mdist<-mdist[, c("R","W","freq")]
+```
+
+Next, we will calculate the probabilities which, since they are calculated for *R/W pairs*, will be joint probabilities. As we learned in the calculating probabilities from frequencies tutorial, we calculate a probability as follows:
+
+$$p_i = \frac{freq_i}{\sum_{i=1}^{n}{freq_i}}$$
+
+This is easily accomplished with a single line of R code:
+
+```{r}
+mdist$p<-mdist$freq/sum(mdist$freq)
+
+```
+
+The net result is the joint distribution (Mariner Runs and Wins) we say previously:
+
+```{r, echo=FALSE}
+kableExtra::kable_styling(knitr::kable(mdist), full_width = FALSE)
+```
+
+Cool, right?!
+
+## Calculating the correlation of Runs and Wins
+
+LN 10 - RVs that Vary Together showed how to calculate the correlation of two random variables. This correlation is different than the correlation you may be used to calculating using Excel's or R's built-in functions. These functions calculate *sample* correlations and assume that every outcome occurs with equal probability. It turns out this is *true* for the Mariners joint distribution, but it will not be true for every joint distribution. Therefore, it is best to calculate the correlation correctly using probability theory.
+
+We start by calculating the covariance:
+
+$$COV(X,Y) = \sum_{i=1}^{n}{Pr\{X=x \; \cap \; Y=Y\}} \cdot (x_i - \mu_X)(y_i - \mu_Y) = p_i \cdot (x_i - \mu_X)(y_i - \mu_Y)$$
+where
+
+$$\mu_X = E[X] = \sum_{i=1}^{n}Pr\{X=x_i\} \cdot x_i = \sum_{i=1}^{n}p_i x_i$$
+$$\mu_Y = E[Y] = \sum_{i=1}^{n}Pr\{Y=y_i\} \cdot y_i = \sum_{i=1}^{n}p_i y_i$$
+Then we calculate the correlation:
+
+$$COR(X,Y) = \frac{COV(X,Y)}{\sigma_X \cdot \sigma_Y}$$
+where
+
+$$\sigma_X = \sqrt{\sum_{i=1}^{n}p_i \cdot(x_i - \mu_X)^2}$$
+
+$$\sigma_Y = \sqrt{\sum_{i=1}^{n}p_i \cdot(y_i - \mu_Y)^2}$$
+All of this is much easier to calculate in R than you'd expect:
+
+```{r}
+# calculate Runs and Wins means
+muR<-mdist$R %*% mdist$p 
+muW<-mdist$W %*% mdist$p
+
+# calculate Runs and Wins standard Deviations
+sigmaR<-sqrt(mdist$p %*% (mdist$R - as.vector(muR))^2)
+sigmaW<-sqrt(mdist$p %*% (mdist$W - as.vector(muW))^2)
+
+# covariance of Runs and Wins
+covRW<-mdist$p %*% ((mdist$R - as.vector(muR))*(mdist$W - as.vector(muW)))
+
+# correlation of Runs and Wins
+corRW<-covRW / (sigmaR * sigmaW)
+
+corRW
+```
+
+The correlation of Mariner Runs and Wins is nearly 0.76 percent. This isn't really a particularly surprising outcome. Intuition would suggest that runs and wins are correlated.
+
+## Independence
+
+Recall from the Laws of probability that two events $A$ and $B$ are independent *iff*:
+
+$$Pr\{A \; \cap \; B\} = Pr\{A\}Pr\{B\}$$
+Let's see how to do this with a joint distribution we construct. *This* time, we'll use all of the data for the American and National Leagues instead of just the Seattle Mariners. The steps in the code below are almost identical to the work we did for the Mariners. Here, the steps are included all at once so that you can gain a better sense of the big picture for the process. Note that *subcc* is the data subset with missing observations removed.
+
+```{r}
+# restrict to American League (AL) and National League (NL) teams (i.e. modern baseball)
+sub<-subcc[((subcc$lgID=="NL") | (subcc$lgID=="AL")),]
+
+# We only need Runs (R) and Wins (W) for THIS analysis, so we'll keep only those columns
+dat<-sub[,c('R','W'),]
+
+# Get a feel for the data with the str function
+str(dat)
+
+# count frequency by Runs and Wins
+dist<-aggregate(dat, by=list(RUNS=dat$R, WINS=dat$W), length)
+colnames(dist)<-c("R","W","freq","W.freq")
+
+# The Win frequencies will be exactly equal to the Run frequencies.
+# We don't need both, so we'll just drop the Win frequencies
+dist<-dist[, c("R","W","freq")]
+
+# calculate probabilities from the frequencies
+dist$p<-dist$freq/sum(dist$freq)
+
+# Now, calculate summary metrics
+
+# calculate Runs and Wins means
+muR<-dist$R %*% dist$p 
+muW<-dist$W %*% dist$p
+
+# calculate Runs and Wins standard Deviations
+sigmaR<-sqrt(dist$p %*% (dist$R - as.vector(muR))^2)
+sigmaW<-sqrt(dist$p %*% (dist$W - as.vector(muW))^2)
+
+# covariance of Runs and Wins
+covRW<-dist$p %*% ((dist$R - as.vector(muR))*(dist$W - as.vector(muW)))
+
+# correlation of Runs and Wins
+corRW<-covRW / (sigmaR * sigmaW)
+corRW
+
+
+```
+
+It is interesting to note that the overall correlation of runs and wins is much lower than the Mariner's correlation of runs and wins. Hmmmm...
+
+Here we plot Wins versus Runs and we can see that there does appear to be a strong, but not perfect, correlation of Runs and Wins. 
+
+```{r}
+plot(dist$R, dist$W, xlab='Runs', ylab='Wins')
+
+
+```
+
+## Interpretting the Correlation
+
+The correlation has a very precise interpretation:
+
+> A positive correlation indicates the extent to which one RV is above its mean while the second RV is also above its mean. A negative correlation indicates the extent to which one RV is below its mean while the second RV is above its mean.
+
+There really is no additional meaning we can attribute to a correlation. We know that the correlation, $r$
+
+-  can assume values $-1 \leq r \leq 1$
+-  values of $|r|$ near 0 indicate little or no correlation
+-  values of $|r|$ near 1 indicate a strong correlation.
+
+### A Common Misconception to Avoid
+
+I frequently hear people describe the correlation incorrectly, e.g. "a positive correlation indicates that when one variable is increasing, the other variable is increasing". *THIS INTEPRETATION IS INCORRECT*. Unfortunately, I hear even faculty teaching courses state this intepretation (probably because they were taught incorrectly). A look at the formula for calculating the correlation should prove this to you (but I'll do more in just a moment). Note there is *nothing* in the correlation formula that deals with *direction* or *movement*, only deviations from the mean. Unless we calculate directional differences in each variable's data and evaluate the relationship between those, we can conclude *nothing* about the nature of the change relationship.
+
+The following graphs show two random variables.
+
+```{r, echo=FALSE}
+x<-c(seq(155,200,5), seq(100,145,5))
+y<-c(seq(10,14.5,.5), seq(15.5,20,.5))
+n<-length(x)
+
+xmu<-mean(x)
+ymu<-mean(y)
+
+corxy<-cor(x,y)
+
+xpch<-c("-",sapply(2:n, function(i){ifelse(x[i] > x[i-1], "U", "D")}))
+ypch<-c("-",sapply(2:n, function(i){ifelse(y[i] > y[i-1], "U", "D")}))
+
+par(mfrow=c(1,2))
+plot(x, pch=xpch,type="o")
+#lines(1:20,rep(xmu,n))
+plot(y, pch=ypch,type="o")
+#lines(1:20,rep(ymu, n))
+par(mfrow=c(1,1))
+
+```
+
+The graphs shows the values of $X$ (left) and $Y$ (right) and the directional change (U or D) is the plot character for the point. For example, a U indicates that the current point moved *up* from the previous point (and a D indicates the point moved *down* from the previous point). Every value of $Y$ represents upward movement from the previous value and every value of $X$ but one similarly shows upward movement relative to the previous point.
+
+*If* the correlation somehow reflects when two random variables are *moving in the same direction* (or the opposite direction for a negative correlation), then these two graphs would clearly show two positively correlated random variables.
+
+The calculated correlation for these two random variables is `r corxy`. Not *only* is this not a positive correlation, but it's a moderately strong *negative* correlation. Adding the means of $X$ and $Y$ to the graphs will shed some light on what is happening. 
+
+```{r, echo=FALSE}
+par(mfrow=c(1,2))
+plot(x, pch=xpch,type="o")
+lines(1:20,rep(xmu,n))
+plot(y, pch=ypch,type="o")
+lines(1:20,rep(ymu, n))
+par(mfrow=c(1,1))
+
+
+```
+
+Now we can clearly see that in *almost every case* in which $X$ is above its mean, $Y$ is below its own mean (and vice versa). In other words, our *definition* for correlation expressed *exactly* what we see here. Correlation is strictly related to how the random variables behave relative to their means; the *changing direction* interpretation is clearly wrong.
+
+The following example is even more interesting.
+
+```{r}
+x<-c(seq(200,155,-5), seq(100,145,5))
+#y<-c(seq(10,14.5,.5), seq(15.5,20,.5))
+y<-c(seq(15.5,20,.5), seq(14.5,10,-.5))
+n<-length(x)
+xmu<-mean(x)
+ymu<-mean(y)
+
+cor(x,y)
+
+xpch<-c("-",sapply(2:n, function(i){ifelse(x[i] > x[i-1], "U", "D")}))
+ypch<-c("-",sapply(2:n, function(i){ifelse(y[i] > y[i-1], "U", "D")}))
+
+par(mfrow=c(1,2))
+plot(x, pch=xpch,type="o")
+lines(1:20,rep(xmu,n))
+plot(y, pch=ypch,type="o")
+lines(1:20,rep(ymu, n))
+par(mfrow=c(1,1))
+
+```
+
+Based on these new graphs and the *incorrect* interpretation of the correlation, we would expect the two random variables to be *nearly perfectly negatively correlated*. Whenever $X$ is decreasing, $Y$ is increasing, and whenever $X$ is increasing, $Y$ is decreasing. However, the calculated correlation is actually `r cor(x,y)`. The two RVs are *positively* correlated!
+
+The moral of this story... evaluate the correlation exactly according to the definition and forget anything you may have previously heard about its meaning.
+
+## Wrapping Up
+
+To wrap up our discussion of joint distributions and correlation, here is the Beer and Disposable Diapers example from LN 10 - RVs that Vary Together, but implemented in R.
+
+```{r}
+# beer and diapers example
+
+# read data (include only columns 1 through 4)
+
+dat<-read.csv("Grocery item sales example.csv")[,1:4]
+
+# assign "nice" column names
+colnames(dat)<-c("obs", "p", "Diapers", "Beer")
+
+# add the probabilities
+dat$p<-rep(1/31, length(dat$p))
+
+# calculate the RV means
+mubeer<-dat$p %*% dat$Beer
+mudiapers<-dat$p %*% dat$Diapers
+
+# calculate the RV standard deviations
+sbeer<-sqrt(dat$p %*% (dat$Beer - as.vector(mubeer))^2)
+sdiapers<-sqrt(dat$p %*% (dat$Diapers - as.vector(mudiapers))^2)
+
+# calculate covariance and correlation
+covxy<-dat$p %*% ((dat$Beer-as.vector(mubeer))*
+                    (dat$Diapers-as.vector(mudiapers)))
+
+r<-covxy/(sbeer * sdiapers)
+r
+
+
+
+```
+
+The graphs below plot the Beer and Disposal Diaper sales along with the means for each RV. See if you can explain the correlation of `r r` using the graphs.
+
+```{r}
+minval<-min(dat$Diapers, dat$Beer)
+maxval<-max(dat$Diapers, dat$Beer)
+
+plot(dat$Diapers, type="o", col="darkblue", ylim=c(minval, maxval),
+     ylab="Cases", xlab="Period")
+lines(1:length(dat$Diapers), rep(mudiapers, length(dat$Diapers)), col="darkblue")
+lines(1:length(dat$Beer), dat$Beer, col="purple", type="o")
+lines(1:length(dat$Beer), rep(mubeer, length(dat$Beer)), col="purple")
+
+
+```
+
+
+
+
+
+
+

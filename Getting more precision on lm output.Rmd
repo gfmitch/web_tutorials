@@ -1,0 +1,103 @@
+---
+title: "Getting more precision on lm output"
+author: "Gary Mitchell"
+date: "10/2/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Getting the precision you want for *lm* output can be a little challenging. By default, R's *print* function does some rounding to *prettify* the regression results. For example:
+
+```{r, eval=FALSE}
+
+model<-lm(y ~ x)
+print(summary(model))
+
+```
+
+
+```{r, echo=FALSE}
+x<-c(8220.75, 811666.68, 989900.02, 969545.92, 858625.88, 388383.03, 513907.41, 68969.07, 603952.25, 261565.16, 965987.32, 92345.38, 829970.55, 23703.27, 183558.47, 977631.46, 678124.05, 824612.55, 821596.36, 363373.85, 868426.01, 347138.15, 975295.92)
+
+y<-c(-23987.21, -2135049.58, -2865111.45, -2592976.52, -2600766.32, -792762.25, -1084803.46, -309920.48, -1631047.92, -1159084.36, -2152007.72, -632415.63, -2435260.63, 55723.84, -722201.24, -2184818.13, -1896090.6, -2207114.11, -2235699.64, -350937.05, -2721668.16, -1284350.94, -2708660.65)
+
+model<-lm(y ~ x)
+
+print(summary(model))
+
+
+```
+
+However, sometimes we may want to access the regression output with more precision. We can do that by *saving* the output of the summary function (which calculates the residual standard error, F-statistic, etc.):
+
+```{r}
+details<-summary(model)
+```
+
+The resulting *list* will contain quite a lot of information:
+
+```{r, echo=FALSE}
+print(str(details))
+```
+
+For example, once we have saved summary's output, we can access the addjusted R-squared:
+
+```{r}
+print(details$adj.r.squared)
+```
+
+or the F-statistic:
+
+```{r}
+print(details$fstatistic[1])
+```
+
+or the residual standard error:
+
+```{r}
+print(details$sigma)
+```
+
+The regression coefficients, p-values, etc. are also available:
+
+```{r}
+print(details$coefficients)
+```
+
+Now, if you still don't have the precision you need, you can increase the number of digits that R will print:
+
+```{r}
+options(digits=12)
+```
+
+Now, we'll see even more detail:
+
+```{r}
+print(details$adj.r.squared)
+print(details$fstatistic[1])
+print(details$sigma)
+print(details$coefficients)
+```
+
+Generally, if you set the default precision using options(digits=12), the output from running summary(model) will yield the F-statistic p-value with sufficient precision. However, if you wish to directly obtain the p-value with greater precision, first define a new function, *lmp*, by running the following code:
+
+```{r}
+lmp <- function (modelobject) {
+    if (class(modelobject) != "lm") stop("Not an object of class 'lm' ")
+    f <- summary(modelobject)$fstatistic
+    p <- pf(f[1],f[2],f[3],lower.tail=F)
+    attributes(p) <- NULL
+    return(p)
+}
+
+```
+
+Then use the *lmp* function, passing your model object (i.e. passing the value returned by the lm function):
+
+```{r}
+lmp(model)
+```
+

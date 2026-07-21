@@ -1,0 +1,435 @@
+---
+title: "Common Discrete Distributions"
+author: "Gary Mitchell"
+date: "November 3, 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Continuous Distributions
+
+Previously we learned to calculate probabilities for discrete distributions. While discrete distributions can be used to describe many of the random variables
+we encounter in business, they are not appropriate for describing many
+continuous random variables such as time, weight, distance, height, etc.
+
+With discrete distributions, we talked about probability mass functions, $m(x) = Pr\{X = x\}$, cumulative probability functions, $F(x) = Pr\{X \leq x\}$, complementary cumulative probabilities, $\bar{F}(x) = Pr\{X > x\} = 1 - F(x)$, and the inverse cumulative probability, $F^{-1}(\alpha) = x : Pr\{X \leq x\} = \alpha$, and we learned to calculate these for empirical distributions as well as for the binomial and Poisson distributions. 
+
+For *continuous* distributions, we still utilize most of these concepts. The single exception is that we do not have probability mass functions for continuous distributions (the point probability for continuous distributions is *always* zero). Instead, we use the *probability density function*, $f(x)$ for a continuous distribution to calculate the cumulative probability:
+
+$$F(x) = \int_{-\infty}^{\infty}f(x)dx$$
+
+Some continuous distributions have a finite lower bound, for example, 0. In these cases, the cumulative probability is calculated as follows:
+
+$$F(x) = \int_{a}^{\infty}f(x)dx$$
+where $a$ is the lower bound of the distribution.
+
+### No integrals required...
+
+In this class, you will not have to evaluate any integrals to calculate probabilities. Some continuous distributions have easily calculated cumulative probabilities (e.g. exponential distribution) and R provides functions for many continupus distributions. However, it *is* important to understand how continuous probabilties are calculated, as the use of an integral explains why $Pr\{X = x\} = 0$ for *every* continuous distribution.
+
+There are a number of commonly used continuous distributions in business:
+
+- beta
+- exponential
+- normal (Gaussian)
+- shifted exponential
+- triangle
+- uniform.
+
+In this class, we'll work with the exponential, normal, shifted exponential, and (continuous) uniform distributions. In Project Management, you'll frequently use the beta and triangle distributions.
+
+While the normal distribution does *not* describe *everything* in the real world, it does describe a great many things, including the sums of independent identically distribution (IID) random variables. This is the *Central Limit Theorem* that you should be familiar with from your statistics course.
+
+The exponential distribution is frequently used to describe the time between two events. For this reason, it is used to describe the time between arrivals and service completions for many standard queuing models. You'll study queuing theory in BUS 540 Process Analysis, Design, and Quality Management (or in BUS 361 Foundations of Operations Management for undergraduate students). The *shifted* exponential is a straightforward variation of the exponential distribution.
+
+The continuous uniform distribution is often describe as the distribution of maximum entropy. Because every outcome is equally likely, some argue that the continuous uniform is appropriat when nothing is known about the actual probability distribution.
+
+Another potentially useful distribution is the discrete uniform distribution. This tutorial will discuss and illustrate all three of these distributions.
+
+## Normal Distribution
+
+Probably the most familiar distribution, the normal (or Gaussian) distribution is an *unbounded, real-valued distribution* (both above below). Consequently there can be a significant non-zero probability of unreasonably small or large values.
+
+The normal distribution is a symmetrical (about the mean) distribution described by two parameters, the mean $\mu$ and standard deviation $\sigma$ and density function:
+
+$$f(x) = \frac{1}{\sqrt{2 \pi \sigma^2}}e^{-\frac{(x-\mu)^2}{2 \sigma^2}}$$
+
+The normal probability density function produces the well-known *bell-shaped curve*, and the areas under the density function curve represent cumulative probabilities (this is true for *all* continuous distributions). The graph below shows the standard normal $(\mu=0, \sigma=1)$ probability density function (this is the one you're familiar with from the table at the back of your statistics textbook).
+
+```{r, echo=FALSE}
+cord.x <- c(-4,seq(-4,1,0.01), 1) 
+cord.y <- c(0,dnorm(seq(-4,1,0.01)),0) 
+curve(dnorm(x,0,1),
+      xlim=c(-4,4),
+      ylab=expression(f(x)),
+      main='Standard Normal Density Function (with shaded probability)') 
+polygon(cord.x,cord.y,col='lightblue')
+text(0,.25,cex=1.5,expression(paste("Pr{",X <= x,"}")))
+
+```
+
+The following illustrates how the standard deviation affects the shape of the distribution. All four normal distributions have the same mean, so all differences in shape result from the standard deviation (larger values of $\sigma$ mean a higher probability of values farther from the mean).
+
+```{r, echo=FALSE}
+# 3 normal density functions, same mean
+margins<-par("mar")
+newmargins<-margins
+newmargins[c(3,4)]<-1.1
+
+margins[3]<-4.1
+margins[2]<-7
+par(mfrow=c(2,2),mar=margins,oma=c(0,0,3,0))
+
+mu<-100
+x<-seq(-200,400,1)
+for( sigma in c(15,45,75,100) )
+{
+  plot(x,dnorm(x,mu,sigma),
+       col="deepskyblue", 
+       main=bquote(sigma == .(sigma)),
+       type="l", 
+       lwd=3,
+       cex.main=1.5,
+       font=2,
+       ylab=expression(f(x))
+  )
+}
+
+
+#ylab=expression(frac(1,sqrt(2*sigma^2*pi))*e^-frac((x-mu)^2,2*sigma^2))
+
+mtext(bquote(mu==.(mu)), side=3,line=0,
+      outer = TRUE, cex=1.5)
+par(mfrow=c(1,1))
+
+margins<-par("mar")
+margins[3]<-4.1
+margins[2]<-5.1
+
+```
+
+### Facts about the normal distribution
+
+The normal distribution is a bit unique in that it’s summary statistics *are derived* from the distribution parameters (and not the other way around as for other distributions):
+ 
+$$E[X] = \mu$$
+$$V[X] = \sigma^2$$
+Calculating normal probabilities manually is not practical due to the form of the density function. Fortunately, we don't have to calculate normal probabilities manually, as we can use R's *pnorm*, *qnorm*, and *rnorm* functions.
+
+
+### The Normal Distribution in Use
+
+```{r, echo=FALSE}
+mu = 14.52
+sigma = 0.11
+
+alpha = 0.95
+
+alphalow = (1 - 0.95) / 2
+alphahigh = 1 - alphalow
+
+lb = qnorm(alphalow, mu, sigma)
+ub = qnorm(alphahigh, mu, sigma)
+
+specmid = 14.5
+specrange = 0.5
+speclow = specmid - specrange / 2
+spechigh = specmid + specrange / 2
+```
+
+
+The normal distribution is frequently used in quality management applications. For example, assume that the weight of a bag of potato chips filled by machine at the Frito Lay plant follows a normal distribution with mean $\mu = `r mu` \thinspace oz$ and standard deviation $\sigma = `r sigma` \thinspace oz$. In order to avoid problems with the U.S. Department of Weights and Measures, the plant needs to ensure that bags are filled to $`r specmid`\thinspace oz \pm `r specrange / 2`\thinspace oz$. How confident is the plant that it will not have a problem?
+
+One approach would be to determine the lower and upper bounds of various confidence intervals:
+
+```{r}
+mu = 14.52
+sigma = 0.11
+
+alpha = c(0.95, 0.98, 0.99)
+loweralpha = (1 - alpha) / 2
+upperalpha = 1 - loweralpha
+
+lower = qnorm(loweralpha, mu, sigma)
+upper = qnorm(upperalpha, mu, sigma)
+
+data.frame(alpha, lower, upper)
+
+```
+
+From our output, we can see that Frito Lay can be 98% sure that the bag will not be underfilled, but only 95% sure that the bag will not be overfilled.
+
+Alternatively, we can calculate the lower and upper confidence values directly:
+
+```{r}
+mid = 14.5
+range = 0.5
+
+probbelow = pnorm(mid - range / 2, mu, sigma)
+probabove = pnorm(mid + range / 2, mu, sigma)
+
+alpha = probabove - probbelow
+cat('confidence: ', alpha)
+
+loweralpha = 1 - pnorm(mid - range / 2, mu, sigma)
+upperalpha = 1 - (1 - pnorm(mid + range / 2, mu, sigma))
+
+```
+
+From our analysis, Frito Lay can be `r round(alpha, 4)*100`% sure that the bags will be filled to within requirements. More specifically, they can be `r round(loweralpha, 4) * 100`% sure that they are not *underfilling* bags and `r round(upperalpha, 4) * 100`% confident they are not *overfilling* bags. Note that the *product* of these separate lower and upper confidence values equals `r round(alpha, 4)*100`%.
+
+### Learning More
+
+You can learn about the normal distribution in more detail from lecture notes *14 - The Normal Distribution*.
+
+## The Exponential Distribution
+
+A random variable following an exponential distribution can assume only *non-negative real values*. The exponential distribution also exhibits the Markovian property, meaning the probability of an event is independent of any prior event. In other words, $Pr\{X_2 = x_2|X_1 = x_1\} = Pr\{X_2 = x_2\}$. Exponential distributions are frequently used to model the time between occurrences of an event.
+
+The exponential distribution is described by a single rate parameter, usually denoted $\lambda$ (or sometimes $\mu$) which specifies average number of occurrences per interval (frequently a unit of time, e.g. 15 customers per hour).
+
+The exponential distribution has a characteristic shape:
+
+```{r, echo=FALSE}
+cord.x <- c(0,seq(0, 15, 0.01), 15) 
+cord.y <- c(0, dexp(seq(0, 15, 0.01),1/5), 0)
+curve(dexp(x,1/5),0,30,
+      xlim=c(0,30),
+      ylab='f(x)',
+      main='Exponential Density Function (with shaded probability)') 
+polygon(cord.x,cord.y,col='lightblue')
+text(15,.10,cex=1.5,expression(paste("Pr{",X <= 15,"}")))
+```
+
+
+### Relationship to the Poisson distribution
+
+The exponential and Poisson distributions enjoy a unique relationship:
+
+> If the *time* between two events follows an exponential distribution with rate $\lambda$, then the *number* of events per interval follows a Poisson distribution with the same rate $\lambda$, and vice versa.
+  
+### Facts about the exponential distribution
+
+The following are facts about a random variable $X$ that follows an exponential distribution with rate $\lambda$:
+
+$$E[X] =\mu= \frac{1}{\lambda}$$
+$$V[X] =\sigma^2 =  \frac{1}{\lambda^2}$$
+$$S[x] = \sigma = \frac{1}{\lambda}$$
+
+$$f(x) = \lambda e^{-\lambda x}$$
+
+$$F(x) = 1 - e^{-\lambda x}$$
+$$F^{-1}(\alpha) = \frac{-ln(1-\alpha)}{\lambda}$$
+R's distribution abbreviation for the exponential distribution is *exp* (e.g. pexp, qexp, etc.).
+
+
+### The Exponential Distribution in Use
+
+```{r, echo=FALSE}
+lambda<-25
+```
+
+Consider a concession at T-Mobile Park in Seattle (formerly Safeco Field) that estimates that customers arrive during the fourth inning at a rate of $`r lambda` \frac{cust}{hr}$. A customer has just arrived. What is the probability that another customer arrives in the next 30 seconds?
+
+For this problem, we are trying to calculate a cumulative exponential probability:
+
+$$Pr\{T \leq 30\thinspace secs\}$$
+
+Note here that we want to calculate a probability for a *time* in *seconds*, but our rate, $\lambda$, has a time interval of *hours*. We'll will need to convert either our time to match $\lambda's$ interval or $\lambda$ to match our desired time interval.
+
+```{r, echo=FALSE}
+
+tlambda<-30 / 3600
+lambdasecs<-25 / 3600
+ple30<-pexp(30, lambdasecs)
+```
+
+Using the first approach:
+
+$$t_{\lambda} = 30\thinspace secs \cdot \frac{1 \thinspace hr}{3600 \thinspace secs} = \frac{1}{120} hr$$
+And we can then calculate the probability that the next customer arrives in 30 seconds or less:
+
+```{r}
+tlambda<-30 / 3600
+pexp(tlambda, 25)
+
+```
+
+So $F(30 sec) = `r round(ple30,4)`$. Now, using the second approach we have:
+
+$$\lambda_{secs} = \lambda \cdot \frac{1\thinspace hr}{3600 \thinspace secs} = \frac{25}{3600} \frac{cust}{sec}$$
+In R, we have
+```{r}
+lambdasecs<-25/3600
+x<-30
+
+pexp(x, lambdasecs)
+```
+
+As expected, the two approach yield the same answer: the probability a customer arrives in the next 30 seconds is approximately $0.1881$.
+
+### Learning More
+
+For more information on the exponential distribution, see *"15 - The Exponential Distribution and Sums of Random Variables"*.
+
+### The Shifted Exponential Distribution
+
+The shifted exponential is a real-valued distribution with two parameters:
+
+- Rate $\lambda$
+- Lower bound $a$
+
+The exponential distribution is a special case of the *Shifted Exponential* distribution where the lower bound $a = 0$. Therefore, if we picture shifting the exponential distribution left or right by $a$, we have a *shifted exponential*. 
+
+For example, the following shows a shifted distribution with $a = 5$ and $\lambda = \frac{1}{5}$:
+
+```{r, echo=FALSE}
+a<-5
+lambda<-1/5
+
+cord.x <- c(a,seq(a, 20, 0.01), 20) 
+cord.y <- c(0, dexp(seq(a, 20, 0.01) - a, lambda), 0)
+
+curve(dexp(x - a, lambda),a,35,
+      xlim=c(0,35),
+      ylab='f(x)',
+      main='Exponential Density Function (with shaded probability)') 
+polygon(cord.x,cord.y,col='lightblue')
+text(15,.10,cex=1.5,expression(paste("Pr{",X <= 20,"}")))
+```
+
+This distribution appears identical to the exponential distribution with $\lambda = 1/5$ we saw previously, except it has been shifted to the right by $a = 5$.
+
+### Facts about the Shifted Exponential Distribution
+
+The following facts about the Shifted Exponential:
+
+$$E[X] =\mu= \frac{1}{\lambda} + a$$
+$$V[X] =\sigma^2 =  \frac{1}{\lambda^2}$$
+
+$$S[x] = \sigma = \frac{1}{\lambda}$$
+
+$$f(x) = \lambda e^{-\lambda (x-a)}$$
+
+$$F(x) = 1 - e^{-\lambda (x-a)}$$
+$$F^{-1}(\alpha) = a-\frac{ln(1-\alpha)}{\lambda}$$
+
+### The Shifted Exponential Distribution in R
+
+To calculate probabilities for a shifted exponential distribution in R, we use R's exponential distribution functions and account for the shift. To illustrate, let:
+
+- $F_a(x)$ be the cumulative distribution function for a shifted exponential distribution with lower bound $a=5$ and rate $\lambda = 1/5$
+- $F_0(x)$ be the cumulative distribution function for an exponential distribution with rate $\lambda = 1/5$
+
+Then
+
+$$F_a(x) = F_0(x-a)$$
+
+$$F_a^{-1}(\alpha) = a + F_0^{-1}(\alpha)$$
+In R, this means that to calculate $F_a(20)$ for the shifted exponential, calculate $F_0(20-a)$ for a standard exponential with the same rate $\lambda$:
+
+```{r}
+a<-5
+lambda<-1/5
+
+# calculate Pr{X <= 20}
+
+pexp(20-a, lambda)
+
+```
+
+Similarly, to calculate $F_a^{-1}(0.95)$ for a shifted exponential, calculate $a + F_0(0.95)$:
+
+```{r}
+a + qexp(0.95, lambda)
+```
+
+
+## The Continuous Uniform Distribution
+
+The continuos uniform distribution is easily handled in R, either using the builtin functions or the uniform distribution's simple formulas. It is a real-valued distribution with lower bound $a$ and upper bound $b$ (so it is bounded both above and below).
+
+
+The shape of the continuous distribution reflects the fact that every outcome between $a$ and $b$ is equally likely:
+
+```{r, echo=FALSE}
+a<-5
+b<-15
+cord.x <- c(5,seq(5, 12, 0.01), 12) 
+cord.y <- c(0, dunif(seq(5, 12, 0.01),a, b), 0)
+curve(dunif(x,a, b),5,15,
+      xlim=c(0,20),
+      ylim=c(0,0.15),
+      ylab='f(x)',
+      main='Continuous Uniform Density Function (with shaded probability)\na = 5, b = 15') 
+
+polygon(cord.x,cord.y,col='lightblue', border="black")
+lines(c(0,20),c(0,0))
+lines(c(15,15),c(0,dunif(10,a,b)))
+text(10,.125,cex=1.5,expression(paste("Pr{",X <= 12,"}")))
+
+```
+
+### Facts about the Continuous Uniform Distribution
+
+$$f(x) = \frac{1}{b-a}$$
+$$F(x) = Pr\{X \leq x\} = \frac{x-a}{b-a}$$
+$$\bar{F}(x) = \frac{b-x}{b-a}$$
+$$E[x] = \mu = \frac{a+b}{2}$$
+
+$$V[X] = \sigma^2 = \frac{(b-a)^2}{12}$$
+
+$$S[x] = \sigma = \sqrt{\frac{(b-a)^2}{12}}$$
+
+$$F^{-1}(\alpha) = a + (b-a)\alpha$$
+
+
+### The Continuous Uniform Distribution in Use
+
+Let's say that Ford Motor Company has an automated threading process on its assembly line. The process cuts the threads in a threaded rod. The number of complete thread revolutions follows a uniform distribution process with a lower bound of 10 and an upper bound of 10.33.
+
+Determine the mean and standard deviation for complete thread revolutions. For a thread rod chosen at random, what is the probability that the rod has more than 10.25 complete revolutions?
+
+Calculating the mean and standard deviation is easily done using our *facts*:
+
+```{r}
+a<-10
+b<-10.33
+
+mu<-(a + b) / 2
+cat("mu: ", mu, "\n")
+sigma<-sqrt((b-a)^2 / 12)
+cat("sigma: ", sigma, "\n")
+
+
+```
+
+Thus an *average* threaded rod will have $`r mu`$ completed threaded revolutions with a standard deviation of $`r sigma`$ revolutions.
+
+For the continuous uniform distribution, we have an easy *direct* calculation for $\bar{F}(x)$:
+
+$$\bar{F}(10.25) = \frac{b-x}{b-a}=\frac{10.33 - 10.25}{10.33-10.0} \approx `r round((b-10.25)/(b-a),4)`$$
+
+If we want to be 95% sure about the *minimum$ number of threaded revolutions for a rod chosen at random, we would calculate:
+
+$$F^{-1}(1-0.95) = a + (b-a) \cdot 0.05$$
+In answering this question, we must recognize that we do not have a calculation to directly yield
+
+$$x : Pr\{X >= x\} = \alpha$$
+
+However, we know that $Pr\{X >= x\} = 1 - Pr\{X <= x\}$ and from it follows that:
+
+$$x : Pr\{X >= x\} = \alpha$$
+is equivalent to:
+
+$$x : Pr\{X <= x\} = 1-\alpha$$
+Thus, in R, we calculate:
+
+```{r}
+alpha<-0.95
+a + (b-a)*(1-alpha)
+```
+

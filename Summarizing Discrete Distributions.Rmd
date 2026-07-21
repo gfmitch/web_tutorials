@@ -1,0 +1,132 @@
+---
+title: "Summarizing Discrete Distributions"
+author: "Gary Mitchell"
+date: "October 28, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This brief tutorial discusses the concept of summarizing discrete probability distributions and illustrates the process in R.
+
+## Discrete Distributions
+
+In concept, a discrete distribution is simply a set of outcomes and their corresponding probabilities. For some discrete distributions, such as the Poisson distribution, the probabilities are calculated using a mathematical expression:
+
+$$ Pr\{X=x\} = \frac{\lambda^xe^{-\lambda}}{x!}$$
+
+```{r, echo=FALSE, hide=TRUE}
+Outcome<-0:5
+Probability<-c(0.15, 0.25, 0.30, 0.15, 0.10, 0.05)
+
+exdist<-data.frame(Outcome, Probability)
+
+```
+
+For other distributions, the outcomes and probabilities may be in the form of a table:
+
+```{r, echo=FALSE}
+kableExtra::kable_styling(knitr::kable(exdist, 
+                                       caption="Probability Distribution",
+                                       align=c('c','c')),
+                          bootstrap_options = c("striped"),
+                          full_width = FALSE
+                          )
+```
+
+
+## Summarizing Discrete Distributions
+
+Frequently, we wish to calculate summary metrics such as the mean and standard deviation for a distribution. We *cannot* simply calculate an *arithmetic* mean or sample variance because these assume that every observation occurs with equaly probability. However, calculating summary metrics for a discrete distribution is easily done:
+$$\mu_X=E[X] = \sum_{i \in \Omega} {p_i x_i}=\sum_{i \in \Omega} {Pr\{X=x_i\}x_i}$$
+$$\sigma_X^2=V[X] = \sum_{i \in \Omega} {p_i(x_i - E[X])^2}=\sum_{i \in \Omega} {Pr\{X=x_i\}(x_i - E[X])^2}$$
+
+
+Using R, we can easily calculate the mean and variance for a discrete distribution like the one in the table:
+
+```{r}
+# create vector of outcomes
+Outcome<-0:5
+
+# create vector of probabilities
+Probability<-c(0.15, 0.25, 0.30, 0.15, 0.10, 0.05)
+
+# calculate mean
+mu<-Outcome %*% Probability
+
+# calculate variance
+sigma2<-(Outcome - as.vector(mu))^2 %*% Probability
+
+
+```
+We used R's %*% operatorwhich calculates the *dot product* of two vectors:
+$$(p_1, p_2)\cdot(x_1, x_2) = p_1 x_1 + p_2 x_2$$
+which is exactly what we need when calculating the distribution mean and variance. Using these simple calculations, we found that $\mu_X = E[X] = $ `r mu` and $\sigma_X^2 = V[X] = $`r sigma2`. In contrast, using the arithmetic mean and sample variance would have produced `r mean(Outcome)` and `r sd(Outcome)^2` respectively. 
+
+These two results are *very* different and underscore the need for understanding what a function does before using it. Just because the name of a function is *mean* doesn't ensure that it will yield the result we are looking for. Therefore, be sure to understand what a function does before you use it.
+
+These same calculations can certainly be done using Excel. However, there is more effort involved to setup the worksheet and calculate $E[X]$ and $V[X]$.
+
+## Partial Expectations
+
+Sometimes we want to know summary metrics for only part of a distribution. For example, let's assume we have a distribution of company net profits (losses) and want to know the expected profit *given* a profit. We can easily do this with a modification to our basic calculation. 
+
+We start by defining a subset of the event space $\Omega$ that consists only of the profit values (i.e. net profit/loss > 0).
+$$\Omega_P = \{x_i \in \Omega : x_i > 0\}$$
+then we calculate
+$$\mu_X=E[X] = \sum_{i \in \Omega_P} {p_i x_i}=\sum_{i \in \Omega} {Pr\{X=x_i\}x_i}$$
+That's all there is to it. Let's try this with our sample distribution. Let's assume that the Outcomes in our distribution represent Sales and that cost is 3. We can calculate the *expected* profit *given* a profit as follows:
+```{r}
+profit<-Outcome - 3
+
+mu_profit<-profit[profit > 0] %*% Probability[profit > 0]
+
+```
+
+Using this we find that our expected profit given a profit is `r mu_profit`:
+$$.10(4-3) + .05(5-3) = .10 \cdot 1 + .05 \cdot 2 = 0.20$$
+
+## Summarizing *Standard* Discrete Distributions
+
+Distributions such as the Poisson and Binomial can also be summarized in this way. However, doing so could potentially involve a large number of calculations. Fortunately, we have known properties for most standard distributions, including the mean and the variance.
+
+So, how do we know these properties? *Someone* used the formulas for summarizing the distributions algebraically and discovered simple closed form expressions for the summary metrics. Lucky for us!
+
+### Poisson Distribution
+
+For *any* Poisson distribution with rate $\lambda$, we know that:
+
+$$\mu = E[X] = \lambda$$
+and
+$$\sigma^2 = V[X] = \lambda$$
+
+### Binomial Distribution
+
+For *any* Binomial distribution with $n$ trials and probability of success (i.e. event) $p$, we know that:
+
+$$\mu = E[X] = np$$
+and
+$$\sigma^2 = V[X] = np(1-p)$$
+
+## Linear Functions of a Random Variable
+
+We can also calculate a linear function of a random variable. For example, let's say that we have a formula for calculating profit as a function of sales:
+
+$$profit = -500,000 + 0.213 \cdot sales$$
+
+If we know the *expected* sales, we can also calculate expected value (i.e. mean) of the profit.
+
+$$E[profit] = E[-500,000 + 0.213 \cdot sales] = -500,000 + 0.213 \cdot E[sales]$$
+
+This result follows from the fact that the expected value of a constant is just the constant. In general, we say that for a linear function
+
+$$Y = aX + b$$
+the summary metrics for $Y$ can be calculated as:
+
+$$\mu_Y = E[Y] = aE[Y] + b$$
+and
+
+$$\sigma_Y^2 = V[Y] = a^2V[X] = a^2 \sigma_x^2$$
+

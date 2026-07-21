@@ -1,0 +1,233 @@
+---
+title: "Common Discrete Distributions"
+author: "Gary Mitchell"
+date: "October 28, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Discrete Distributions
+
+Previously we learned to calculate probabilities from frequencies (i.e. from empirical data). This is a very useful technique which extends are ability to calculate probabilities for any random variables for which we can calculate a large body of historical data.
+
+However, some discrete random variables can be described by *standard* discrete distributions. The binomial and Poisson distributions are two of these. The binomial distribution is used as the basis for important statistical process control applications (P-charts, acceptance sampling) and the Poisson distribution is frequently used in applications involving *arrivals* (one of the reasons it is used in many standard queueing models).
+
+Another potentially useful distribution is the discrete uniform distribution. This tutorial will discuss and illustrate all three of these distributions.
+
+## Binomial Distribution
+
+Assume we have a binary random variable. Possible outcomes could be Yes|No, True|False, Good|Defective, etc. We usually describe one of these outcomes as a *success*. Note that in this context a *success* is just an easy way to refer to *one* of the binary outcomes and does not imply anything about which outcome is better than the other. We say that a *success* occurs with probability $p$ and define $q = 1-p$.
+
+The binomial distribution can be used when we want to know the probability of $x$ successes in $n$ independent trials of the binary random variable. Consider the toss of a fair coin where *heads* is assumed to occur with probability $p=0.5$. If we toss the coin 10 times, the probability of exactly 2 heads is a binomial probability $Pr\{X=2\}$. 
+We can calculate this probability using the dbinom function (see the *Using R to Calculate Probabilities* web tutorial for an overview on using R's built-in probability functions):
+
+```{r}
+n<-10
+p<-0.5
+x<-2
+dbinom(x, n, p)
+```
+
+Clearly, with a probability of `r dbinom(x, n, p)`, it is not very likely that we will have only two *heads* from 10 tosses of a fair coin. So what exactly did dbinom calculate? The formula for a binomial probability is:
+
+$$Pr\{X=x\} = {n \choose x}p^x q^{n-x}$$
+where ${n \choose x}$ is the binomial coefficient calculated as $\frac{n!}{x!(n-x)!}$.
+
+Clearly we could calculate this ourselves, but fortunately we do not have to! Moreover, R's methods are very flexible. What if we wanted to calculate $Pr\{X=2\}$, $Pr\{X=3\}$, ..., $Pr\{X=6\}$, etc. We can calculate multiple probabilities with one call to dbinom. The code below will calculate 5 different binomial probabilities.
+
+```{r}
+x<-2:6
+dbinom(x,n,p)
+```
+
+Now, if instead we want to calculate $Pr\{X=2 \cap X=3 \cap ... \cap X=6\}$ then we could calculate $$\sum_{x=2}^{6} {Pr\{X=x\}}$$ (although we'll see an alternative to this in a moment). In R, we simply use:
+
+```{r}
+x<-2:6
+sum(dbinom(x,n,p))
+```
+
+Now, what if we want to know the probability of 4 or fewer heads? This is a *cumulative* probability. For a binomial distribution, we would calculate:
+
+$$Pr\{X \leq x\} = \sum_{x=0}^{4} {Pr\{X=x\}} = \sum_{x=0}^{4} {{n \choose x}p^x q^{n-x}}$$
+
+While we *could* do this with a combination of calls to sum and dbinom, R's pbinom function will do everything we need. We therefore calculate $Pr\{X \leq 4\}$ using:
+
+```{r}
+pbinom(4, n, p)
+```
+
+We can calculate probabilities over an *interval* using the cumulative probability. For example, 
+
+$$Pr\{X=2 \cap X=3 \cap ... \cap X=6\} = Pr\{X \leq 6\} - Pr\{X < 2\} = Pr\{X \leq 6\} - Pr\{X < 1\}$$
+In R, we calculate:
+
+```{r}
+pbinom(6,n,p)-pbinom(1,n,p)
+```
+
+matching the result of our previous calculation.
+
+### The Binomial Distribution in Use
+
+In supply chain management, we frequently wish to check the quality of an inbound shipment from a supplier. However, exhaustive checking (i.e. checking every unit) is typically prohibitively expensive. As a result, companies use *acceptance sampling*.
+
+For example, let's say that Dell is expecting a shipment of 10,000 disk drives from Toshiba and negotiates to utilize acceptance sampling to verify the shipment. Dell proposes that it will test 100 disk drives and will reject the shipment if 1 or more drives fail the test. Based on past experience, the probability of a drive failing the test is 0.007. If the shipment is rejected, Toshiba must ship Dell an entirely new lot of 10,000 drives at no cost to Dell.
+
+Toshiba is concerned that Dell might reject the shipment when it should be accepted. How could this happen? Let's say that there are 2 bad disk drives in the entire shipment of 10,000, but Dell coincidentally selects both in the random sample of 100. Therefore the number of failed drives would exceed the acceptance sampling threshold of 1.
+
+However, Del and Toshiba can evaluate this acceptance sampling plan. Toshiba wants to know $Pr\{X > 1\} = 1-Pr\{X \leq 1\}$. This can be easily calculated using a binomial probability:
+
+```{r}
+n<-100
+p<-0.007
+x<-1
+
+1-pbinom(x,n,p)
+
+
+```
+
+Thus there is a `r 100 * (1-pbinom(x,n,p))`% chance that Toshiba's shipment will be rejected when it had actually *exceeded* the negotiated quality. This isn't a great deal for Toshiba...
+
+
+### Learning More
+
+You can learn about the binomial distribution in more detail from lecture notes *08 - When only Two Possibilities Exist*.
+
+## The Poisson Distribution
+
+The Poisson distribution has many applications in business. The number of customers arriving in a time interval, weekly demand, and the number of defects in a new automobile are all random variables that may follow a Poisson distribution.
+
+The Poisson is a non-negative integer distribution with a single parameter, $\lambda$, the *rate* of the distribution. Note that a rate always denotes a *quantity* per *interval*. For example, 100 customers/hour, 15 packages/microsecond, 5 defects/unit, 15 potholes per mile are all valid rates. Moreover, rates and intervals are inversely related. So, if the customer arrival rate is 100 customers/hour, then the interval, i.e. average time between customers, is 1/100th of an hour (i.e. 0.6 minutes or 36 seconds).
+
+### The Poisson Distribution in Use
+
+Consider a concession at T-Mobile Park in Seattle (formerly Safeco Field) that estimates that customers arrive during the fourth inning at a rate of 25 customers per 10 minutes. What is the probability that *more than* 30 customers arrive in that 10 minute interval? We can calculate this as:
+
+$$Pr\{X > 30\} = 1 - Pr\{X \leq 30\}$$
+
+In R, we calculate this easily using:
+
+```{r}
+lambda<-25
+x<-30
+
+1-ppois(x, lambda)
+```
+
+Thus the chance that more than 30 customers arrive during the 10 minute interval is approximately `r round(100*(1-ppois(x,lambda)),4)`%.
+
+As with all discrete distributions, the Poisson's *probability mass* function is used to calculate a *point probability*, that is the mass function yields $Pr\{X=x\}$. The Poisson's probability mass function is:
+
+$$Pr\{X = x\} = \frac{\lambda^x e^-\lambda}{x!}$$
+
+and its cumulative probability function is:
+
+$$Pr\{X \leq x\} = \sum_{c = 0}^{x}\frac{\lambda^c e^{-\lambda} }{c!}$$
+Let's consider another example involving a supermarket. Assume that demand for a relatively slow moving item is believed to following a Poisson distribution and the average demand is 2.7 units per week. Recall from the *Summarizing Discrete Distributions* tutorial that the mean of the Poisson distribution is equal to the rate of the distribution. Therefore, we can say that demand for the item follows a Poisson distribution with rate 2.7 units/week.
+
+The inventory manager wants to know how many units she should stock to be 95% sure that she has enough units to satisfy demand (assuming the store receives a replenishment shipment weekly). In other words, the manager wants to know $x:Pr\{X \leq x\} = 0.95$.  Thus she needs to calculate the *inverse* cumulative probability. This is easily accomplished in R using:
+
+```{r}
+lambda<-2.7
+qpois(0.95, lambda)
+```
+
+Thus the manager should ensure that she starts each week with a minimum of `r qpois(0.95, lambda)` units. Fewer units and there will be more than a 5% chance that she runs out of stock.
+
+## The Discrete Uniform Distribution
+
+The discrete uniform distribution is easily managed in R. While there is no built-in function to calculate discrete uniform probabilities, there really is no need. Every outcome in a discrete distribution occurs with equal probability. For a discrete distribution with $n$ outcomes, that means:
+
+$$Pr\{X=x\} = \frac{1}{n}$$
+
+and
+
+$$Pr\{X \leq x\} = \frac{x}{n}$$
+
+### The Discrete Uniform Distribution in R
+
+Let's assume that we have a very unusual die with 11 *evenly numbered* sides. In other words, the die has sides 2, 4, 6, ..., 22. We can use R to easily calculate probability masses and cumulative probabilities, *even if we do not know the value of* $n$. Let's say we want to calculate $Pr\{X \leq 8\}$.
+
+We would start by creating our event space:
+
+```{r}
+omega<-seq(2,22,2)
+```
+
+We can determine the number of possible outcomes, $n$, directly from 
+the omega:
+
+```{r}
+n<-length(omega)
+x<-8
+```
+
+To find the probability, we count the number of events satisfying our
+criteria, $x \leq `r x`$ in this case, and divide by the number of possible
+outcomes $n$. First, let's count the number of events satisfying our
+condition:
+
+```{r}
+count<-sum(omega <= x)
+
+```
+
+Now we can calculate the probability:
+
+```{r}
+prob<-count/n
+```
+
+Thus $Pr\{X \leq `r x`\} =$ `r count/n`.
+
+To find the inverse cumulative probability for a target probability $\alpha$, we will utilize the event set, $\Omega$ that we created. Because this is a discrete distribution, we may not find a value of $x$ that exactly matches the probability for which we want to find $x$. So, we find the *first* value of $x$ for which $Pr\{X \leq x\} \geq \alpha$. Let's say that we want to find the inverse cumulative probability of 0.8, i.e. we want to find $x : Pr\{X \leq x\} \geq 0.8$ (this expression is read as "the value of $x$ *such that* the probability that the random variable is less than or equal to $x$ is at
+least 0.8").
+
+In R, we first calculate the cumulative probabilities for the outcomes.
+Because our outcomes are equally likely, the probability of any outcome
+is $\frac{1}{n}$. The cumulative probabilities are just the aggregating
+sums. In other words:
+
+$$Pr\{X <= 2\} = Pr\{X = 2\}$$
+$$Pr\{X <= 3\} = Pr\{X = 2\} + Pr\{X = 3\}$$
+$$Pr\{X <= n-1\} = Pr\{X = 2\} + Pr\{X = 3\} + ... + Pr\{X = n-1\}$$
+We can use R's cumsum function to produce the cumulative sums we see above:
+```{r}
+p<-rep(1/n, n)
+cuml_p<-cumsum(p)
+print(cuml_p)
+
+```
+A quick look at cuml_p shows us that each of the values represents the 
+cumulative probability corresponding to each outcome. We're almost to our
+inverse probability.
+
+The final step is to find the *first* cumulative probability that is
+greater than or equal to our target probability $\alpha$. R makes this easy.
+Let's break down how this works. First, we find which cumulative probabilites
+are greater than or equal to $\alpha$:
+
+```{r}
+alpha<-0.80
+
+idx<-cuml_p >= alpha
+print(idx)
+```
+
+Then we find the index for the *first* TRUE (i.e. the first value where the cumulative probability $\geq \alpha$ and select the outcome value (from omega) for that outcome.
+
+```{r}
+prob_idx = which(idx)[1]
+x = omega[prob_idx]
+```
+
+The *which* function returns the indexes where the condition (represented by
+idx) is true. In our case, idx will contain False for probabilities that are $< `r alpha`$ and probabilities that are $\geq `r alpha`$ will have a TRUE value. Therefore, $F^{-1}(0.80) = x : Pr\{X <= x\} = 0.80 = `r x`$.
+
+
+Note: $F^{-1}(\alpha)$ is a common convention for denoting the inverse cumulative probability; $F(x)$ is a typical convention for denoting the cumulative probability.

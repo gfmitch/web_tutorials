@@ -1,0 +1,389 @@
+---
+title: "Building a Queuing Simulation"
+author: "Gary Mitchell"
+date: "June 19, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+This tutorial presents the ideas/tasks involved in creating a simulation. Specifically, we will develop a simulation for a single server queuing system. We'll start with the following assumptions:
+
+* Arrivals follow a Poisson distribution with rate $\lambda = 20 cust/hr$
+* Service times follow an exponential distribution with rate $\mu = 25 cust/hr$.
+
+Later, we can easily relax our assumptions by generating the inter-arrival and service times using different distributions. We'll create variables lambda and mu to hold these rates (and we'll specify them in customers per minute to avoid having to deal with times in fractions of hours):
+
+```{r}
+lambda<-20/60
+mu<-25/60
+```
+
+
+## Constructing the Queuing Simulation
+In order to develop a simulation, we must understand the underlying *system* very well. In this case, our underlying system is a queue:
+
+* Customers arrive at the *system*
+* If a server is available, the customer enters service
+* If all servers are busy, the customer must enter the *queue* (i.e. the waiting line)
+* When a customer completes service, s/he exists the system immediately
+* When a server becomes available, the *next* customer in line enters service.
+
+### Sources of Uncertainty
+This isn't a tutorial on queuing, so we'll keep the queuing aspects of this simulation simple; we will use a *plain vanilla* single server queue where customers are served on a first come first served (FCFS) and every customer has equal priority. We know there are two sources of uncertainty:
+
+* When customers arrive at the system (which we'll model with a random *interarrival* time)
+* How long it takes to serve a customer (which we'll model with a random service time).
+
+
+### Variables of Interest
+We also have a number of metrics of interest:
+
+* Number of customers in the system (n)
+* Average customer waiting time (Wq)
+* Average time a customer spends in the system (W)
+* Maximum time a customer spends in the system (max(n))
+* Average number of customers waiting (Lq)
+* Average number of customers in the system (L)
+
+There are many others, but these will do for our purposes.
+
+As described, this problem involves two random variables (interarrival time, service time) which must be *realized* for every customer. We previously mentioned that record keeping can be the most challenging part of building a siulation. We have to design our record keeping mechanism(s):
+
+* A list (customer) to hold key attributes for every customer from which we can compute all other metrics
+   + arrival time
+   + service entry time
+   + service completion time
+* A vector to hold system state (n, the number of customers in the system)
+   + number of customers in the system (n)
+   + number of customers waiting (derivative of n; max[0,n-1])
+* A list of the events (i.e. Arrival or Service Completion)
+* A master simulation clock (simtime) - running time since the beginning of the simulation.
+
+OK, let's get strted:
+
+```{r}
+# nevents = number of events (either arrivals or service completions we will simulate)
+# nevents will be used to control our simulation loop
+nevents<-10000
+
+# simtime is the running simulation clock
+simtime<-0
+
+# allocate vectors and lists for recording events
+n<-numeric(nevents)
+event<-list()
+customer<-list()
+
+# custcurr is the "index" of the customer currently in service
+# custlast is the "index" of the last customer to arrive at the system
+custcurr<-0
+custlast<-0
+
+# lastcomplete is used to track the index of the last customer to pass through the system
+# there may be customers that have arrived but not completed service by the time the "nevent""
+# events have occurred
+lastcomplete<-0
+
+# largeNumber just represents a very large value we will use to ensure that the next event
+# is an arrival.
+largeNumber<-10^15
+
+# current number of customers in system
+ncurr<-0
+
+
+
+```
+
+As defined, event and customer are empty lists. Ultimately, every entry in the customer list will include the customer's arrival time, the time the customer entered service, and the time the customer completed service. Similarly, every entry in the event list will have the type of the event (i.e. "Arrival" or "Service Completion"), the time at which the event occurred, and the resulting number of customers in the system after the event.
+
+*ncurr* is an important variable. It is the number of customers in the system at the current time. Unlike, *n*, it isn't a vector (well, actually *all* R variables are vectors, but ncurr is single valued). We will increase ncurr each time a customer arrives and decrease it each time a customer exits the system.
+
+Now we can track customers, events, and the number of customers currently in the system. Note that some of our data is redundant; we are duplicating some of the data (e.g. number of customers in the system) to simplify the analysis later. It will also help to have a variable to indicate when a service is free to accept a customer into service. We'll use server_available (TRUE or FALSE) for this purpose.
+
+```{r}
+# server_available of TRUE indicates that the server is ready for a new customer
+server_available<-TRUE
+
+```
+
+## Realizing random events
+
+We have to realize the values of our two random variables in each trial. For our purpose in this simulation, a new trial occurs with every arrival or service completion. Additionally, realized values of both random variables are the *times* at which arrivals or service completions occur, so we will refer to our random variables as *clocks* (it's a queuing simulation convention):
+
+* nextArrival - the time at which the next arrival is scheduled to occur
+* nextServiceCompletion - the time at which the next service completion will occur.
+
+If $nextArrival < nextServiceCompletion$ then the next event will be a new customer arriving at the system, otherwise the next event is a service completion for a customer already in the system. To get started, we'll initialize both *clock* variables:
+
+```{r}
+nextArrival<-rexp(1,lambda) 
+nextServiceCompletion<-largeNumber
+```
+
+The two statements above ensure that the first event is an arrival; nextArrival is generated according to the inter-arrival time distribution. Since customers arrive as a Poisson process, the time between arrivals follows an exponential distribution (see the probability lecture notes for the Poisson and exponential distributions). Therefore we generated the next arrival time as an exponential RV with rate lambda. We set the nextServiceCompletion equal to a *very* large number. Consequently, nextArrival will *always* be smaller, guaranteeing that an arrival occurs as the first event.
+
+Later, in the main body of our simulation, we will always generate the next value of nextArrival or nextServiceCompletion in each iteration of our simulation loop.
+
+## The Main Simulation Loop
+
+Most simulations require a *loop*, even those done in R. This is especially true for *dependent* trial simulations like this one. We must complete all of the events/work in a trial before the next trial can begin. The easiest way to accomplish this is for the loop *body* to perform all of the work required for one trial. In this way, each time through the loop is a *trial*.
+
+I like to use *for* loops to control my simulation because they are guaranteed to end. Other types of loops, if not handled properly, can result in an *endless* loop, where you would have to *kill* the simulation during execution because it would never stop otherwise. In this case, we will execute the loop body once for each trial (i.e. arrival or service completion) and we will execute $nevents$ trials.
+
+The next block of code represents the body of our simulation loop. The loop body *systematically* performs the steps and decisions that must happen during each simulated trial:
+
+1. The first step is to determine whether the next event is an arrival or a service completion. The *realized* values of our two random variables are used to make this determination
+   + If an arrival is the next event, we *bump* the simtime clock to the nextArrival time and *then we generate a new nextArrival time*. I.e., we generate a *new realization* for our random variable because we *consumed* the previous realization.  
+   + If a service completion is the next event, we *bump* the simtime clock to the nextServiceCompletion time. Note that in this case it doesn't make sense to generate the next service completion time. There might not be anyone left in the queue for whom service is required. Instead, we will generate the nextServiceCompletion time whenever a customer enters service.
+2. Process the next event (either arrival or service completion)
+3. If a server is available and a customer is waiting, *advance* the customer into service.
+4. Save the event data to the event log (event type, event time, number in the system)
+5. Save the $i^{th}$ system state, i.e. save the value of $n[i]$.
+
+The code below is liberally commented to help you understand the meaning of each statement (or group of statements) and the relationship to our simulation.
+
+```{r}
+# Main simulation loop. One trial is completed for each pass through the loop body 
+for (i in 1:nevents)
+{
+   # STEP 1 - determine next event type
+   if (nextArrival < nextServiceCompletion)
+   {
+      # if time to next arrival is shorter than time to next service completion
+      # then event is an arrival
+      
+      simtime <- nextArrival
+      event_type <- "Arrival"
+      
+      # now we need to generate the time of the "next" arrival. Since our exponential
+      # random number represents the inter-arrival time (i.e. the time between arrivals)
+      # the next arrival time occurs at the current arrival time + the inter-arrival time
+      nextArrival <- nextArrival + rexp(1, lambda)
+      
+   } else
+   {
+      # If the event isn't an arrival, then it's a service completion
+      simtime <- nextServiceCompletion
+      event_type = "Service Completion"
+   }
+   
+   # STEP 2 - process next event
+   if (event_type == "Arrival")
+   {
+      # Process arrival
+      
+      # Since a customer arrived, increase the number of customers CURRENTLY
+      # in the system
+      ncurr <- ncurr + 1
+      
+      # create the customer
+      # first, increase the index of the most recently arriving customer
+      custlast <- custlast + 1
+      
+      # second, create a customer record, assigning the customer number
+      customer[[custlast]] <- list(custno = custlast)
+      
+      # third, add the customer's arrival time to his/her record
+      customer[[custlast]]$arrival_time <- simtime
+      
+   } else
+   {
+      # service completed so we must decrease the number of customers CURRENTLY
+      # in the system
+      ncurr <- ncurr - 1
+      
+      # update customer's record with completion time
+      customer[[custcurr]]$complete_service_time <- simtime
+      
+      # When we are finished, we need to know which customers made it all the way through,
+      # so update the last completed customer to the current customer
+      lastcomplete <- custcurr
+      
+      # now, mark the server as available, i.e. ready for a new customer
+      server_available <- TRUE
+      
+      # FINALLY, since there's no customer in service, at least at this
+      # instant, set the nextServiceCompletion to a very large number
+      nextServiceCompletion <- largeNumber
+      
+   }
+   
+   # STEP 3, if a server is available, see if there is a customer waiting to enter service
+   
+   if (server_available & (ncurr > 0))
+   {
+      # there's a customer waiting and the server is available
+      # We are processing customers FCFS, so the next customer to
+      # enter service is the next one numerically in sequence. 
+      # Update the customer's service entry time.
+      custcurr <- custcurr + 1
+      customer[[custcurr]]$enter_service_time <- simtime
+      
+      # customer is entering service, so REALIZE the customer's service completion time
+      # The customer takes the randomly generated time to complete service, STARTING at
+      # the current simtime, so service is completed at simtime + service time
+      nextServiceCompletion <- simtime + rexp(1, mu)
+      
+      # FINALLY, a customer entered service so the server is now busy
+      server_available <- FALSE
+   }
+   
+   
+   # STEP 4 - create/save the event - udate the event log and the state log
+   event[[i]] <- list(type = event_type,
+                      time = simtime,
+                      n = ncurr)
+   
+   # STEP 5 - capture the current system state
+   n[i] <- ncurr
+}
+
+```
+
+## Analyzing the Simulation
+
+The simulation is now complete. In other words, we have generated all of the simulated trials. Now we only need to analyze the simulation results. The first thing we want to do is to eliminate any customers that did not complete service:
+
+```{r}
+# Keep customers 1 through the last customer to complete service
+customer<-customer[1:lastcomplete]
+
+```
+
+Next, because we stored the customer data as a list, it isn't in a nice tabular form on which we can easily compute statistics. Therefore, we want to convert the customer data from a list to a data frame:
+
+```{r}
+# create dataframe with customer details
+# To unpack the list, we need to know the number of columns for the resulting data frame
+# We can pick this up by checking the length of ANY customer in the list (so we'll just use cust 1)
+cols<-length(customer[[1]])
+
+# Next, we can use unlist to extract the data from the list and create a data frame
+custdf<-data.frame(matrix(unlist(customer), ncol=cols,byrow=TRUE))
+
+# Finally, we want to name the columns in our data frame to something meaningful
+colnames(custdf)<-c("Cust.No","Arrival.Time","Enter.Service","Complete.Service")
+
+# Let's take a look at the result
+head(custdf)
+
+```
+
+OK, our new data frame has a row for each customer, and columns for arrival time, service entry time, and service completion time. Now we can easily calculate waiting time and time in system:
+
+```{r}
+# now calculate waiting time and time in system for all customers
+# don't you love vector calculations! No loop is needed fto do this for ALL
+# customers at once
+Wait.Time<-custdf$Enter.Service - custdf$Arrival.Time
+
+# calculate time in system
+System.Time<-custdf$Complete.Service - custdf$Arrival.Time
+
+# Now we use the cbind function to add waiting and system times to our data frame
+custdf<-cbind(custdf, Wait.Time, System.Time)
+head(custdf)
+
+```
+
+## Summary Metrics
+
+We have completed generating trials as well as calculating key additional metrics (i.e. waiting time and system time) for all customers that passed through the system. Now we can calculate/graph some summary metrics on the system's performance:
+
+```{r}
+# calculate and print the average customers waiting and in system
+print(paste("Average Wait Time: ", mean(custdf$Wait.Time),sep=""))
+print(paste("Maximum Wait Time: ", max(custdf$Wait.Time, sep="")))
+print(paste("Average System Time: ", mean(custdf$System.Time, sep="")))
+print(paste("Maximum System Time: ", max(custdf$System.Time, sep="")))
+
+# plot the number of customers in the system over time
+barplot(n, main="Customers in System", xlab="Time (minutes)", ylab="Number of Customers")
+
+```
+
+### Simple versus Time-weighted Averages
+
+In the code above, we calculated the average waiting and system times as simple arithmetic means. This is valid because we the time a particular customer spends waiting or in system (which we previously calculated) is not dependent on the number of customers in the system. Calculating the average *number* of customers waiting or in system requires time-weighted averages, because the time spent in state is a function of both arrivals and service completions (and both of these are random).
+
+Therefore, to calculate our time-weighted averages, we first calculate the time spent in each state, which we then use to calculate the averages:
+
+```{r}
+# now calculate average customers in system - time weighted average
+# First, we extract the time values from the event log (remember, we recorded the time at which every event occurred)
+time<-sapply( event, function(x){x$time})
+
+# the time spent IN a state is the difference between two consecutive times
+state_time<-time-c(0,time[1:(length(time)-1)])
+
+```
+
+This last calculation, state_time<-time-c(0,time[1:(length(time)-1)]), deserves some extra explanation. Let's illustrate with an example. To calculate the time spent in the 3rd state, we would calculate time[3] - time[2], i.e., the time at which the 3rd event occurred minus the time at which the second event occurred (the first state is the time before ANY events have occurred). The calculation of state_time calculates the times spent in every state all at once using vector calculations. the statement c(0, time[1:length(time)-1]) shifts the time vector by 1 time period, similar to the Lag function, but sets the 1st value to 0 instead of NA. In this way, we calculate paired differences for EVERY state using a single statement which results in 
+
+* time[1] - 0
+* time[2] - time[1]
+* time[3] - time[2]
+* ...
+* time[n] - time[n-1]
+
+which was exactly what we wanted. Now armed with our state times, we can calculate the time weighted averages:
+
+```{r}
+# first, calculate the time-weigyted average number of customers in the system (L). '
+# This is easy because we already have a vector of the number of customers in the 
+# system for every state.
+L<-( n %*% state_time ) / sum(state_time)
+print(paste("Average Customers In System: ", L, sep=""))
+
+# Second, the number of customers waiting (i.e. in the buffer), is one less than the number in system
+# but can never fall below 0. So, we subtract 1 from the number in system, and replace any negative 
+# results with 0
+nbuffer<-(n-1)
+nbuffer[nbuffer < 0]<-0
+
+# calculate the weighted average number of customers waiting (Lq)
+Lq<-( nbuffer %*% state_time ) / sum( state_time )
+print(paste("Average Customers Waiting: ", Lq, sep=""))
+
+```
+
+Note that any weighted average can be computed as $$\bar{X} = \frac{\sum_{i=1}^{n} w_ix_i}{\sum_{i=1}^{n} w_i}$$ where $x_i$ is the $i^{th}$ value being averaged, and $w_i$ is the weight for the $i^{th}$ value. In the case of our R calculation, we used a vector product to caluculate the numerator. Consider the expression n %*% state_time. This vector product is equivalent to $\sum {state\_time}_i n_i$, where $n$ is the vector of values to be averaged, and $state\_time$ is the vector of weights. The denominator is clear the sum of the weights.
+
+## Wrap Up
+
+The challenge in simulation modeling is that every simulation is unique because it must capture the characteristics of the specific problem being modeled. This makes teaching simulation even more difficult; simulation is bit too abstract for most people to pick up without illustrating examples, but the example simulations are specific to a problem. That is certainly true with this queuing simulation example.
+
+So what should you take away from this tutorial?
+
+* The overall process of building a simulation:
+   + Understanding the problem being modeled/simulated
+   + Identifying the random variables (and their distributions)
+   + Identify metrics of interest for the analysis
+* Designing the record keeping for the simulation to ensure you will have the data you need when analyzing simulation results
+* Generate all of the simulation trials. This requires a detailed specification of the processing/decisions made in a trial. This is analogous to writing directions to your house for a friend. The directions must be very precise or your friend will make a wrong turn and become lost.
+* Execute the simulated trials
+* Analyze the simulation results.
+
+This tutorial also illustrates the use of:
+
+* R constructs like loops and conditionals
+* R lists, vectors, and data frames for collecting/reporting simulation data/results
+* R's random number generating functions (at least for the exponential distribution).
+
+If we believed that service times followed a normal distribution with a mean time of 2.4 minutes and standard deviation of 0.6 minutes, we could generate nextServiceCompletion as follows:
+
+```{r}
+nextServiceCompletion<-simtime + rnorm(1, 2.4, 0.6)
+```
+
+Pretty simple, right? One minor change and we can analyze the more complex problem of queuing system with normally distributed service times.
+
+# The Whole Simulation
+
+"M-M-1 queue simulation.R" is the completed program code that from this tutorial. You can experiment with changes to the random variable distributions, calculating additional metrics, etc., using this code.

@@ -1,0 +1,401 @@
+---
+title: "Independent Trial Simulations"
+author: "Gary Mitchell"
+date: "11/10/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+require(kableExtra)
+```
+
+## What is an independent trial simulation?
+
+Many of the systems we may wish to model have built-in dependencies. For example, in a supply chain, the *beginning* inventory today depends on yesterday's *ending* inventory. In other words, inventory is a *dependent* variable. This type of system requires a dependent trial simulation.
+
+But occasionally we get *lucky* and no variable in a trial depends on the value from a previous trial. If this is the case, we can construct an *independent* trial simulation. This is nice because:
+
+* An independent trial simulation is easier to construct (as compared to a similar dependent trial simulation), and
+* We can usually write a more efficient dependent trial simulation using vector operations and avoiding some (or all?) loops.
+
+## A simple independent trial simulation
+
+Let's say that we want to simulate a simple project with four tasks.
+&nbsp;
+
+
+![Example project activity network](image.png)
+
+The network diagram above shows the *task* dependencies. For example, Task C cannot begin until both Tasks A and B have been completed. Now, we might *incorrectly* assume that that task *dependencies* imply that we need a dependent trial simulation.
+
+The key here is that each *trial* in the simulation represents an execution of the entire project! Because of this, while there are dependencies *within* trials, there are no dependenices *across* trials, which is what requires a dependent trial simulation.
+
+Assume that the duration (i.e. time required to complete) distributions for the tasks are given in the following table:
+
+Task                  | Duration Distribution                                  
+----------------------|-----------------------------------------------------
+Start                 | Deterministic, 0
+A                     | Uniform[15, 32]
+B                     | Shifted exponential with min 10 and mean 30
+C                     | Uniform[8, 16]
+D                     | Shifted exponential with min 20 and mean 35
+End                   | Deterministic 0
+
+
+## Building the simulation
+
+Every simulation involves:
+
+  1. Generating random variates for the random variables
+  2. Perform the *system's* calculations using the random numbers as *actual* values
+  3. Analyze the simulated system results.
+  
+### Generating random variates
+
+For every simulation, we need to generate random variates representing the values of the random variables. In an independent trial simulation, we can do these all at one time and
+frequently perform all of the simulation's calculations without the need for a simulation loop. 
+
+To start, let's generate the random task durations for all of the tasks. We'll start by generating a 10 trial simulation. 10 trials is far too few to have any value in evaluating the project (i.e. system being simulated), however, it is sufficient for verifying that our calculations are correct. Once we have validated the calculations, we can increase $n$, the number of trials, and run the *real* simulation.
+
+The code below generate the random task durations for the project:
+
+```{r}
+
+# set the number of trials for the simulation. I like to put this at the top because
+# it makes it easier to change
+n<-10
+
+
+# set random number seed to enable easy validation of the simulated outcomes
+# the set.seed line should be commented out (or changed to set.seed(NULL)) after 
+# validation testing is complete.
+
+set.seed(200)
+
+
+# Here's where the sim code starts, each vector represents the n durations for
+# a task in the project
+
+# the start and end tasks are deterministic 0, so we simply fill their vectors
+# with 0
+
+start<-rep(0, n)
+end<-start
+
+# A follows t_a ~ Unif[15, 32]
+a<-runif(n, 15, 32)
+
+# b ~ shifted exponential with a = 8, lambda = 1/(18-8)
+lambda_b<-1/10
+b<-8 + rexp(n, lambda_b)
+
+# c ~ Unif[8, 16]
+c<-runif(n, 8, 16)
+
+# d ~ shifted exponential with min 6 and lambda = 1/(20-6)
+lambda_d<-1/14
+d<-6 + rexp(n, lambda_d)
+
+```
+
+```{r, echo=FALSE}
+durations<-data.frame(start, a, b, c, d, end)
+durations %>%
+  kable() %>%
+  kable_styling(fixed_thead=T, full_width = F)
+```
+
+### Perform the system's calculations
+
+The activity network tells us how to determine the project *makespan*, i.e. how long it takes to complete the project. In this case, there are 3 paths through the network:
+
+* Start-A-C-End
+* Start-B-C-End
+* Start-B-D-End
+
+The *length* of each path (i.e. how long it takes to complete) is just the sum of its task durations, and the project makespan is the maximum of all of these (because the project is not complete until ALL paths are complete).
+
+We could calculate the path durations and makespan *for all trials* without a loop. However, if you're just getting started with R, you'll probably find the following code that uses a loop to be a little easier to understand:
+
+```{r}
+# create a list of paths through the network for use in determining all of the path lengths
+paths<-list()
+paths[[1]]<-c("start", "a", "c", "end")
+paths[[2]]<-c("start", "b", "c", "end")
+paths[[3]]<-c("start", "b", "d", "end")
+
+# create a temporary matrix (n x 3) to hold our pathlengths. The rows represent all values for a 
+# trial. The three columns represent the pathlengths for all paths in a trial
+
+temp<-matrix(numeric(n * length(paths)), nrow=n)
+
+for (i in 1:n)
+{
+  # we need to calculate the lengths of the 3 paths for each trial (i.e. row)
+  
+  for (j in 1:length(paths))
+  {
+    # and we need to calculate a length for every path in the network
+    temp[i, j]<-sum(durations[ i, paths[[j]] ])
+  }
+}
+
+# it's easier to work with a data frame, so we'll create ours from temp, adding a trial # as the
+# first column
+trials<-data.frame(1:n, temp)
+colnames(trials)<-c("trial", "path.1", "path.2", "path.3")
+
+# new we have the pathlengths, so we can find the makespan for each trial (i.e. the max
+# of the 3 pathlengths)
+
+makespan<-pmax(trials$path.1, trials$path.2, trials$path.3)
+
+# create the final simulation results data frame, including trial #'s, path lengths, and makespans
+trials<-cbind(trials, makespan)
+
+```
+
+Here's the resulting simulation results:
+
+```{r, echo=FALSE}
+
+trials %>%
+  kable() %>%
+  kable_styling(fixed_thead = T, full_width = F)
+```
+
+## Analyze the simulation results
+
+The analysis for a simulation depends on the particular system being simulated as well as the questions we are trying to answer. To illustrate a simulation analysis here, let's do the following:
+
+* Calculate the *mean* project makespan (i.e. the average time it takes to complete the project)
+* Find the maximum project duration
+* Find the probability of completing the project by the mean makespan.
+
+### Finding the mean makespan
+
+R makes the simulation analysis easy. To find the mean makespan, we simply use the built-in mean function on our makespan column:
+
+```{r}
+meanmake<-mean(trials$makespan)
+```
+
+We found that our *average* project takes approximately `r round(meanmake,2)` hours to complete.
+
+### Maximum makespan
+
+Just as with the mean, the maximum makespan is easily determined using:
+
+```{r}
+maxmake<-max(trials$makespan)
+```
+
+The maximum simulated makespan was `r round(maxmake,2)`.
+
+### Probability of completing by the mean makespan
+
+One of the *most useful* properties of a simulation is that every trial occurs with equal probability. That means we can easily calculate probabilities from our simulation. To find the probability of completing the project by the mean (the time *most* project managers would quote based on standard project management methodologies), we simply:
+
+* Count the number of trials where $makespan \leq \mu_{makespan}$
+* Calculate the probability: $\frac{count}{\# \thinspace trials}$
+
+```{r}
+count<-sum(trials$makespan <= meanmake)
+prob<-count / n
+```
+
+
+For our `r n` trial test simulation there are `r count` trials with makespan $\leq$ the mean makespan, `r round(meanmake, 2)`, so the probability is `r round(prob, 4)`. In other words, there is a `r round(100 * prob, 2)`% chance of finishing by the promised date.
+
+## Running the complete simulation
+
+Now that we have a working simulation, we should run a *realistic* simulation. To obtain quality results, we should run thousands of simulated trials. Let's run a simulation with $n = 5,000$.
+
+
+```{r, echo=FALSE}
+
+# set the number of trials for the simulation. I like to put this at the top because
+# it makes it easier to change
+n<-5000
+
+
+# set random number seed to enable easy validation of the simulated outcomes
+# the set.seed line should be commented out (or changed to set.seed()) after 
+# validation testing is complete.
+
+set.seed(NULL)
+
+
+# Here's where the sim code starts, each vector represents the n durations for
+# a task in the project
+
+# the start and end tasks are deterministic 0, so we simply fill their vectors
+# with 0
+
+start<-rep(0, n)
+end<-start
+
+# A follows t_a ~ Unif[15, 32]
+a<-runif(n, 15, 32)
+
+# b ~ shifted exponential with a = 8, lambda = 1/(18-8)
+lambda_b<-1/10
+b<-8 + rexp(n, lambda_b)
+
+# c ~ Unif[8, 16]
+c<-runif(n, 8, 16)
+
+# d ~ shifted exponential with min 6 and lambda = 1/(20-6)
+lambda_d<-1/14
+d<-6 + rexp(n, lambda_d)
+
+durations<-data.frame(start, a, b, c, d, end)
+
+# create a list of paths through the network for use in determining all of the path lengths
+paths<-list()
+paths[[1]]<-c("start", "a", "c", "end")
+paths[[2]]<-c("start", "b", "c", "end")
+paths[[3]]<-c("start", "b", "d", "end")
+
+# create a temporary matrix (n x 3) to hold our pathlengths. The rows represent all values for a 
+# trial. The three columns represent the pathlengths for all paths in a trial
+
+temp<-matrix(numeric(n * length(paths)), nrow=n)
+
+for (i in 1:n)
+{
+  # we need to calculate the lengths of the 3 paths for each trial (i.e. row)
+  
+  for (j in 1:length(paths))
+  {
+    # and we need to calculate a length for every path in the network
+    temp[i, j]<-sum(durations[ i, paths[[j]] ])
+  }
+}
+
+# it's easier to work with a data frame, so we'll create ours from temp, adding a trial # as the
+# first column
+trials<-data.frame(1:n, temp)
+colnames(trials)<-c("trial", "path.1", "path.2", "path.3")
+
+# new we have the pathlengths, so we can find the makespan for each trial (i.e. the max
+# of the 3 pathlengths)
+
+makespan<-pmax(trials$path.1, trials$path.2, trials$path.3)
+
+# create the final simulation results data frame, including trial #'s, path lengths, and makespans
+trials<-cbind(trials, makespan)
+
+# calculate summary metrics
+
+meanmake<-mean(trials$makespan)
+maxmake<-max(trials$makespan)
+
+# calculate completion probability
+count<-sum(trials$makespan <= meanmake)
+prob<-count / n
+
+
+```
+
+With 5,000 trials, the trial output is a bit long to display (so we've left it out). Here are the summary metrics for the full simulation:
+
+* Mean makespan: `r round(meanmake, 2)` hours
+* Max makespan:  `r round(maxmake, 2)` hours
+* $Pr\{M \leq `r round(meanmake, 2)`\}$: `r round(prob, 2)`
+
+## What else can we do?
+
+Well, project managers are trained to find *the* critical path. In reality, however, because task durations are stochastic, there is unlikely to be a $single$ critical path through the network. Instead,
+there are multiple potential critical paths and it would be useful to know the probability that a particular path is critical.
+
+We can do that easily as follows:
+
+* For every trial, determine *which* path (e.g. 1, 2, or 3) is critical in *that* trial
+* Count the number of trials in which the paths are critical
+* Calculate the probabilities (divide the counts by n).
+
+```{r}
+
+# find the longest path in each trial
+
+critical.path<-numeric(n)
+
+for (i in 1:n)
+{
+  critical.path[i]<-which.max(trials[i, c("path.1","path.2","path.3")])
+}
+
+# now let's add the critical path number to our trials data frame
+
+trials<-cbind(trials, critical.path)
+
+# use the aggregate function to calculate our counts 
+
+counts<-aggregate(critical.path, by=list(critical.path), length)
+
+# add the probability to the data frame
+counts<-cbind(counts, counts$x / n)
+
+# change the column names to be more meaningful
+colnames(counts)<-c("Path", "Critical Count", "Probability Critical")
+
+```
+
+```{r, echo=FALSE}
+
+counts %>%
+  kable() %>%
+  kable_styling(fixed_thead = T, full_width = F)
+
+```
+
+For our small project, this information is only so useful (after all, we have only 3 paths through the network). However, in a typical real-world project with hundreds or thousands of paths through the network, being able to identify the subset of paths that are the most problematic, i.e. that have a high probility of being a critical path, can be really helpful.
+
+## Eliminating loops
+
+In this simulation, we *could* have written the entire simulation with a for loop. For example, we can find the critical path probabilities as follows:
+
+```{r}
+
+# find the longest path in each trial
+
+# we replace the for loop with sapply. Specifically, we sapply will process the "path" columns
+# for all rows in the trials data frame. For each row, it will find which path was the longest
+critical.path<-sapply(1:n, 
+                      function(i) {which.max(trials[i, c("path.1","path.2","path.3")])})
+
+#print(critical.path)
+
+# now let's add the critical path number to our trials data frame
+
+trials<-cbind(trials, critical.path)
+
+# use the aggregate function to calculate our counts 
+
+counts<-aggregate(critical.path, by=list(critical.path), length)
+
+# add the probability to the data frame
+counts<-cbind(counts, counts$x / n)
+
+# change the column names to be more meaningful
+colnames(counts)<-c("Path", "Critical Count", "Probability Critical")
+
+```
+
+This code *looks* a bit more complicated (obscure?), which is why I used a loop initially to illustrate the simulation logic. However, the sapply function replaces the for loop and actually executes more quickly (this has to do with the nature of R program execution). Ultimately, you'll become more comfortable using sapply (and the other apply functions: apply, lapply, mapply, tapply). In any case, we see that both methods (loop and sapply) produce the same results.
+
+
+```{r, echo=FALSE}
+
+counts %>%
+  kable() %>%
+  kable_styling(fixed_thead = T, full_width = F)
+
+```
+
+
+
+
+

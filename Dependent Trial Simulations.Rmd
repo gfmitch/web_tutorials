@@ -1,0 +1,299 @@
+---
+title: "Dependent Trial Simulations"
+author: "Gary Mitchell"
+date: "11/12/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE, message=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+require(kableExtra)
+```
+
+## What is an dependent trial simulation?
+
+Many of the systems we may wish to model have built-in dependencies. For example, in a supply chain, the *beginning* inventory today depends on yesterday's *ending* inventory. In other words, inventory is a *dependent* variable. This type of system requires a dependent trial simulation.
+
+When one or more variables depends on an outcome in a previous trial, the simulation we build almost always will require a *main simulation loop* (also referred to simply as *sim loop* or *main loop*). 
+
+## A simple dependent trial simulation
+
+A single-server queuing system is frequently used to illustrate dependent trial simulations. A single server queue consists of a *buffer* (i.e. waiting line) and a *server*. Collectively, the buffer and server are referred to as the queuing system (or just the system). The server does not have to be a person. For example, a metering light on a freeway onramp is an example of a non-human server. The diagram below illustrates a single-server queue.
+
+![Single server queue diagram](single_server_queue.JPG)
+
+When a customer arrives at the *system*, the customer enters the buffer and advances as far forward as possible. If the server is available, the customer proceeds directly into service. If the server is not available (i.e. the server is serving another customer), the newly arrived customer must wait in the buffer.
+
+There is a great deal to understand about queuing systems, and a comprehensive discussion is well beyond the scope of this example. For more information, please see the BUS 361 lecture notes on Queuing Theory.
+
+## Simple queue simulation
+
+To illustrate a dependent trial simulation, we are going to simulate a simple single-server queue:
+
+* Poisson arrivals (i.e. customers arrive as a Poisson process) with rate $\lambda = 20 \thinspace  cust/hr$
+* Exponential service times (i.e. service times follow an exponential distribution) with rate $\mu = 25 \thinspace cust/hr$
+* Customers are served on a first come first served (FCFS) basis.
+
+### Simulation clocks
+
+This simulation requires two clocks that we will use to represent the times of the next arrival and service completion. The *memoryless* properties of the Poisson and exponential distribution allow us to simplify our work with determining when the next arrival or service completion will occur. In other words, this simulation will be simpler because of the use of Poisson and exponential distributions. If service times were normally distributed, for example, then *time management* would be a bit more involved.
+
+We'll name our clock variables:
+
+* next_arrival - time until the next customer arrival
+* next_svccomp - time until the next service completion
+* simtime - the total time elapsed since the beginning of the simulation
+
+If there are no customers in service, then we'll set the next_svccomp to $\infty$ which will force the next event to be a customer arrival.
+
+### Understanding the simulation
+
+Essentially, our simulation will consist of repeating the following sequence for a large number of trials:
+
+1. Determine if the next event is an arrival or a service completion:
+    * Generate a new random value for the next_arrival
+    * Generate a new random value for the next_svccomp
+    * Determine which time is smallest (which indicates the next event)
+
+2. Calculate the next event time and the time spent in the current state (i.e. before the arrival or service completion)
+
+3. Update the system state:
+    * If a service completion, reduce the number of customers in the system by 1 (minimum of 0)
+    * If a customer arrival, increase the number of customers waiting by 1
+
+4. Update the main sim clock (simtime)
+
+It's the first step that is simplified by memoryless property. All other steps would be the same.
+
+### The simulation code
+
+Let's assume we want to run the simulation for a total elapsed time of 28 days. Since our arrival and service rates are stated in customers per hour, we need to determine the number of hours for the simulation:
+
+$$simhours = 28 \thinspace days \times 24 \thinspace hours / day = `r 28*24` \thinspace hours$$
+
+We'll create a maxtime variable and use it to control our sim loop. The basic simulation code will appear as follows:
+
+```{r, eval=FALSE}
+
+# set the maximum simulation time (in hours)
+
+maxtime<-28 * 24
+
+# initialize the simulation clock to start at time 0
+simtime<-0
+
+#initialize the state vectors
+# ncust is the number of customers in the system 
+# statetime is the time spent in the current state
+ncust<-0
+statetime<-0
+
+# use a stno (state number) variable to index into the simulation vectors
+stno<-1
+
+# main simulation loop
+
+while (simtime < maxtime)
+{
+  # Determine the next event type
+  
+  # calculte the next event time
+  
+  # calculate the time spent in the current state (i.e. BEFORE the next event is processed)
+  
+  # update the state variables: ncust, statetime, stno, simtime
+}
+
+# analyze simulation performance
+
+```
+
+Of course, the code above is missing some details, but it does a good job of providing the big picture. Basically, we:
+
+1. Set up some data structures for holding our simulation results (e.g. ncust, statetime, etc.)
+2. We create a main simulation loop
+3. Inside the loop, we code the actions/calculations that happen for each trial (in our simulation, *an* event is either an arrival or a service completion).
+
+That's about it, other than some necessary housekeeping and loop control statements.
+
+### Adding the details
+
+Let's fill in those missing details:
+
+
+```{r, exec=FALSE}
+
+# set the maximum simulation time (in hours)
+
+maxtime<-28 * 24
+
+# set arrival and service rates
+lambda<-20
+mu<-25
+
+# initialize the simulation clock to start at time 0
+simtime<-0
+
+#initialize the state vectors
+# ncust is the number of customers in the system 
+# statetime is the time spent in the current state
+ncust<-0
+statetime<-0
+event<-"starting"
+
+# use a stno (state number) variable to index into the simulation vectors
+stno<-1
+
+# main simulation loop
+
+while (simtime < maxtime)
+{
+  # Determine the next event type
+  
+  # generate random arrival time
+  next_arrival<-rexp(1, lambda)
+  
+  # generate next service time
+  if(ncust[stno] > 0)
+  {
+    # generate service completion if a customer is in service
+    next_svccomp<-rexp(1, mu)
+    
+  } else
+  {
+    # System is empty, so the next event MUST be an arrival
+    next_svccomp<-Inf
+  }
+  
+  # calculate the next event time
+  
+  if (next_arrival <= next_svccomp)
+  {
+    # next event is an arrival, next_arrival is sooner than next_svccomp
+    nexttime<-simtime + next_arrival
+    event[stno + 1 ]<-"arrival"
+  } else
+  {
+    # next event is a service completion
+    nexttime<-simtime + next_svccomp
+    event[stno + 1]<-"service completion"
+  }
+  
+  # update the state variables: statetime, ncust, simtime
+  
+  # calculate the time spent in the current state (i.e. BEFORE the next event is processed)
+  statetime[stno]<-nexttime - simtime
+  
+  # advance the state number counter
+  stno<- stno + 1
+  
+  # update the number of customers in the system
+  if (event[stno] == "arrival")
+  {
+    # increase the number of customers in the system
+    ncust[stno]<-ncust[stno - 1] + 1
+  } else
+  {
+    # event must be a service completion, reduce the number of customers in the system
+    ncust[stno]<-max(0, ncust[stno - 1] - 1)
+  }
+  
+  # advance the sim clock so that the loop will eventually terminate
+  simtime<-nexttime
+}
+
+# at the end of the simulation, we don't know the final time spent in the last state, so
+# we'll drop the last state
+
+ncust<-ncust[-length(ncust)]
+event<-event[-length(event)]
+
+# finally, we'll create a data frame with our simulated trials
+
+simrslts<-data.frame(ncust, statetime, event)
+
+```
+
+We can look at a small portion of the simulated trials (there are `r format(nrow(simrslts), big.mark=",")` of them):
+
+```{r, echo=FALSE}
+
+head(simrslts, 10) %>%
+  kable() %>%
+  kable_styling(fixed_thead = T, full_width = F)
+
+```
+
+The arrival and service rates were specified in hours, our trial results in hours (so the times are listed in fractions of hours). The results might be more intuitive if we convert the statetimes to minutes.
+
+```{r}
+# convert statetime to minutes
+simrslts$statetime<-simrslts$statetime * 60
+```
+
+```{r, echo=FALSE}
+head(simrslts, 10) %>%
+  kable() %>%
+  kable_styling(fixed_thead = T, full_width = F)
+```
+
+## Analyzing the simulation
+
+It's always a good idea to separate *generating* the simulated trials and *analyzing* the simulation results. In the simulation code above, you see the following statement at the end of the code block:
+
+```{r, eval=FALSE}
+
+# finally, we'll create a data frame with our simulated trials
+
+simrslts<-data.frame(ncust, statetime, event)
+
+```
+
+The purpose of this code is to *package* the simulation data collected during the simulation for later analysis. This type of *simulation result* can take many different forms, depending on what is required to perform the simulation analysis. In this case, I created a data frame that consists of three key simulation results (ncust, statetime, event).
+
+Using this data, I can perform whatever analysis I think is relevant. In this case, for example, we might want to know:
+
+* Maximum system occupancy
+* Mean system occupancy
+* Mean customers waiting.
+
+These are easily done using the trial data in simrslts. Finding the maximum occupancy couldn't be easier:
+
+```{r}
+max(simrslts$ncust)
+```
+
+Wow, `r max(simrslts$ncust)` is a lot of people waiting!
+
+Calculating the mean system occupancy and mean customers waiting is a little more involved. To calculate these correctly, we must calculate them as *time-weighted averages*. To do this, we calculate a weighted average using the statetime values as the weights:
+
+```{r}
+meancust<-simrslts$ncust %*% simrslts$statetime / sum(simrslts$statetime)
+```
+
+In the code above, the %\*% operator calculates, $x \cdot y$, the *dot product* of two vectors. If $x$ and $y$ are same-sized vectors, then:
+
+$$x \cdot y = x_1 y_1 + x_2 y_2 + \dots x_n y_n$$
+For Excel users, this is the same calculation performed by Excel's sumproduct function.
+
+We find that, on average, there are `r round(meancust,2)` customers in the system. Similarly, we can calculate the mean number of customers waiting:
+
+```{r}
+meancustwait<-(pmax(0, simrslts$ncust - 1)) %*% simrslts$statetime / sum(simrslts$statetime)
+```
+
+and find that, on average, there are `r round(meancustwait, 2)` customers waiting. R's *pmax* function performs a *pairwise* max evaluation of two or more vectors. For example, for two vectors $x$ and $y$, the result of $pmax$ is a new vector of the form:
+
+$$v = pmax(x,y) = 
+\left(\begin{array}{c} 
+max(x_1, y_1)\\
+max(x_2, y_2)\\
+\vdots \\
+max(x_n, y_n)
+\end{array}\right)$$ 
+
+## Conclusion
+
+Clearly, there are many additional metrics that might be of interest. For example, we might be interested in knowing customer waiting times. We could accomplish this by expanding the code in our simulation loop to additionally track the amount of time each customer spends in the system. This would add additional complexity to the current simulation and, while interesting, would not add any additional clarity about the process of building the dependent trial simulation.
+

@@ -1,0 +1,268 @@
+---
+title: "Logistic Regression"
+author: "Gary Mitchell"
+date: "October 8, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Associative Modeling
+
+As we discussed in the introduction to *associative modeling*, our goal is to develop a model that relates values of a *dependent* variable with the values of one or more *independent* variables. The resulting model:
+
+*  Can be used to make predictions (with confidence/prediction intervals)
+*  Understand how changes in one of the independent variables will impact the dependent variable.
+
+
+We previously learned that *linear squares* regression (*least squares* regression) is simply optimization applied to the problem of determining coefficients for the *best fit* by minimizing the squared errors of the regression. The model took the form:
+
+$$\hat{y} = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + ... + \beta_n x_n$$
+
+In this case, the *dependent* variable is assumed to be a continuous variable and the modeled expression can be used to calculate an estimate, $\hat{y}$, given any set of values of the independent (explanatory) variables, e.g. ${x_1, x_2, ..., x_n}$. So, if we're trying to model things like sales, demand, attendees, etc., a linear regression model may be exactly what we're looking for.
+
+## Logistic Regression
+
+But what if the *dependent* variable isn't continuous? For example, what if we want to model the probability that a customer purchases a car (or not)? A borrower will default (or not)? A franchise location will succeed (or not)? In other words, what if our dependent variable is binary?
+
+In such cases, we can use *logistic regression* to create a predictive model that may be used to answer these questions. What if our dependent variable has more than two outcomes, but is still characterized by a discrete finite domain? For example, what if our goal is to predict whether a district will vote democrat, republican, or other (i.e. independent, libertarian, green party, etc.). In this case we can use *multinomial* logistic regression to construct a model that will allow us to make predictions.
+
+The remainder of this tutorial will illustrate performing, and interpreting, a logistic regression analysis. Multinomial logistic regression is related in concept, but not covered in this introductory decision modeling course. 
+
+### Machine Learning
+
+In this era of everything *machine learning*, we often hear the terms *prediction* and *classification*. Logistic regression models can be used in both capacities. For example, given a logistic regression model where the dependent variable is default/not default, a logistic regression model could be used to calculate the probability (i.e. *predict*) that a borrower will default (e.g. 87.3% chance of default). Similarly, the same model could be used to *classify* borrowers into groups *likely default* and *not likely default*.
+
+In truth, machine learning is less mysterious than it sounds. A machine learning algorithm is simply an algorithm that we can apply to data for a specific purpose (e.g. prediction or classification). Based on this definition, even least squares regression is an example of machine learning.
+
+## The Logistic Regression Model
+
+A logistic regression model is similar to a linear regression model, except we formulate a model that relates the *log odds* of an event to a linear combination of the explanatory variables. 
+
+$$\log \left( \frac{Pr\{y=1\}}{1-Pr\{y=1\}} \right)  = \beta_0 + \beta_1 x_1 + ... + \beta_n x_n$$
+
+The left hand side (LHS) of the expression above is called the *log odds* of the event. This isn't the exactly the probability of the event, but once we have the log odds of the event we can find the probability. 
+
+## Building the Logistic Regression Model
+
+There are a number of packages that can be used to perform a logistic regression in R. We're going to use the *glm* (generalized linear model) function. It is a built-in, well-known function for performing the logistic regression, and its syntax is very similar to the *lm* function we learned in linear regression.
+
+The easiest way to explain the process of performing a logistic regression is to walk through an example. For this example, we are going to use a dataset available in the ILSR package that contains data on loan defaults. If you want to practice with the example, you'll need to install the ILSR package before proceeding.
+
+### Acquire and Become Familiar with the Data
+
+The first step in any analysis applicatino is acquiring and becoming familar with the data. We need to understand the size of our dataset, the types of data it contains, whether there is any missing data, etc.
+
+
+```{r warning=FALSE, collapse=TRUE}
+require(ISLR)
+
+# access dataset and assign to variable "default"
+# 
+
+default<-ISLR::Default
+
+```
+
+
+The head and str functions are useful for gaining a quick understanding of the dataset:
+
+```{r}
+head(default)
+```
+
+The output from head shows us that the data contains four columns (default, student, balance, and income) and that default and student appear to be categorical data (both are Yes/No). The str output is even more informative:
+
+```{r}
+str(default)
+```
+
+A quick look at the str output reveals:
+
+*  The dataset contains 10,000 observations (i.e. data collected on 10,000 loans)
+*  *default* and *student* are *factors*
+*  *balance* and *income* are numeric.
+
+A *factor* is R's way of efficiently representing categorical data. Rather than store character data that would take up extra space and require extra processing, R converts the character values (which it stores as *levels*) to numbers. When you display the variable, R looks up the factor number in the corresponding *levels* and displays the character-equivalent. This allows us to work with intuitively meaningful representations (e.g. Yes/No) while R works efficiently with numeric attributes.
+
+Fortunately for us, we *want* our logistic regression variable to be a factor, so the data is already in the *shape* that we need:
+
+*  Rows represent observations
+*  Columns represent attributes
+*  Dependent variable is a factor (i.e. categorical variable) indicating whether or not the event of interest occurred.
+
+### Creating Training and Testing Datasets
+
+As with linear regression, the use of more independent variables is not always better. Additionally, we must be able to validate our model to validate its ability to predict or classify. 
+
+Since we have 10,000 observations, we have plenty of data with which to work. We will randomly separate the observations into *training* and *testing* datasets. The *training* dataset will be used to fit the logistic regression model. The *testing* dataset (often referred to as a *holdout* sample), will be used to evaluate the fitted model. For the time being, we are going to ignore an important characteristic of this data that will impact our results.
+
+In the following code, the call to set.seed() establishes the starting point for R's random number generator (since we will use the sample function to randomly select observations). This will enable you to reproduce the exact results. When developing a model on your own, you would set a random number seed during code development/testing (to facilitate debugging), but not when fitting or validating models.
+
+```{r}
+set.seed(123)
+trainidx<-sample(c(TRUE,FALSE), nrow(default), replace=T, prob=c(0.6, 0.4))
+
+trainidx[1:10]
+
+
+```
+
+The sample statement above, randomly generates TRUEs and FALSEs for use in selecting observations. In fact, it generates `r nrow(default)` TRUEs and FALSEs because there are `r nrow(default)` rows in the *default* dataset. The prob= option tells sample to generate TRUE and FALSE values with 60% and 40% probability respectively. We see that the first 10 values in trainidx reflect (approxiately) this 60/40 split. By using trainidx as a logical index, all of the observations where the corresponding trainidx value is TRUE will be assigned to our *training* sample called *traindat*:
+
+```{r}
+traindat<-default[trainidx,]
+nrow(traindat)
+
+```
+
+Similiar, we can assign all of the observations whose corresponding trainidx value is FALSE to *testdat* (using the *not* operator, !, in front of the logical vector trainidx switches all TRUEs to FALSE and vice versa):
+
+```{r}
+testdat<-default[!trainidx,]
+nrow(testdat)
+
+```
+
+We see that the resulting subsets represent a roughly 60/40 training/testing split.
+
+
+### Fitting the Model
+
+Now we are ready to fit the logistic regression model. We'll start with a simple model that attempts to utilize *balance* as the sole predictor of a default. In the call to *glm*, we specify the following arguments:
+
+*  default ~ balance - fitting a model with default as the dependent variable and balance as the single independent variable
+*  family = "binomial" - this tells *glm* to fit a logistic model
+*  data=traindat - tells *glm* to utilize our traindat data frame as the source of the observations.
+
+```{r}
+simplemodel<-glm(default ~ balance, family="binomial", data=traindat )
+print(summary(simplemodel))
+
+```
+
+Here we see that the output from *glm* is very similar to that of the *lm* function we used to perform a standard linear regression.The top includes a restatement of the model we fit. About one third of the way down the output, we see the Coefficients section which looks familiar. The interpretation is similiar as well. The coefficient of *balance* tells us that *log-odds* of a default will change by `r simplemodel$coefficients['balance']` for every one unit change in balance. We also see that the balance coefficient is highly significant (at the 99.9% confidence level).
+
+Note there is no *correlation* metric, which would have no meaning with a binary dependent variable. Instead, the *defiance* metrics allow for an evaluation of the explanatory power of the model. Larger differences between the Null and Residual deviances indicate stronger relationships. There *are* a variety of statistical measures that can be applied to evaluating logistic regression model fit. However, for our purposes (at this introductory level), we will validate our model using our *holdout* sample (i.e. testing dataset). Specifically, we will look at the extent at which our model *correctly* predicts default (and not default), i.e., *true positives (and negatives)* and the extent to which it *incorrectly* predicts default (and not default), i.e. *false positivies (and negatives)*.
+
+### Calculating the Probability of a Default
+
+Now that we have a model, we can calcualte the probability of a default. Remember, the model that we fit relates the *log-odds* to the independent variables:
+
+$$\log \left( \frac{Pr\{y=1\}}{1-Pr\{y=1\}} \right)  = \beta_0 + \beta_1 x_1 + ... + \beta_n x_n$$
+
+What we *really want* is to find $Pr\{{default}\}$, or in terms of the model, $Pr\{y=1\}$. This is a little more involved than simply evaluating $\beta_0 + \beta_1 x_1 + ... + \beta_n x_n$:
+
+$$Pr\{y=1\} = \frac{e^{\beta_0 + \beta_1 x_1 + ... + \beta_n x_n}}{1+e^{\beta_0 + \beta_1 x_1 + ... + \beta_n x_n}}$$
+The logistic function (the RHS in the expression above) is used to convert the *log-odds* calculated using our logistic regression model to probabilities. It has a sigmoidal shape which pushes negative values toward 0 and positive values toward 1. It also ensures that the input range $(-\infty,\infty)$ maps to $[0,1]$, corresponding to valid probabilities.
+
+```{r, echo=FALSE}
+t<--8:8
+plot(t, exp(t)/(1+exp(t)), type="l", col="red",
+     xlab=expression(beta[0] + beta[1]*x[1] + ... + beta[n]*x[n]),
+     ylab=expression("Pr{y=1}"))
+
+```
+
+We *can* do this in R with a little bit of work. We can use the regression coefficients returned in the model object  by *glm*. The first coefficient is $\beta_0$ and has no corresponding independent variable value. Assume that a loan has an outstanding balance of 1500, then $Pr\{default\}$ is given by:
+
+```{r}
+num<-exp(simplemodel$coefficients[1] + simplemodel$coefficients[-1]%*%c(1500))
+den<-(1+exp(simplemodel$coefficients[1] + simplemodel$coefficients[-1]%*%c(1500)))
+prob<-num/den
+prob
+```
+
+The -1 index in the second term chooses all but the *first* coefficient. In other words, coefficients[-1] includes $\beta_1$ through $\beta_n$. This isn't too bad, but fortunately there's an easier way. As with the models produced by *lm*, we can use R's *predict* function with our logistic regression model:
+
+```{r}
+test<-data.frame(balance=1500)
+predict(simplemodel, test, type="response")
+
+```
+
+We can produce multiple predictions at once. For example, let's say we want to see how the probability of defaulting varies with loan balance. We can calculate the probabilities for balances of 1500 through 6000 (varying by 500):
+
+```{r}
+balance<-data.frame(balance=seq(1500, 6000,500))
+prob<-predict(simplemodel, balance, type="response")
+data.frame(balance, prob)
+```
+
+### Using our Model for Classification
+
+Let's say that instead of estimating the probability of a default, we want to classify loans as being likely to default or likely not to default. The standard way to do this is to *split* the results by probability. If $Pr\{default\} > 0.5$ then the loan is likely to default, otherwise it belongs in the *not default* group. Using the probabilities above:
+
+```{r}
+class<-ifelse(prob > 0.5, "Default", "Not Default")
+data.frame(balance, class)
+```
+
+
+### Evaluating our model
+
+If we are primarily interested in using our model for prediction or classification (rather than to student the structural properties of the problem), we are very likely interested in evaluating the model's performance on test data. We can do this by creating cross-tabs using R's table function. 
+
+First, we use our model to classify all of the loans in the *holdout sample* as default ("Yes") or not default ("No"):
+
+```{r}
+predicted<-predict(simplemodel, testdat, type="response")
+testmodel<-as.factor(ifelse(predicted > 0.5, "Yes", "No"))
+
+```
+
+Then, we create the cross tab with the test data's *labels* (the machine learning term for known result/correct value) and the classifications/outcomes we determined using our model:
+
+```{r}
+tabcnts<-table(testdat$default, testmodel)
+print(tabcnts)
+
+```
+
+The rows in our cross-tab represent the actual loan outcome and the columns represent the model's predicted outcome. Thus we see that the model correctly predicted that 3803 loans did not default. Similarly, the model incorrectly predicted that 12 loans would default (false positive).
+
+It can be useful to look at the results in proportionate terms. The table below indicates what percentage of the total outcomes are represented by each cell. For example, 96.3% of loans that did not default were classified as not defaulting by the model. On the other hand, 1% of the loans *did* and the model predicted they would default.
+
+```{r}
+print(tabcnts/nrow(testdat))
+
+```
+
+My preferred way of looking at this helps to evaluate the magnitude of *false* classifications. Because each row in our cross-tab table represents an actual outcome (either No or Yes for default), the sum of the counts across the rows represent the total number of each outcome in the test sample.
+
+```{r}
+print(tabcnts/rowSums(tabcnts))
+
+```
+
+Dividing the cross-tab cells by the corresponding row total allows us to see the percentage of outcomes that were correctly and incorrectly predicted. For example, we see that our model correctly predicted 99.7 percent of the loans that would not default. Wow! 
+
+Unfortunately, the model doesn't fair as well in predicting the loans that *do* default. Here we see that the model *correctly* classified only 29% of loans that would default. In other words, the model incorrectly indicated that the loan would not default for 71% of the loans that defaulted!
+
+It's fairly safe to say that this model needs improvement.
+
+### Incorporating Multiple Independent Variables
+
+Performing a logistic regression with multiple explanatory variables is straightforward. Here we add income and a categorical variable indicating whether the loanee is a student. I've included the cross-tab output here as well:
+
+```{r}
+fullmodel<-glm(default ~ balance + income + student, family="binomial", data=traindat)
+print(summary(fullmodel))
+
+predicted<-predict(fullmodel, testdat, type="response")
+
+testmodel<-as.factor(ifelse(predicted > 0.5, "Yes", "No"))
+
+tabcnts<-table(testdat$default, testmodel)
+print(tabcnts)
+print(tabcnts/nrow(testdat))
+print(tabcnts/rowSums(tabcnts))
+
+```
+
+Looking at the *glm* output, we see that *balance* and *student* both are highly significant, but *income* is not. Looking at the cross-tab results divided by row sums (the last table), we see that the performance of this model is actually *worse* than the performance of our initial simple model, at least in terms of predicting loans that will default (decreased from correctly identifying 29% to 27% of defaulting loans).
+
+Removing *income* from the model does not appear to help (check this on your own). Consequently, we would have to search for additional data (i.e. additional independent variables) for potential inclusion in the model.
+

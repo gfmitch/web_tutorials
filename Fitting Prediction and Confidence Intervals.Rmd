@@ -1,0 +1,265 @@
+---
+title: "Fitting Prediction and Confidence Intervals"
+author: "Gary Mitchell"
+date: "3/5/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Avoiding point estimates
+
+As we have previously discussed, when we fit a regression model, we obtain an expression of the form:
+
+$$\hat{y} = \beta_0 + \beta_1 x_1 + \dots + \beta_n x_n$$
+Any values calculated with this *regression equation* are only *estimates* of the actual value. These estimates may or may not represent accurate predictions of the actual $y$ value depending on the standard error of the regression.
+
+To put this into context, assume that we are constructing a model to estimate the company's annual sales given territory population and a number of other variables. Assume that the model produces an estimate of total year revenues of \$20 million and that you pass the *estimate* along to senior management.
+
+Of course, the \$20 million was only one possible outcome. Now, let's say that the actual sales turn out to be \$12 million. You're not going to be a very popular person with management at that point (assuming you still have your job). It's pretty clear that management would not be happy with your overestimating company performance by `r round((20/12 - 1) * 100)`%. On the other hand, you probably wouldn't be much more popular if the actual sales had come in at \$28 million; management might have been able to make very different decisions had you not *underestimated* sales by `r round(((28-20)/28 * 100))`%.
+
+So, how do we avoid our date with unemployment? First, we avoid providing point estimates, instead offering *prediction* intervals. Second, we foster a cultural change in the organization getting every focused on using intervals instead of point estimates (that will always be wrong except by accident).
+
+## Prediction and Confidence Intervals
+
+It turns out that producing prediction and confidence intervals is very easy using R. The bigger challenge, perhaps, is understanding the difference between *prediction* and *confidence* intervals.
+
+### Confidence vs. Prediction Intervals in Statistics
+
+When we fit a regression model, we *choose* estimates that minimize the squared errors from the predicted values made using the regression model. In other words, we do not actually *know* the actual regression coefficients (e.g. $\beta_0, \beta_1, \dots$), so we *estimate* their values. Then, using these *estimated coefficients*, we estimate a predicted value. However, this is just one possible prediction that could have been made and we can construct a *confidence* interval to help us understand the range of possible predictions. This is analagous in concept to the of the confidence interval of the population mean in descriptive statistics.
+
+```{r, echo=FALSE}
+n<-100
+```
+
+Let's say we have a `r n` observation sample of heights for american men. The frequency distribution below suggests that the heights follow a normal distribution (proving this is the case is a bit beyond the scope of this course).
+
+```{r, echo=FALSE}
+h<-rnorm(n, 69, 3)
+
+hist(h, probability=TRUE, col='blue',
+     main=paste('Frequency Distribution of American Male Heights\nn =', n))
+
+muh<-round(mean(h), 2)
+sigmah<-round(sd(h), 3)
+```
+
+From the sample, we calculate that the average american male stands approximately `r muh` inches tall with a standard deviation of `r sigmah` inches. We can superimpose the density function for a normal distribution *assuming* $\mu = `r muh`$ and $\sigma = `r sigmah`$:
+
+```{r, echo=FALSE}
+hist(h, probability=TRUE, col='lightgray',
+     main=paste('Frequency Distribution of American Male Heights\nn =', n))
+lines(sort(h), dnorm(sort(h), muh, sigmah), col='red')
+
+```
+
+Now, what we have *really* calculated is $\bar{x} = `r muh`$, i.e. the *sample* mean which we treat as an estimate of the *population* mean. However, we don't really *know* the population mean, $\mu$, the actual average height of american males. To find $\mu$, we would need to include the height of *every* American male in our mean calculation. 
+
+Clearly, this is impractical for large populations. So, we treat the *sample* mean as the best estimate (i.e. the most likely value) of the population mean, although, we still cannot say that $\mu = `r round(muh,2)`$. What we  *can* do is to construct a confidence interval of the possible values of $\mu$.
+
+Consider the following density function for our normally distributed heights. The vertical line at `r muh` inches represents our estimate of the population mean. The lower and upper bounds of the shaded area represent the range of possible values for the population mean at 95% confidence. Specifically, we're 95% sure that the population mean is in the interval $[`r round(muh + qnorm(0.25) * sigmah/sqrt(n), 2)`, `r round(muh + qnorm(0.975) * sigmah/sqrt(n), 2)`]$.
+
+```{r, echo=FALSE}
+curve(dnorm(x, muh, sigmah), 
+      from=muh - 4 * sigmah, 
+      to=muh + 4 * sigmah, 
+  main = "Normal Distibution Heights", 
+  ylab = "Probability Density",
+  xlab = 'Height')
+
+lines(c(muh, muh), c(0, max(dnorm(h, muh, sigmah))))
+
+colorArea <- function(from, to, density, ..., col="blue", dens=NULL){
+    y_seq <- seq(from, to, length.out=500)
+    d <- c(0, density(y_seq, ...), 0)
+    polygon(c(from, y_seq, to), d, col=col, density=dens)
+}
+
+colorArea(from=muh + qnorm(0.025) * sigmah/sqrt(n), 
+          to=muh + qnorm(0.975) * sigmah/sqrt(n), col='lightblue', 
+          density=function(x){dnorm(x, muh, sigmah)})
+
+#colorArea(from=qnorm(0.975), to=4, dnorm, mean=0, sd=1, col=2, dens=20)
+```
+
+In contrast, a *prediction* interval would relate to the estimated height of a single person selected at random instead of the *average* height of a person in the population. In this case, the 95% *prediction* interval would appear as the shaded area in the graph below; the 95% prediction interval for a randomly selected person's height would be $[`r round(muh + qnorm(0.25) * sigmah,2)`, `r round(muh + qnorm(0.975) * sigmah, 2)`]$.
+
+```{r, echo=FALSE}
+curve(dnorm(x, muh, sigmah), 
+      from=muh - 4 * sigmah, 
+      to=muh + 4 * sigmah, 
+  main = "Normal Distibution Heights", 
+  ylab = "Probability Density",
+  xlab = 'Height')
+
+lines(c(muh, muh), c(0, max(dnorm(h, muh, sigmah))))
+
+colorArea <- function(from, to, density, ..., col="blue", dens=NULL){
+    y_seq <- seq(from, to, length.out=500)
+    d <- c(0, density(y_seq, ...), 0)
+    polygon(c(from, y_seq, to), d, col=col, density=dens)
+}
+
+colorArea(from=muh + qnorm(0.025) * sigmah, 
+          to=muh + qnorm(0.975) * sigmah, col='lightblue', 
+          density=function(x){dnorm(x, muh, sigmah)})
+
+#colorArea(from=qnorm(0.975), to=4, dnorm, mean=0, sd=1, col=2, dens=20)
+```
+
+### Confidence vs. Prediction Intervals in Regression Analysis
+
+The confidence and prediction intervals we construct for a regression estimate are analogous to those we just described in descriptive statistics. The primary difference is that for our regression intervals, the *estimate* will be the predicted value $\hat{y}_i$ corresponding to the independent variables $x_{1,i}, \dots, x_{n,i}$ calculated using the regression model, i.e $\hat{y}_i = \beta_0 + \beta_1 x_{1,i} + \dots + \beta_n x_{n,i}$.
+
+Specifically:
+
+  - The *prediction* interval represents the boundaries at the desired confidence for a single estimate using the regression model
+  - The *confidence* interval represents the boundaries for the average predicted value.
+  
+For business purposes, we usually want to use the prediction interval. For example, if we are attempting to predict sales, costs, number of customers, etc., we are trying to forecast a single outcome (rather than an average of 100's of outcomes), so the predicted interval is appropriate.
+
+## Constructing Prediction and Confidence Intervals
+
+R makes it easy to construct these intervals. We can use the built-in *predict* function to produce both. The code below loads the data and constructs the a model of the form:
+
+$$Est\thinspace Page \thinspace Cost = \beta_1 \sqrt{Distribution}$$
+
+```{r}
+# load page cost data
+dat<-read.csv("page costs for R.csv")
+
+# reorder to simplify graphing
+dat<-dat[order(dat$Distribution),]
+
+# fit the nonlinear model
+
+model<-lm(Page.Costs ~ 0 + I(sqrt(Distribution)), dat=dat)
+print(summary(model))
+
+```
+
+Here we see the scatterplot of the data with our model's corresponding predictions:
+
+```{r}
+b<-model$coefficients
+
+# include Distribution = 0 into the fitted values
+linedat<-data.frame(Distribution=c(0, dat$Distribution), 
+                    Page.Costs=c(0, dat$Page.Costs))
+
+plot(linedat$Distribution, linedat$Page.Costs,
+     ylab='Page Costs',
+     xlab='Distribution',
+     main=expression("Est Page Cost" == beta[1] * sqrt(Distribution)))
+lines(linedat$Distribution, b[1] * sqrt(linedat$Distribution))
+
+
+```
+
+Now, to construct the prediction or confidence intervals, three necessary conditions must hold:
+
+  - The residuals must be normally distributed
+  - The residuals must not exhibit heteroskedasticity
+  - The residulas must be independent (i.e. there should be no autocorrelation among the residuals).
+  
+These conditions and validation tests are discussed in other tutorials, so I won't repeat the information here. Instead, I'll just emphasise that we *must* verify these necessary conditions hold or the prediction and confidence intervals are not reliable (and we should not use the model for making predictions).
+
+As it turns out, two of the three of these do *not* hold for this model. However, for the sake of illustrating how to construct the intervals, we will assume that they all hold.
+
+First, we'll illustrate the confidence and prediction intervals for our model graphically.
+
+```{r}
+# first we'll fit prediction intervals for the values of
+# Distribution that we already have. The values will be
+# extracted from our model object automatically
+
+pint<-predict(model, newdata=dat, interval='prediction' )
+
+# now we'll fit confidence intervals for the same values of
+# Distribution
+
+head(pint)
+
+cint<-predict(model, newdata=dat, interval='confidence')
+
+head(cint)
+
+```
+
+Here we have printed just the first several rows of the prediction and confidence intervals generated using *predict*. We see that the general structure is the same for both types of intervals; *predict* provides three values for each set of independent data provided as newdata:
+
+  - fit - the value fitted using the regression model
+  - lwr - the lower bound of the interval
+  - upr - the upper bound of the interval.
+  
+By default, predict produces 95% confidece levels, but we can specify a different confidence value using *level=* in the call to predict. For example, level=0.90 would produce 90 % confidence intervals.
+
+Now we'll plot the data, add the fitted line, and then add lines for the prediction (green) and confidence (orange) intervals.
+
+```{r}
+# calculate the range of Page Cost values for the graph. The 
+# limits need to be large enough to include all values in the 
+# prediction intervals which include the smallest and largest
+# values to be ploted
+
+ylimits<-c(min(pint[,'lwr']), max(pint[,'upr']))
+           
+# now, plot the points and fitted values
+plot(dat$Distribution, dat$Page.Costs, 
+     ylim=ylimits,
+     xlab='Distribution',
+     ylab='Page Cost ($)',
+     main='Prediction and Confidence Intervals')
+lines(dat$Distribution, pint[,'fit'])
+
+# now, add the prediction and confidence interval lines
+lines(dat$Distribution, pint[,'lwr'], col='green')
+lines(dat$Distribution, pint[,'upr'], col='green')
+lines(dat$Distribution, cint[,'lwr'], col='orange')
+lines(dat$Distribution, cint[,'upr'], col='orange')
+
+```
+
+Looking at the graph, we observe a few things:
+
+  - The *prediction* interval is much wider than the confidence interval
+  - Most of the values fall within the prediction interval boundaries.
+  
+It makes sense that the confidence interval is narrower than the prediction interval; the confidence interval represents the boundaries of uncertainty for the *mean* whereas the prediction interval represents the boundaries of uncertainty for a single predicted value.
+
+Now, let's say we want to make a *prediction* with 90% confidence for a *new* publication with a distribution of 28,500. To do so, we simply construct a
+
+```{r}
+# first, create a data frame with the values we want to use for prediction
+newdat<-data.frame(Distribution=c(28500))
+
+# construct the prediction interval
+pred<-predict(model, newdata=newdat, level=0.9, interval='prediction')
+print(pred)
+```
+
+So, we we that we are 90% confident that the page cost will be in the interval $[`r pred[1,'lwr']`,`r pred[1,'upr']`]$. To make multiple predictions at once, we simply include multiple values for the independent variables:
+
+```{r}
+# first, create a data frame with the values we want to use for prediction
+newdat<-data.frame(Distribution=c(28500, 37000))
+
+# construct the prediction interval
+pred<-predict(model, newdata=newdat, level=0.9, interval='prediction')
+print(pred)
+```
+
+Constructing confidence intervals only requires us to chang ethe interval='prediction' argument to interval='confidence':
+
+```{r}
+# first, create a data frame with the values we want to use for prediction
+newdat<-data.frame(Distribution=c(28500, 37000))
+
+# construct the prediction interval
+pred<-predict(model, newdata=newdat, level=0.9, interval='confidence')
+print(pred)
+```
+
+

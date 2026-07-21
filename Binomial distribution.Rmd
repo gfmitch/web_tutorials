@@ -1,0 +1,66 @@
+---
+title: "Binomial probabilities"
+author: "Gary Mitchell"
+date: "1/23/2022"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## The binomial distribution
+
+The binomial distribution may apply to a random variable where we are interested in calculating the probability of $r$ successes from among $n$ trials, and the probability of a success in any trial is independent of success or failure in any other trial and occurs with probability $p$. The term $success$ here is a bit misleading, but we'll discuss this further when we talk about the binomial distribution in class.
+
+The formulas to calculate binomial probabilities are as follows:
+
+$$Pr\{X = x\} = \binom{n}{x}p^x q^{(n-x)}$$
+$$Pr\{X \leq x\} = \sum_{c=0}^{x}{\binom{n}{c}p^c q^{(n-c)}}$$
+```{r, echo=FALSE}
+n<-10
+r<-4
+p<-0.30
+```
+
+where $q = 1-p$. To calculate the cumulative probability, $Pr\{X \leq x\}$, we must calculate the *point* probabilities (i.e. $Pr\{X = r\}$) for all values of $r \in {0, ..., x}$ and sum them. For example, given $n = `r n`$, $x = `r r`$, and $p = `r p`$, we would sum the following: 
+
+```{r, echo=FALSE}
+prob<-numeric(r + 1)
+
+for (i in 0:r)
+{
+  prob[i+1]<-choose(n,i) * p^i * (1-p)^(n-i)
+  print(paste("Pr{X = ", i, "} = ", prob[i+1], sep=""), quote=FALSE)
+}
+
+print(sum(prob))
+
+alpha<-0.95
+```
+
+## Inverse cumulative probability
+
+There *is no* simple mathematical expression for calculating the inverse cumulative binomial probability. This is due to the summation term in the cumulative probability. Instead, to calculate the inverse, we must calculate the cumulative probabilities for $x = 1, ..., r$ until we find the value of $r$ such that $Pr\{X \leq x\} \geq \alpha$, where $alpha$ is the desired level of confidence.
+
+Consider the case where $\alpha = `r alpha`$, we must calculate the following until we see a resulting cumulative probability greater than or equal to $\alpha = `r alpha`$:
+
+```{r pressure, echo=FALSE}
+cprob<-0
+i<-0
+
+while(cprob < alpha)
+{
+  cprob<-pbinom(i, n, p)
+  print(paste("Pr{X <= ", i, "} = ", cprob, sep=""), quote=FALSE)
+  i<-i + 1
+}
+
+```
+
+Since $Pr\{X \leq 5\} > 0.95$, 5 is the inverse cumulative probability. We say that:
+
+$$x: Pr\{X \leq x\} \geq 0.95 = 5$$
+In other words, the value of $x$ such that $Pr\{X \leq x\}$ is greather than or equal to $`r alpha`$ is 5. We do not need to calculate $Pr\{X \leq x\}$ for any value of $x$ larger than 5, because 5 is the answer (and we can therefore terminate our calculations). Moreover, the maximum value of $x$ that we would ever test is `r n` because we can never calculate a probability for more success than we have trials.

@@ -1,0 +1,584 @@
+---
+title: "Solving Probability Problems"
+author: "Gary Mitchell"
+date: "2/3/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Solving probability problems can be tricky. Frequently, students find these types of problems difficult because they take a mechanical approach to solving the problems. However, the only *consistent* way to solve these kinds of problems is to approach them systematically, being careful to understand what the problem is really asking, and only then attempting to solve the problem.
+
+# What to look for (WTLF)
+
+When approaching a probability problem systematically, there are a number of things that you need to discern about the problem:
+
+  - Which probability distribution applies (and it's *not* always the one that is named in the problem)?
+  - What are the distribution parameters (i.e. what values are required, not the values themselves)?
+  - Which metric/result is required?
+  - What data is provided in the problem (and what data do you have to find/calculate)?
+  
+By answering each of these questinos systematically, you'll put yourselves in a much better position to solve probability problems correctly and easily.
+
+## Which probability distribution applies
+
+This is the most critical question to answer. If you don't know the probability distribution, you can't possible solve the problem, or even answer some of the other WTLF questions. There are *many* potential probability distributions, although we tend to concentrate on a relatively small number of well-known and frequently used distributions in our cources:
+
+  - Discrete distributions
+    - Binomial
+    - Empirical
+    - Poisson
+    - Uniform
+  - Continuous distributions
+    - Beta
+    - Exponential (and shifted exponential)
+    - Normal (Gaussian)
+    - Triangular
+    - Uniform
+    
+It's also important to understand (and always keep in mind) whether you're working with a discrete or a continuous distribution. *Most* of the concepts (e.g. complementary probabilities, independence, unions, joint probabilities) are *conceptually* the same for discete and continuous distributions. However, there *are* important differences:
+
+  - Discrete distributions
+    - Have probability mass functions, i.e. $f(x)=m(x)=Pr\{X = x\} \neq 0$ for some $x$
+    - Use summations to calculate cumulative probabilities, expected values, etc.
+  - Continuous distributions
+    - Have probability density functions $f(x)$
+    - Point probabilities are *always* $0$, i.e. $F(x) = Pr\{X = x\} = 0, \;\forall \>x$
+    - Use integrals to calculate cumulative probabilities, expected values, etc.
+    - $Pr\{X < x\} \equiv Pr\{X <= x\}$
+
+Details on all of these commonly used distributions can be found in the *Prerequisite review* document on the course site (it is a prerequisite view for all courses except Decision Modeling, where we introduced much of the material). It is a good idea to remember the characteristics of the distributions we frequently use (see descriptions below). This will enable you to more quickly identify the distribution for a particular problem.
+
+### Binomial Distribution
+
+The binomial distribution has a binary outcome space. For example, if the possible values of a random variable are $(0,1)$, $(Yes,No)$, $(True,False)$ then the random variable may follow a Binomial distribution. A binomial distribution is completely described by the following parameters:
+
+  - $n$ - sample size (number of trials)
+  - $p$ - probability of an occurrence.
+  
+$p$ is sometimes defined as the probability of a *success*. However, as the binomial distribution can be used to describe any binary outcome space (and not just successes), we will use the more correct definition stated above.
+
+### Empirical Distribution
+
+An empirical distribution is described by a table of outcomes and associated probabilities. It may be given or calculated from historical data. Essentially, an empirical distribution is constructed using the frequencies of occurrence for each of the possible outcomes.
+
+For example, the following represents an empirical distribution:
+
+```{r, echo=FALSE}
+
+temp<-sample(2:10, 7, replace=TRUE)
+empp<-round(temp / sum(temp), 4)
+empp[length(empp)]<-empp[length(empp)] + (1 - sum(empp))
+
+empx<-sort(sample(5:100, length(empp), replace=FALSE))
+
+i<-1:length(empx)
+
+empdf<-data.frame(i, empx, empp)
+colnames(empdf)<-c("i", "x", "$Pr\\{X = x\\}$")
+
+suppressMessages(require(kableExtra))
+
+empdf %>%
+  kable("html", escape=F) %>%
+  kable_styling(full_width = FALSE)
+
+
+```
+
+
+### Poisson Distribution
+
+The Poisson distribution is a non-negative integer distribution (e.g. $x \in [0, 1, \dots, \infty]$). It is bounded below by zero and is unbounded above. The Poisson distribution is completely described by a single rate parameter, usually refered to as lambda $(\lambda)$.
+
+The Poisson distribution enjoys a *special relationship* with the *exponential* distribution:
+
+>*If the number of events in an interval follows a Poisson distribution with rate $\lambda$, then the time between events will be exponentially distributed with rate $\lambda$*.
+
+### Uniform Distribution
+
+In a discrete uniform distribution, each of the possible outcomes occurs with equal likelihood. The role of an $n$-sided die is described by a discrete uniform distribution (at least if it's a *fair* die). The discrete uniform distribution is completely described by the parameter $n$, the number of possible outcomes.
+
+### Beta Distribution
+
+The beta distribution is a *very* flexible distribution that can assume a variety of shapes from something similar to a continuous uniform distribution, to a symmetrical unimodal distribution similar to the normal distribution, to a skewed distribution similar to an exponential distribution. The Beta distribution was assumed to be the underlying distribution of tasks by the Classic PERT method in project management.
+
+The beta distribution us a fully bounded distribution and is described by two sets of parameters:
+
+  - Shape parameters $(\alpha, \beta)$
+  - Location parameters:
+    - $a$ - lower bound
+    - $b$ - upper bound
+    
+### Exponential Distribution
+
+The exponential distribution is a non-negative continuous distribution that is bounded by zero below and unbounded above. Like the Poisson distribution, the exponential distribution is fully described by a single rate parameter, usually referred to as lambda $(\lambda)$.
+
+The exponential distribution enjoys a special relationship with the Poisson distribution:
+
+>*If the time between two events follows an exponential distribution with rate $\lambda$, then the number of events in an interval is described by a Poisson distribution with the same rate $\lambda$.*
+
+
+### Normal (Gaussian) Distribution
+
+The normal distribution is sometimes referred to as the Gaussian distribution (the German mathematician Gauss is often credited as having discovered this distribution). The normal distribution is represented by the commonly recognized *bell curve* and is familiar to most students who have had an elementary statistics course. This distribution plays an important role in hypothesis testing and statistical inference.
+
+The normal distribution is us unbounded above and below and is completely described by two parameters:
+
+  - $\mu$ - the mean of the distribution
+  - $\sigma$ - the standard deviation of the distribution
+  
+The normal distribution is unimodal and symmetrical (i.e. 50% of the possible outcomes are below the mean $\mu$).
+
+
+### Uniform Distribution
+
+Often referred to as the distribution of maximum entropy, every possible outcome between the lower bound $a$ and the upper bound $b$ is equally likely for a uniform distribution. The distribution is described completely by its two boundary parameters $(a, b)$.
+
+## What are the distribution parameters
+
+As described above, every probability distribution is uniquely described by a set of parameters. For example, the Poisson and exponential distributions are both described by $\lambda$, while the beta distribution requires four parameters $(\alpha, \beta, a, b)$. 
+
+It isn't necessary to memorize the parameters for each of the distributions (although you will likely do so for your most frequently used distributions). Instead, once you identify a likely candidate, say the binomial distribution, you can look up the distribution in your reference materials.
+
+
+## Which metric/result is required
+
+With probability problems, we are most frequently wish to calculate a probability or an inverse probability. However, occasionally we may want to find a value of a parameter that produces a particular probability. For example, in project management, we may need to determine the number of workers that we want to assign to a task when workers are not entirely reliable (i.e they report for work with less than 100% probability) and we need a minimum number of workers to start the task. In this case, we aren't looking to calculate either a probability or an inverse probability, but the number of *trials* for a binomial distribution.
+
+So where do we go from here? Let's start by considering the following relation:
+
+$$F(x|\theta) = Pr\{X \leq x\ | \theta\} = \alpha$$
+
+where $\theta$ represents the set of parameters specific to the distribution. This expression reflects the fundamental relationship between the *cumulative probability function*, an outcome $x$, a set of distribution parameters $\theta$ specific to the distribution, and the corresponding cumulative probability $\alpha$. For convenience, we usually drop the $\theta$ reference from the expression because it is understood that the distribution function relies on a set of distribution parameters. This more streamlined form of the same expression would appear as follows:
+
+$$F(x) = Pr\{X \leq x\} = \alpha$$
+However, in *this* discussion, it is useful to explicitly highlight the role of the distribution paraeters, $\theta$.
+
+Now, to figure out which metric/result is required, we first must determine, from the context of the problem, which aspect of this expression that we're missing. Are we missing the *outcome*? Are we missing the probability? One of the parameters? It must be *one* of these values and we need only discern which.
+
+For example, if we are interested in determining "the probability that we do not underestimate...", then we are talking about finding the cumulative probability. On the other hand, if we're interested in estimating "the number of hot dogs that we need to be 95% sure we have enough", then we already have the *probability* and we are interested in finding the corresponding *outcome*.
+
+The basic idea here is that we can only be interested in calculating one of these metrics:
+
+  - A probability $\alpha$ corresponding to outcome $x$
+  - An outcome $x$ that corresponds to a cumulative probability $alpha$
+  - One of the distribution parameters in set $\theta$, given values of $\alpha$, $x$, and the remaining parameters.
+  
+Knowing these are the *only possible* metrics/results we could calculate *should* make our work easier.
+  
+However, the situation is a *bit* more complex than this, because we there are a number of relations like the one above that we have to understand:
+
+  - The probability mass or *point* probability (discrete distributions only) $m(x|\theta) = \alpha$
+  - The complementary probability (discrete distributions) $\bar{m}(x|\theta) = 1 - m(x|\theta) = 1-\alpha$
+  - The *cumulative* probability $F(x|\theta) = Pr\{X \leq x |\theta\}$
+  - The *inverse cumulative* probability $x : Pr\{X \leq x|\theta\} = \alpha$
+  - The *complementary cumulative* probability $Pr\{X > x\} = \bar{F}(x|\theta) = 1 - F(x|\theta) = 1-Pr\{X \leq x |\theta\}$
+  - The *inverse complementary cumulative* probability $x : \bar{F}(x|\theta) = 1 - \alpha$. This is equivalent to $x : 1 - F(x|\theta) = 1 - \alpha$ which is equivalent to $x : F(x|\theta) = \alpha$
+  
+Of course, there are other complications we may have to deal with as well, like conditional probabilities for instance, but these would represent straightforward extensions of the above. For example, the relation for the conditional cumulative probability would be:
+
+$$F(x|y,\theta) = Pr\{X \leq x|y,\theta\} = \alpha$$
+where $y$ is the conditioning argument.
+
+Let's illustrate this with a *normal* distribution. In the diagram below, we see the well-known normal distribution. The area under the curve to the left of $x$ represents the *cumulative probability*, $F(x) = Pr\{X \leq x\}$. Let's think of this probability as $\alpha$. The area to the right of $x$ is the *complementary cumulative probability*, $\bar(F)(x) = Pr\{X > x\} = 1 - Pr\{X \leq x\}$. Let's think of this complementary probability as $1 - \alpha$. 
+```{r, echo=FALSE, fig.width=10}
+
+margins<-par("mar")
+marsave<-margins
+
+margins[2]<-5.1
+par(mar=margins,oma=c(0,0,0,0))
+
+x<-1.0
+
+cord.x <- c(-4,seq(-4,x,0.01), x) 
+cord.y <- c(0,dnorm(seq(-4,x,0.01)),0)
+uppr.x <- c(x, seq(x, 4, 0.01), 4)
+uppr.y <- c(0, dnorm(seq(x, 4, 0.01)), 0)
+curve(dnorm(x,0,1),
+      xlim=c(-4,4),
+      ylim=c(-0.05, max(cord.y)),
+      main='Normal Probability Curve Showing Cumulative and Complementary Cumulative Proabilities',
+      cex.main=1.0,
+      cex.lab=1.2,
+      font=2,
+      ylab=expression(f(x)),
+      xlab=expression(X),
+      col='darkgreen')
+
+
+lines(c(x, x), c(0, max(cord.y)))
+polygon(cord.x,cord.y,col='lightgreen')
+polygon(uppr.x, uppr.y, col='gold')
+text(-0.1, 0.15, expression(F(x)==alpha))
+text(1.6, 0.03, expression(bar(F)(x)==1-alpha))
+text(x, -0.025, "x")
+text(-3, 0.25, expression(Pr*"{"*X<=x*"}"))
+lines(c(-2.65, -0.45), c(0.25, 0.15))
+lines(c(2.05, 3.05), c(0.03, 0.1))
+text(3.0, 0.1, expression(Pr*"{"*X>x*"}"),pos=4)
+
+par(mar=marsave)
+
+alpha<-round(pnorm(x),4)
+alphacomp<-1-alpha
+
+
+```
+
+In this example, where $x = `r x`$, we find $\alpha = F(x) \approx `r alpha`$ (to 4 decimal places) and $1 - \alpha = \bar{F}(x) = `r alphacomp`$
+
+# Example 1
+
+```{r, echo=FALSE}
+mu<-327
+sigma<-42.51
+x<-307.73
+
+```
+Allen Allenby runs the hot dog concession at the local high school's football games and is responsible for forecasting the number of hot dogs they'll need on any given Friday night. Allen believes that hot dog demand follows a normal distribution with mean `r mu` and standard deviation `r sigma`.
+
+What is the probability that on any Friday evening, demand for hot dogs will exceed `r x` hot dogs?
+
+## Answering WTLF
+
+We start by answering the 4 WTLF questions:
+
+  - Which probability distribution applies (and it's *not* always the one that is named in the problem)?
+  
+    *In this case, we're told that the demand follows the* normal *distribution*
+    
+  - What are the distribution parameters (i.e. what values are required, not the values themselves)?
+  
+    *Looking up the normal distribution in our reference material, we recall that the the normal distribution is completely described by the mean $\mu$ and standard deviation $\sigma$*
+    
+  - Which metric/result is required?
+  
+    *Allen wants to know the probability that hot dog demand will* exceed *`r x` hot dogs. 
+    Restating, Allen wants to know the probability that demand is greater than `r x`*
+    
+    *Looking at our list of expressions above, we see that we have a* complementary cumulative
+    probability problem*, described by the following relation:*
+    
+    $$Pr\{X > x\} = 1-\alpha$$
+    
+    *Specifically, we're looking for the value of $1-\alpha$.*
+    
+  - What data is provided in the problem (and what data do you have to find/calculate)?
+  
+    *The problem provides the values of the mean $\mu = `r mu`$, standard deviation $\sigma = `r sigma`$, and $x = `r x`$ directly.*
+    
+At this point, we can solve our problem. We know that Excel and R both provide functions to calculate $F(`r x`) = \Pr\{X \leq `r x`\} = \alpha$ but not $\bar{F}(`r x`) = \Pr\{X > `r x`\} = 1-\alpha$. But
+the $\alpha$ we find if we calculate $F(x)$ is the same as the alpha in $\bar{F}(x)$. If we find $F(`r x`) = \alpha$, we can easily calculate $\bar{F}(`r x`) = 1 - \alpha$. Here is the work in R:
+
+```{r}
+# set up parameters
+mu<-327
+sigma<-42.51
+x<-307.73
+
+# calculate alpha = Pr{X <= x}
+alpha<-pnorm(x, mu, sigma)
+
+# Pr{X > x}
+1 - alpha
+```
+
+# Example 2
+```{r, echo=FALSE}
+lambda<-33.5
+one_minus_alpha<-0.75
+alpha<-1 - one_minus_alpha
+```
+
+A cashier at the Hungry Bear Restaurant in Disneyland's Critter Country serves an average of `r lambda` customers per hour (believed to follow a Poisson distribution). Always conscious of managing park guests' waiting line experience, the disney operations research team wants to post a sign telling customers about the restaurant's efficiency. If the manager wants to be `r one_minus_alpha *100`% sure she doesn't overestimate, what time should she list?
+
+## Answering WTLF
+
+We start by answering the 4 WTLF questions:
+
+  - Which probability distribution applies (and it's *not* always the one that is named in the problem)?
+  
+    *In this case, we're told that the average number of customers per hour follows a* Poisson
+    *distribution. However, there's a twist here. We know that the* number *of customers per
+    hour follows a Poisson distribution, but the manager is interested in calculating a* 
+    time*. If we use the Poisson, the resulting value will be* number of customers *not a*
+    time.
+    
+    However, there is a special relationship between the Poisson and exponential distributions,
+    discussed above in the Poisson and exponential distribution sections. Thanks to this
+    relationship, we can use the exponential distribution to solve this problem.
+    
+  - What are the distribution parameters (i.e. what values are required, not the values themselves)?
+  
+    *Looking up the exponential distribution in our reference material, we recall that it is completely described by a single* rate *parameter $\lambda$*.
+    
+  - Which metric/result is required?
+  
+    *The manager wants to know a* time (in minutes) *that would give `r one_minus_alpha`
+    confidence that she
+    has not* overestimated *the time she posts. In other words, she wants to find a value of 
+    $x$ such that $Pr\{X > x\} = 1 - \alpha = `r one_minus_alpha`$; we need to calculate
+    the inverse complementary cumulative probability*.
+    
+  - What data is provided in the problem (and what data do you have to find/calculate)?
+  
+    *The problem statement gives us the rate $\lambda = `r lambda`$ and the confidence
+    value, $1 - \alpha = `r one_minus_alpha`$ directly.* However, all Excel and R probability
+    functions relate to cumulative probabilities, not complementary cumulative probabilities,
+    so we need to calculate $\alpha = 1 - `r one_minus_alpha` = `r alpha`$
+    
+Now we are ready to solve the problem:
+
+```{r}
+# assign parameter values
+lambda<-33.5
+one_minus_alpha<-0.75
+
+# calculate alpha so we can use R's qexp function to find the inverse cumulative probability
+alpha<-1 - one_minus_alpha
+
+# now we can find the time (in hours) the manger wants
+timehrs<-qexp(alpha, lambda)
+
+# convert the time to minutes as requested by the manager
+timemin<-timehrs * 60
+
+timemin
+
+```
+
+Note that the time calculated using the inverse cumulative exponential probability function
+will have the same time units as the rate $\lambda$. In this case, $\lambda = `r lambda` customers/hour, so the time we calculated using qexp is in hours. To obtain a time in minutes
+we multiple by a conversion factor. To illustrate, the following shows the math performed
+on the units of measure:
+
+$$minutes = hours * \frac{60\>minutes}{hour}.$$
+
+The hours *cancel* and we are left with a value in minutes.
+    
+  
+# R's Probability Functions
+
+R provides a more extensive set of probability functions than Excel. Moreover, it uses a consistent nomenclature to name its probability functions (which Excel does not). Therefore you might find it easier to work with R when working with probabilities.
+
+The following table explains R's naming conventions for its probability functions:
+
+```{r, echo=FALSE}
+suppressMessages(require(kableExtra))
+
+fname<-c("d*dist*", "p*dist*", "q*dist*", "r*dist*")
+desc<-c("Probability Mass (discrete)<br>Probability Density (continuous)", 
+        "Cumulative Probability", 
+        "Inverse Cumulative Probability",
+        "Random Number from Distribution")
+calc<-c("$\\begin{cases}
+    m(x) = Pr\\{X = x\\}& \\text{if } discrete \\> distribution\\\\
+    f(x)              & \\text{        } \\>\\>\\>continuous \\> distribution
+\\end{cases}$",
+        "$F(x) = Pr\\{x \\leq x\\}$",
+        "$x:Pr\\{x \\leq x\\} = \\alpha$",
+        "$x:Pr\\{x \\leq x\\} = U, U \\in \\text{Unif}[0,1]$")
+
+df<-data.frame(fname, desc, calc)
+colnames(df)<-c("Function", "Description", "Probabilty Expression")
+
+df %>%
+  kable("html", escape=F) %>%
+  kable_styling()
+```
+
+
+where *dist* indicates an abbreviation identifying a distribution (e.g. norm) and $U \in \text{Unif}[0,1]$ is a random number drawn from a continous uniform distribution with lower bound $0$ and upper bound $1$.
+
+## Distribution abbreviations
+
+R provides for a large number of distributions in the base installation. The following are 
+the abbreviations for distribution function we will commonly use in OTM courses:
+
+
+```{r, echo=FALSE}
+require(kableExtra)
+
+dist<-c("beta", "binom", "exp", "norm", "pois", "unif")
+desc<-c("Beta",
+        "Binomial",
+        "Exponential",
+        "Normal (Gaussian)",
+        "Poisson",
+        "Continuous Uniform")
+
+df<-data.frame(dist, desc)
+colnames(df)<-c("Abbreviation", "Distribution")
+
+df %>%
+  kable() %>%
+  kable_styling(full_width = FALSE)
+```
+
+In addition the the distributions above, which are built into R, the *triangle* package in R provides the four standard distribution functions for a triangle distribution with lower bound $a$, upper bound $b$, and mode $c$. To use the triangle distribution, you'll need to first install the triangle package, and then load the package in your program using either of the following statements:
+
+```{r, eval=FALSE}
+require(triangle)
+library(triangle)
+
+```
+
+
+# The Shifted Exponential Distribution
+
+Neither R nor Excel provides functions for calculating shifted exponential probabilities. However,
+what we think of as the *exponential* distribution is simply a special case of a more
+general *shifted exponential* distribution where the lower bound is 0. The *lower bound*
+is often referred to as *the shift*, because it shifts the distribution from 0 by $a$.
+
+The graphs below show two shifted exponential distributions, one with lower bound 
+$a = 0$ (i.e. a *standard* exponential distribution) and one with a shift $a = 5$. Both distributions have $\lambda = 0.2$:
+
+```{r, echo=FALSE, fig.width=10}
+par(mfrow=c(1,2))
+
+lambda<-1/5
+a<-5
+
+x<-seq(0,100,0.001)
+
+par(mar=c(5.1, 5.1, 4.1, 2.1))
+plot(x, dexp(x,lambda),type='l', 
+     col='darkgreen', 
+     xlim=c(0,40),
+     xlab='x', 
+     ylab=expression(f(x)),
+     main=paste("Exponential\na = 0"))
+lines(c(0,0),c(0,max(dexp(x,lambda))), col='darkgreen')
+plot(x+a, dexp(x,lambda),
+     type='l',
+     col='darkred',
+     xlim=c(0,45),
+     xlab='x',
+     ylab=expression(f(x)),
+     main=paste('"Shifted Exponential"\na = 5'))
+lines(c(5,5),c(0,max(dexp(x,lambda))), col='darkred')
+
+```
+Calculating shifted exponential probabilities can be done with relatively straightforward
+adjustments to the *standard* exponential calculations. Let $F_a(x) = Pr\{X \leq x|a\}$, in other words, the probability that $X$ is less than or equal to $x$ given a shift $a$. Then:
+
+$$F_a(x\vert\lambda) = F_0(x - a\vert\lambda)$$
+
+and 
+
+$$F_a^{-1}(\alpha\vert\lambda) = a + F_0^{-1}(\alpha\vert\lambda)$$
+For example, for our shifted exponential with $a = 5$ and $\lambda = 0.2$, we would calculate:
+
+$$Pr\{X \leq 8 \vert 0.2\} = F_5(8 \vert 0.2)=F_0(8-5 \vert 0.2)$$
+In R, we would use:
+
+```{r}
+a<-5
+x<-8
+lambda<-0.2
+
+pexp(x-a, lambda)
+```
+
+To calculate an inverse cumulative probability, $F^{-1}(0.8)$, we would calculate:
+
+$$F_5^{-1}(0.8) = 5 + F_0^{-1}(0.8)$$
+
+Here's the code in R:
+
+```{r}
+a<-5
+lambda<-0.2
+alpha<-0.8
+
+a + qexp(alpha, lambda)
+```
+
+Note that for a random variable $X$ that follows a shifted exponential distribution with minimum of 20 (i.e. $a 20$) and $\lambda = 0.5$ the mean (\mu) and standard deviation (\sigma) are given by:
+
+$$\mu = a + \frac{1}{\lambda}$$
+
+$$\sigma = \frac{1}{\lambda}$$
+From the above, it follows that given $\mu$ and $a$, we find $\lambda = \frac{1}{\mu - a}$. 
+
+Note that from the above discussion, we can see that the standard exponential distribution is simply a special case of the shifted exponential distribution where $a = 0$.
+
+&nbsp;
+
+# Empirical Distributions
+
+As with the shifted exponential distribution, neither R nor Excel provide functions for calculating probabilities from empirical distributions. However, calculating probabilities and cumulative probabilities from an empirical distribution is quite straightforward.
+
+## *Point* probabilities
+
+Calculating a point probability for an empirical distribution couldn't be easier. In fact, no calculation is necessary. For example, given the following empirical distribution:
+
+```{r, echo=FALSE}
+empdf %>%
+  kable("html", escape=F) %>%
+  kable_styling(full_width = FALSE)
+
+
+```
+
+to calculate $f(x) = m(x) = Pr\{X = `r empx[3]`\}$, we simply return the corresponding probability directly from the table of outcomes and probability. Thus, $Pr\{X = `r empx[3]`\} = `r empp[3]`$.
+
+## Cumulative probability
+
+Calculating a cumulative probability for an empirical distribution is straightforward:
+
+$$F(x) = Pr\{X \leq `r empx[3]`\} = \sum_{x_i \leq `r empx[3]`}Pr\{X = x_i\}$$
+For our empirical distribution, we have 3 probabilities corresponding to $x_i \leq `r empx[3]`: `r empp[1:3]`$. Therefore, 
+
+$$F(x) = Pr\{X \leq `r empx[3]`\} = `r paste(empp[1:3], collapse = " + ")` = `r sum(empp[1:3])`$$
+
+That's it!
+
+## Inverse cumulative probability
+
+Calculating the inverse cumulative probability is a little more involved (but still not bad). For continuous distributions, the inverse cumulative probability and cumulative probability functions cancel themselves out. In other words, 
+$$F^{-1}(F(x)) = x$$
+
+For example, for a normal distribution, $F^{-1}(F(53)) = 53$.
+
+However, for discrete distributions, including empirical distributions, this relationship only holds when $x$ is exactly equal to one of the *defined* outcomes. For example, for our distribution:
+
+$$F^{-1}(F(`r empx[3]`)) = `r empx[3]`$$
+However, when $x$ is *not* exactly equal to one of the *defined* outcomes, the result is very different. For example:
+
+```{r, echo=FALSE}
+#source("C:/Users/Gary/Dropbox/R/prob.r")
+xtest<-(empx[3] + empx[4])/2
+
+empcp<-cumsum(empp)
+empdf<-cbind(empdf, empcp)
+colnames(empdf)[dim(empdf)[2]]<-"$Pr\\{X \\leq x\\}$"
+
+ptest<-(empcp[3] + empcp[4])/2
+
+```
+
+
+$$F^{-1}(F(`r xtest`)) = `r empx[4]`$$
+So what's happening here? Because `r xtest` is not a defined outcome, calculating $F^{-1}(p)$ means finding the value of $x$ such that $F(x) \geq p$. In mathematical notation, we'd say:
+
+$$F^{-1}(p) = x: Pr\{X \leq x\} \geq p$$
+For our example distribution, let's say that we want to calculate $F^{-1}(`r ptest`)$. To facilitate our task, let's add the cumulative probabilities to our distribution table.
+
+```{r, echo=FALSE}
+
+empdf %>%
+  kable("html", escape=F) %>%
+  kable_styling(full_width = FALSE)
+```
+
+To find $F^{-1}(`r ptest`)$ we look for the smallest value of $x$ such that $F(x) \geq `r ptest`$. From our adjusted table, we see that $F(`r empx[3]`) = `r empcp[3]` \leq `r ptest`$, but $F(`r empx[4]`) = `r empcp[4]` > `r ptest`$. Therefore, $F^{-1}(`r ptest`) = `r empx[4]`$.
+
+&nbsp;
+
+Note: the file *prob.r*, which may be downloaded from the course site, contains several functions that simplify the task of calculating cumulative and inverse cumulative probabilities in R.
