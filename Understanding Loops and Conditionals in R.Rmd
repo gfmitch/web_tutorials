@@ -39,7 +39,7 @@ The result, $L_q = `r lq`$ indicates that, on average, there are $`r lq`$ custom
 
 For a queue to be feasible, its capacity (i.e., it's ability to serve customers) must *strictly* exceed the demand (i.e., the rate at which customers arrive). The queue's capacity is given by its service rate $\mu$ (mu), and the queue's demand is given by its arrival rate $\lambda$ (lambda). If a queue is infeasible, then the average number of customers waiting will eventually grow to infinity. It isn't a question of whether or not it will grow to infinity, it is only a question of how long it will take.
 
-So, the code above uses an *if* statement to compare $\lambda$ and $mu$. If $\lambda \geq \mu$, then queue is infeasible and the program terminates with an error message (the stop command instructs R to terminate the program immediately). However, if $\lambda < \mu$, then the queue is *feasible* and the code continues, calculating the value of $\Lq$.
+So, the code above uses an *if* statement to compare $\lambda$ and $\mu$. If $\lambda \geq \mu$, then queue is infeasible and the program terminates with an error message (the stop command instructs R to terminate the program immediately). However, if $\lambda < \mu$, then the queue is *feasible* and the code continues, calculating the value of $L_q$.
 
 ### if-else
 Let's look at the *if* statement in general terms:

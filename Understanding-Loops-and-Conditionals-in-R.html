@@ -406,11 +406,11 @@ demand is given by its arrival rate <span class="math inline">\(\lambda\)</span>
 infeasible, then the average number of customers waiting will eventually
 grow to infinity. It isn’t a question of whether or not it will grow to
 infinity, it is only a question of how long it will take.</p>
-<p>So, the code above uses an <em>if</em> statement to compare <span class="math inline">\(\lambda\)</span> and <span class="math inline">\(mu\)</span>. If <span class="math inline">\(\lambda \geq \mu\)</span>, then queue is
+<p>So, the code above uses an <em>if</em> statement to compare <span class="math inline">\(\lambda\)</span> and <span class="math inline">\(\mu\)</span>. If <span class="math inline">\(\lambda \geq \mu\)</span>, then queue is
 infeasible and the program terminates with an error message (the stop
 command instructs R to terminate the program immediately). However, if
 <span class="math inline">\(\lambda &lt; \mu\)</span>, then the queue is
-<em>feasible</em> and the code continues, calculating the value of <span class="math inline">\(\Lq\)</span>.</p>
+<em>feasible</em> and the code continues, calculating the value of <span class="math inline">\(L_q\)</span>.</p>
 </div>
 <div id="if-else" class="section level3">
 <h3>if-else</h3>
@@ -616,11 +616,8 @@ random numbers as long as the random number is less than <span class="math inlin
 {
   print(x)
 }</code></pre>
-<pre><code>## [1] 6.632004
-## [1] 5.243923
-## [1] 4.279188
-## [1] 2.307558
-## [1] 1.28695</code></pre>
+<pre><code>## [1] 6.380275
+## [1] 2.616018</code></pre>
 <p>In this code, a single uniformly distributed random number between
 <span class="math inline">\(1\)</span> and <span class="math inline">\(10\)</span> (i.e., <span class="math inline">\(x
 \sim unif[1,10]\)</span>) is assigned to <span class="math inline">\(x\)</span> (each time the while condition is
@@ -649,7 +646,11 @@ of the loop):</p>
     break
   }
 }</code></pre>
-<pre><code>## [1] 9.04209</code></pre>
+<pre><code>## [1] 1.59053
+## [1] 5.170891
+## [1] 2.042432
+## [1] 1.673351
+## [1] 7.333986</code></pre>
 <p>Let’s review the differences. The while loop evaluates the condition
 at the top of the loop so if <span class="math inline">\(x &gt;=
 7\)</span> when the while loop is encountered, then no random values
@@ -692,26 +693,26 @@ loop proceeds</li>
   
   cat(&quot; - &quot;, x, &quot;\n&quot;)
 }</code></pre>
-<pre><code>## 1 -  5.950459 
-## 2
-## 3
-## 4 -  6.780682 
-## 5 -  4.167459 
-## 6 -  4.841535 
-## 7 -  2.887529 
-## 8 -  3.756508 
-## 9 -  4.49515 
-## 10 -  2.72868 
-## 11 -  3.385741 
-## 12
-## 13 -  3.930178 
-## 14 -  2.552006 
-## 15
-## 16 -  4.753873 
+<pre><code>## 1 -  1.97406 
+## 2 -  3.873577 
+## 3 -  4.120374 
+## 4 -  1.875176 
+## 5 -  3.657071 
+## 6
+## 7 -  1.331488 
+## 8 -  6.864063 
+## 9
+## 10 -  3.864969 
+## 11 -  3.700351 
+## 12 -  4.03564 
+## 13
+## 14 -  3.394092 
+## 15 -  6.93955 
+## 16
 ## 17
-## 18 -  6.114181 
+## 18 -  5.72175 
 ## 19
-## 20 -  1.592559</code></pre>
+## 20 -  6.579579</code></pre>
 <p>Here we see that all 20 iterations were started, but only in those
 where <span class="math inline">\(x &lt; 7\)</span> was the value of
 <span class="math inline">\(x\)</span> printed.</p>
