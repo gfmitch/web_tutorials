@@ -1,0 +1,362 @@
+---
+title: "Probability Cheat Sheet"
+author: "Gary Mitchell"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This cheat sheet provides a handy reference to the probability topics covered in Decision Modeling & Analytics and which will be useful in future courses such as Project Management, Supply Chain Analytics, Process Analysis, Design, and Quality Management, Foundations of Operations Management, etc.
+
+
+## Probability Notation
+
+The following notation will be used throughout.
+
+
+```{r, echo=FALSE}
+library(readxl)
+library(kableExtra)
+
+tab<-read_excel("Probability Notation.xlsx")
+tab[is.na(tab)]<-""
+ptab<-tab[, -1]
+ptab %>%
+  kable(booktabs=TRUE) %>%
+  kable_styling("striped")
+```
+
+## Laws of Probability
+
+### 1st Law of Probability
+
+-	The probability of any event is a number between zero and one: $0 \leq F(x) \leq 1$
+-	A larger probability corresponds to the intuitive notion of greater likelihood.
+-	An event whose associated probability is 1.0 is virtually certain.
+-	An event whose probability is 0.0 is virtually certain not to occur.
+
+The first law gives us the concept of complementary probability:
+
+- Discrete Distributions: $Pr\{X > x\} = \bar{F}(x) = 1 - F(x) = 1 - Pr\{X \leq x\}$
+- Continuous Distributions: $Pr\{X \geq x\} = \bar{F}(x) = 1 - F(x) = 1 - Pr\{X \leq x\}$
+
+### 2nd Law of Probability
+
+If $A$ and $B$ are *mutually exclusive* events, then 
+$$Pr\{A \cup B\} = Pr\{A \thinspace or \thinspace B\}= Pr\{A\} + Pr\{B\}$$. 
+
+Note: when $A$ and $B$ are *not* mutually exclusive, then $Pr\{A \cup B\} = Pr\{A\} + Pr\{B\} - Pr\{A \cap B\}$
+
+### 3rd Law of Probability
+
+The probability of one event *given* that another event has occurred is called a conditional
+probability. Given events $A$ and $B$, $Pr\{A|B\}$ is read as *the probability of $A$ given $B$*.
+
+$$Pr\{A|B\} = \frac{Pr\{A \cup B\}}{Pr\{B\}}$$
+from which it follows that:
+
+$$Pr\{A \cup B\} = Pr\{A|B\}Pr\{B\}$$
+
+#### The Complement of a Conditional Probability
+
+Given an event $A$ and its complement, $A^C$m we know that $Pr\{A^C\} = 1 - Pr\{A\}$.
+But what does it mean to calculate the complement of a conditional probability?
+
+$$Pr\{A^C|B\} = 1 - Pr\{A|B\}$$
+Note that the complementary conditional probability is always calculatd *within*
+the conditional event, i.e. the conditional event remains the same for both
+the conditional probability and its complement.
+
+### 4th Law of Probability
+
+For two *independent* events:
+
+$$Pr\{A \cap B\} = Pr\{A\}Pr\{B\}$$
+This follows from the definition of the $3^{rd}$ Law. If two events are independent,
+then the occurrence of one does not affect the probability of the other, i.e.
+$Pr\{A|B\} = Pr\{A\}$.
+
+This forms the basis for a classic test of independence.
+
+>**If** $Pr\{A \cap B\} = Pr\{A\}Pr\{B\}$ **then** $A$ and $B$ are *independent*.
+
+### Law of Total Probability
+
+The law of total probability follows from the $1^{st}$ and $2^{nd}$ laws. Given
+mutually exclusive events $A_1$, $A_2$, $\dots$, $A_n$ so that 
+$Pr\{A\} = Pr\{A_1\} + Pr\{A_1\} + \dots + Pr\{A_n\}$, then:
+
+$$Pr\{B\} = Pr\{B|A_1\}Pr\{A_1\} + Pr\{B|A_2\} Pr\{A_2\} + \dots + Pr\{B|A_n\} Pr\{A_n\}$$
+Using the $2^{nd}$ Law, we see that this is equivalent to:
+
+$$Pr\{B\} = Pr\{B \cup A_1\} + Pr\{B \cup A_2\} + \dots + Pr\{B \cup A_n\}$$
+
+### Bayes' Theorem
+
+Bayes' Theorem is a logical extension of the definition of conditional probability using the Law of Total Probability. From the $3^{rd}$ Law, we know that:
+
+$$Pr\{A_1|B\} = \frac{Pr\{A_1 \cup B\}}{Pr\{B\}}$$
+Also, by the $3^{rd}$ Law, we can substitute $Pr\{B|A\}Pr\{A\}$ for $Pr\{A \cup B\}$:
+
+$$Pr\{A_1|B\} = \frac{Pr\{B|A_1\}Pr\{A_1\}}{Pr\{B\}}$$
+This is a complete representation of Bayes' Theorem. However, many statistics texts 
+present a form that uses the Law of Total Probability to calculate the denominator,
+$Pr\{B\}$:
+
+$$Pr\{B\} = Pr\{B|A_1\}Pr\{A_1\} + Pr\{B|A_2\} Pr\{A_2\} + \dots + Pr\{B|A_n\} Pr\{A_n\}$$
+and substituting this we obtain:
+
+$$Pr\{A_1|B\} = \frac{Pr\{B|A_1\}Pr\{A_1\}}{Pr\{B|A_1\}Pr\{A_1\} + Pr\{B|A_2\} Pr\{A_2\} + \dots + Pr\{B|A_n\} Pr\{A_n\}}$$
+This looks intimidating, but it's really just our original definition for conditional probability, with some substitutions.
+
+
+## Discrete Distributions
+
+For a discrete distribution, the set of outcomes in $\Omega$ is finite and countable.
+For this reason, $Pr\{X = x\} = m(x) \geq 0$ (whereas $Pr\{X = x\} \equiv 0$ for
+continuous distributions).
+
+### Discrete Uniform
+
+#### Properties
+
+- Set of possible outcomes $\Omega$
+- $m(x) = $\frac{1}{|\Omega|}, for every $x \in \Omega$
+
+where $n = |\Omega|$, i.e. the cardinality of $\Omega$
+(note: for a set $S$, $|S|$, the cardinality of $S$, is the number of elements in $S$).
+
+#### Calculations
+
+```{r, echo=FALSE}
+dist<-"Discrete Uniform"
+
+tab<-read_excel("Probability Calculations.xlsx")
+tab[is.na(tab)]<-""
+ptab<-tab[tab$Distribution == dist, 2:4]
+ptab %>%
+  kable(booktabs=TRUE) %>%
+  kable_styling("striped")
+```
+
+### Poisson
+
+#### Properties
+
+- Non-negative integer distribution
+- Single parameter $\lambda$, the *rate*
+- Markovian (memoryless) property
+
+$\lambda$ must be a *rate*, meaning it has units of measure quantity per interval
+(e.g. customers per hour).
+
+#### Calculations
+
+```{r, echo=FALSE}
+dist<-"Poisson"
+
+tab<-read_excel("Probability Calculations.xlsx")
+tab[is.na(tab)]<-""
+ptab<-tab[tab$Distribution == dist, 2:4]
+ptab %>%
+  kable(booktabs=TRUE) %>%
+  kable_styling("striped")
+```
+
+### Binomial
+
+#### Properties
+
+- Binary outcome space (e.g. Defective/Not Defective, True/False, etc.)
+- $n$ independent trials
+- Event of interest (often referred to as a success) occurs with probability $p$
+- Models probability of $x$ occurances in $n$ trials
+
+
+#### Calculations
+
+```{r, echo=FALSE}
+dist<-"Binomial"
+
+tab<-read_excel("Probability Calculations.xlsx")
+tab[is.na(tab)]<-""
+ptab<-tab[tab$Distribution == dist, 2:4]
+ptab %>%
+  kable(booktabs=TRUE) %>%
+  kable_styling("striped")
+```
+
+## Continuous Distributions
+
+For a continuous distribution, the set of outcomes in $\Omega$ is infinite.
+$Pr\{X = x\} \equiv 0$ for all continuous distributions because:
+
+$$Pr\{X = x\} = \int_{x}^{x}f(t)dt = \bigl| F(x) \bigr|_x^x = F(x) - F(x) = 0$$
+
+### Continuous Uniform
+
+#### Properties
+
+- Bounded above and below
+- Symmetrical
+- Every outcome occurs with equal likelihood
+- Two parameters
+  - Minimum (lower bound) a
+  - Maximum (upper bound) b
+- $Pr\{X < a\} = 0$
+- $Pr\{X > b\} = 0$
+
+
+#### Calculations
+
+```{r, echo=FALSE}
+dist<-"Continuous Uniform"
+
+tab<-read_excel("Probability Calculations.xlsx")
+tab[is.na(tab)]<-""
+ptab<-tab[tab$Distribution == dist, 2:4]
+ptab %>%
+  kable(booktabs=TRUE) %>%
+  kable_styling("striped")
+```
+
+### Normal (Gaussian)
+
+#### Properties
+
+- Unbounded
+- Symmetrical
+- Two parameters
+  - mean $\mu$
+  - standard deviation $\sigma
+  
+Note: no closed form expressions for $F(x)$ and $F^{-1}(x)$.
+
+
+#### Calculations
+
+```{r, echo=FALSE}
+dist<-"Normal"
+
+tab<-read_excel("Probability Calculations.xlsx")
+tab[is.na(tab)]<-""
+ptab<-tab[tab$Distribution == dist, 2:4]
+ptab %>%
+  kable(booktabs=TRUE) %>%
+  kable_styling("striped")
+```
+
+### Exponential
+
+#### Properties
+
+- Non-negative distribution
+- Bounded below at $0$
+- Unbounded above
+- Asymmetrical
+- Single parameter $\lambda$, the *rate*
+- Markovian (memoryless) property.
+
+
+#### Calculations
+
+```{r, echo=FALSE}
+dist<-"Exponential"
+
+tab<-read_excel("Probability Calculations.xlsx")
+tab[is.na(tab)]<-""
+ptab<-tab[tab$Distribution == dist, 2:4]
+ptab %>%
+  kable(booktabs=TRUE) %>%
+  kable_styling("striped")
+```
+
+### Shifted exponential
+
+
+#### Properties
+
+- Unbounded above
+- Bounded below by *shift*, $a$
+- Asymmetrical
+- Single parameter $\lambda$, the *rate*.
+  
+
+#### Calculations
+
+```{r, echo=FALSE}
+dist<-"Shifted Exponential"
+
+tab<-read_excel("Probability Calculations.xlsx")
+tab[is.na(tab)]<-""
+ptab<-tab[tab$Distribution == dist, 2:4]
+ptab %>%
+  kable(booktabs=TRUE) %>%
+  kable_styling("striped")
+```
+
+
+## Generating Random Numbers
+
+Random Numbers can be easily generated for any distribution known to R using r*dist*($n$, $\cdot$). where *dist* is the abbreviation for the distribution (e.g. norm for normal, pois for Poisson, etc.), and $n$ is the number of random variates you wish to generate.
+
+For example, we can generate 10 Poisson random variates with mean 5 using:
+
+```{r}
+rpois(10, 5)
+```
+
+Similarly, we can generate 10 shifted exponential random variates with shift 2 and mean random portion of 1.5 using:
+
+```{r}
+2 + rexp(10, 1/1.5)
+```
+
+
+
+### Inverse Transform Method
+
+Alternatively, we can use the inverse transform method for generating random numbers. Given a random variable $X$ with inverse cumulative probability function $F^{-1}(\alpha)$, we can generate a random variate $x$ using:
+
+$$x = F^{-1}(U)$$
+
+where $U \sim Unif[0,1]$, i.e. $U$ is a uniformly distributed random number between 0 and 1.
+
+For example, given $U = \{0.7294, 0.4868, 0.3845, 0.0068, 0.0037, 0.9949, 0.1079, 0.4187, 0.7179, 0.7425\}$ we would generate shifted exponential random variates with shift 2 and mean 3.5 as follows:
+
+```{r, echo=FALSE}
+U<-c(0.7294, 0.4868, 0.3845, 0.0068, 0.0037, 0.9949, 0.1079, 0.4187, 0.7179, 0.7425)
+```
+
+```{r}
+a<-2
+mu<-3.5
+lambda<-1/(mu-a)
+
+a + qexp(U, lambda)
+```
+
+## Covariance and Correlation
+
+For two jointly distributed random variables $X$ and $Y$, we calculate the covariance and correlation to gain insight in how the RVs vary relative to each other.
+
+### Discrete Random Variables
+
+$$COV(X, Y) = \sum_{(x,y) \in \Omega}Pr\{X=x, Y=y\}(x - E[X])(y - E[Y])$$
+Alternatively, we can write:
+
+$$COV(X, Y) = \sum_{(x,y) \in \Omega}m(x, y)(x - E[X])(y - E[Y])$$
+and the correlation is given by:
+
+$$CORR(X,Y) = \frac{COV(X,Y)}{S[X]S[Y]}$$
+
+### Continuous Random Variables
+
+$$COV(X, Y) = \int \int (x - E[X])(y - E[Y])f(x, y)\thinspace dx\thinspace dy$$
+$CORR(X,Y)$ is calculated as shown above for discrete distributions.
+
+
+
