@@ -1,0 +1,123 @@
+---
+title: "Fitting Multiple Model by Grouping"
+author: "Gary Mitchell"
+date: "June 14, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Being Efficient
+
+I previously *hinted* that you should recognize (i.e. account for) the fact that the dataset contains data on 46 different cities. First, how did I know that? Easy, I used R's *unique* function:
+
+```{r cars}
+require(ggplot2)
+require(quantmod)
+data("txhousing")
+
+length(unique(txhousing$city))
+```
+
+In this code, the *unique* function gave me a unique list of cities included in the dataset, and the length function told me how many values were in the list. Voila.
+
+If instead, I wanted to actually *see* the list, I would simply use unique:
+
+```{r}
+unique(txhousing$city)
+```
+
+But what does this have to do with fitting models? In this case, everything. The real estate data from these cities will differ wildly between, for example, Amarillo and Dallas. Therefore, the most likely successful modeling would be to fit *a separate model for each city*.
+
+## Wow, that sounds like a lot of work!
+
+Well, it *could* be but it doesn't have to be. The reality is that the form of the model, i.e. the independent variables and their order (i.e. linear, quadratic, etc.) will probably not vary significantly from city to city. Any differences in the forms of the models by city might simply be *overspecification* of the model. What does *that* mean?
+
+Well, we are fitting a model to historical data. We might be able to obtain slightly better results (significance and coefficient of determination) by tweaking the model for each city. However, what this may actually accomplish is simply to make our model a better representation of the past and a *less generalizable* representation for the future.
+
+So, if we could find expression where the terms and their orders were the same, but the coefficients were city specific, we might be onto something.
+
+## The by function
+
+R's by function is an extremely useful tool. It will;
+
+1. Divide a dataframe into subsets according to the values of a grouping variavle (e.g. city)
+2. Execute a function on each subset
+3. Store the result of the execution in a list.
+
+### Using by
+
+Here's an example of using by to fit separate linear models for each of the 46 cities. First, I'll create a function to do what I want (i.e. fit a linear model to each subset of the data).
+
+```{r echo=TRUE}
+analyze<-function(dat)
+{
+  # this function fits the specified model to "dat", a dataframe
+  # and stores the model, along with the model's summary output in a list
+  lmodel<-lm(volume ~ median + inventory + listings, data=dat)
+  list(lmodel=lmodel,
+       summary=summary(lmodel)
+  )
+}
+
+```
+
+This function is *reasonably* straightforward. it does two things:
+1. Fits a specified linear model to the variables in dat
+2. Creates a two element list containing the resulting *model* and the formatted model summary.
+
+Next, we use the by function to run this function for 46 subsets of the data, corresponding to the 46 cities:
+
+```{r}
+results<-by(txhousing, txhousing$city, function(x){analyze(x)})
+```
+
+## Using the results
+
+We can *get at* the results of the by processing in a couple of ways. First, we can refer to any result by number (each city's results were stored in one element of the list). Here are the results for the 1st and 32nd cities:
+
+```{r}
+print(results[1])
+print(results[32])
+```
+
+Notice that the output labels both the city and the component (lmodel and summary). This is because the by function gives a name to each element of the list corresponding the value of the by variable for that group. We can also use this to access the elements. So I can, for example, access the results for Dallas directly. Because I've accessed the element by name (i.e. $Dallas), the value returned from the list does not include that label.
+
+```{r}
+print(results$Dallas)
+```
+
+Now, let's say I want to print a normal probability plot for the Dallas model's residuals. There's two ways I can do this. The first is when I can address a group specifically
+
+```{r}
+
+qqnorm(results$Dallas$lmodel$residuals, main="Dallas Normal Probability Plot")
+qqline(results$Dallas$lmodel$residuals)
+
+```
+
+In the above statement, results is the list produced by the by function, Dallas is a *cell* in the list containing the model and summary for Dallas, lmodel is a *cell* within Dallas, that contains the lm functions output, and $residuals is the residual vector that we're used to seeing in the lm model output.
+
+The second way is more flexible, and better for applying to multiple cities, but a little harder to understand:
+
+```{r}
+city<-"Dallas"
+qqnorm(results[[city]]$lmodel$residuals, main=paste(city, "Normal Probability Plot"))
+qqline(results[[city]]$lmodel$residuals)
+
+```
+
+In the statement above, results, lmodel, and residuals are all as described previously. The difference is that I used the city name, held in a variable, to find the Dallas cell, instead of using $Dallas. This method is more flexible because it allows me to more easily loop over a subset of cities.
+
+## Extracting a specific result
+
+Finally, what if I wish to extract all of the adjusted R-squared values to see how the model stacks up across cities, I can use:
+
+```{r}
+sapply(results, function(x) {x$summary$adj.r.squared})
+
+```
+
+Pretty cool, right! Try to do *that* so easily in Excel!
