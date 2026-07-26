@@ -1,0 +1,188 @@
+---
+title: "Priority Queues"
+author: "Gary Mitchell"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## M/M/c Priority Queues
+
+M/M/c priority queues are simply M/M/c queues with multiple priority classes. So what's a priority class? Think Fastpass vs Standby lines at a Disney park, First Class vs Coach passenger lines at an airline ticket counter. In these examples, there are two classes of service.
+
+Strictly speaking, priority queues don't work exactly like Fastpass/Standby or First Class/Coach lines. Think of a priority queue as a *sorted* queue where all of the priority 1 (the highest priority class) customers are always first in line, followed by all of the priority 2 customers, and so forth. When a new priority 1 customer arrives at the system, s/he advances past all lower priority customers to become the last priority 1 customer in line (i.e., the priority 1 customer most recently arrived at the system) immediately followed by the priority 2 customer that has been in the system the longest. No priority 2 customer will be served until all priority 1 customers in line have been served.
+
+## M/M/c/Priority is still an M/M/c queue 
+
+Because an M/M/c priority queue is still an M/M/c queue, all of the standard metrics that apply to M/M/c queues *still* apply to the M/M/c/Priority queue. When $c > 1$:
+
+$$\lambda_{agg} = \sum_{\lambda_j \in \lambda} \lambda_j$$
+$$p_0 = \Biggl(\sum_{n=0}^{c-1}\frac{r^n}{n!} + \frac{r^c}{c!(1-\rho)}\Biggr)^{-1}$$
+$$L_q = \frac{r^c \rho}{c!(1-\rho)^2}p_0$$
+
+And, if $c = 1$, we have the simpler forms
+
+$$p_0 = 1 - \rho$$
+$$Lq = \frac{\lambda^2}{\mu(\mu - \lambda)}$$
+
+All of this is exactly what we had for standard (i.e., FCFS) M/M/c queues.
+
+## So where do priority queues differ?
+
+M/M/c/priority queues differ only in having *additional* metrics for the priority classes.
+
+$$B_k = 1 - \sum_{j=1}^{k}\frac{\lambda_j}{c \mu}, B_0=1$$
+
+$$W_{q,k} = \frac{(1-\rho)L_q}{\lambda B_{k-1}B_k} = \frac{(1-\rho)W_q}{B_{k-1}B_k}$$
+$$L_{q,k} = \lambda_k W_{q,k}$$
+
+## So where's the confusion?##
+
+The M/M/c/FCFS (i.e., the standard M/M/c non-priority queue) was formulated *before* the M/M/c/Priority queue. At the time, the notation from prior queuing models was adopted so that $\lambda$ was defined as the arrival rate. Subsequent to this, the M/M/c/Priority model was developed and had to address having arrival rates (i.e., $\lambda_j$) for each priority class.
+ 
+**Note that, for a priority queue, whenever we use $\lambda$ (as opposed to $\lambda_k$) in an expression, we are treating $\lambda$ as if it's $\lambda_{agg} = \sum_{\lambda_j \in \lambda} \lambda_j$.** 
+
+## An example
+
+Let's say that we have an M/M/c/Priority queue with the following characteristics:
+
+$$\boldsymbol{\lambda} = \{5, 10, 5\}$$
+Here, the **bold** $\lambda$ is a notational way of indicated that $\boldsymbol{\lambda}$ is a *set* containing the values 5, 10, and 5 (hence the reason we still reference $\lambda$ in the project specification document, even when we allow it to be multivalued for a priority queue). For pratical reasons, we use a Python *tuple*, instead of a set, because we need indexed access of *ordered* data (i.e., we need to be able to access $\lambda_2$ and have it be the arrival rate for priority class 2). However, in all other respects (other than using a *tuple* instead of a *set*), we are mirroring the M/M/c/FCFS and M/M/c/Priority models in the way we are naming our parameters.
+
+## With numbers
+
+In addition to $\boldsymbol{\lambda} = {5, 10, 5}$, let's assume $\mu = 25$ and $c = 1$. In this case, since we have a single server M/M/c queue (i.e., and M/M/1), we can use the simpler M/M/1 model results to calculate our metrics:
+
+$$L_q = \frac{\lambda^2}{\mu(\mu - \lambda)} = \frac{(\sum_{\lambda_j}\lambda_j)^2}{\mu(\mu - (\sum_{\lambda_j}\lambda_j))} = \frac{\lambda_{agg}^2}{\mu(\mu - \lambda_{agg})} = \frac{20^2}{25(5)} = 3.2\text{ customers}$$
+Conceptually, because $L_q$ is the average number of customers waiting *for the entire system*, it makes sense that the arrival rate used here must represent the total arrivals for the system *and not just for a single priority class*. The same idea would apply if we had a multi-server queue, we would simply use the M/M/c formula for $L_q$ instead of the simpler M/M/1 formula.
+
+To find $W_q$ or any other of the major queue metrics, we simply apply Little's Law:
+
+$$L = L_q + r = L_q + \frac{\lambda}{\mu} = 3.2 + 0.8 = 4.0 \text{ customers}$$
+
+$$W_q = \frac{L_q}{\lambda} = \frac{L_q}{\sum_{\lambda_j}\lambda_j} = \frac{3.2}{20} = 0.16 \text{ hours}  = 9.6 \text{ minutes}$$
+and
+
+$$W = W_q + \frac{1}{\mu} = 0.16 \text{ hours} + 0.04 \text{ hours} = 0.2 \text{ hours} = 12 \text{ minutes}$$
+
+### Now, by class
+
+Now we can also (want to) calculate queuing metrics by priority class. Little's Law, with some minor tweaks, allows us to do this too:
+
+$$L_{q,k} = \lambda_k W_{q,k}$$
+
+$$L_k = L_{q,k} + \frac{\lambda_k}{\mu} = W_k + \frac{1}{\mu}$$
+From these, we can obtain all of the fundamental relationships for the priority classes. So, all we need is $W_{q,k}$ and we're set. Fortunately, $W_{q,k}$ is easily calculated by adjusting $W_q$ for the desired priority class:
+
+$$W_{q,k} = \frac{(1-\rho)W_q}{B_{k-1}B_k}$$
+And because we know by Little's Law that $W_q = \frac{L_q}{\lambda}$, then we also have:
+
+$$W_{q,k} =  \frac{(1-\rho)L_q}{\lambda B_{k-1}B_k}$$
+
+Now, because the $Lq$ in the expression is *for the entire* system and not a single service class (i.e., it's not an $L_{q,k}$), then we know that our $\lambda = $lambda_{agg}$. Now, let's say we want to calculate $L_{q,k}$ and $W_{q,k}$ for all three priority classes. We could do so using the following process:
+
+1.    Calculate $B_0, \dots, B_n, n=|\boldsymbol{\lambda}|$
+2.    Collect what we already know, i.e., $\lambda_{agg}=20, L_q = 3.2, \rho=0.8$
+3.    Using $\lambda_{agg}$ for $\lambda$, calculate $W_{q,k}$.
+
+The table below shows our results:
+
+```{r, echo=FALSE}
+suppressPackageStartupMessages(require(kableExtra))
+
+lambda<-c(5, 10, 5)
+
+mu<-25
+c<-1
+
+lambda_agg<-sum(lambda)
+rho<-lambda_agg / mu
+lq<-lambda_agg^2/(mu*(mu-lambda_agg))
+
+rhoj<-cumsum(lambda)/mu
+
+Bk<-1-rhoj
+Bkminus1<-c(1, Bk[-3])
+
+wqk<-(1-rho) * lq / (lambda_agg * Bkminus1 * Bk)
+lqk<-lambda * wqk
+
+qdat<-data.frame(k=1:length(lambda), Bkminus1=Bkminus1, Bk=Bk, wqk=wqk, lqk=lqk)
+colnames(qdat)<-c("$k$", "$B_{k-1}$","$B_k$", "$W_{q,k}$", "$L_{q,k}$")
+
+qdat %>%
+  kbl() %>%
+  kable_styling(full_width=FALSE)
+
+```
+
+Now we can even relate our results by priority class back to the overall queue metrics. Because the $L_{q,k}$ represent the average number of customers in priority class $k$, we can calculate:
+
+$$L_q = \sum_{k = 1}^{|\boldsymbol{\lambda}|}L_{q,k}$$
+Additionally, because $W_{q,k}$ is the average time spent waiting for a customer in priority class $k$, we can calculate the overall average waiting time, $W_q$, as the weighted average of the $W_{q,k}$:
+
+$$W_q = \frac{\sum_{k=1}^{|\boldsymbol{\lambda}|}\lambda_k W_{q,k}}{\sum_{k=1}^{|\boldsymbol{\lambda}|} \lambda_k}$$
+or alternatively:
+
+$$W_q = \sum_{k=1}^{|\boldsymbol{\lambda}|} p_k W_{q,k}$$
+where $p_k = \frac{\lambda_k}{\sum_{k=1}^{|\boldsymbol{\lambda}|}\lambda_k}$. In other words, $W_q$ is the *arrival rate weighted average* waiting time.
+
+Using these formulas, we calculate $W_{q,k} = `r lambda %*% wqk / lambda_agg`$ and $L_{q,k} = `r sum(lqk)`$.
+
+It's comforting to see that our overall queue metrics calculated in this way match the values we calculated directly using the *overall* formuas earlier. However, it's more important than that. Calculating $Lq$ as the sum of the $L_{q,k}$ and $W_q$ as the weighted average of the $W_{q,k}$ emphasizes the nature of these metrics, their relationship to each other, and the values of $\lambda$ appropriate for each of the calculations.
+
+## Projects 3 and 4
+
+The specification for Projects 3 and 4 are very clear in their treatment of $\lambda$ values:
+
+*   $\lambda$ always represents the *queue*-level arrival rate(s). If the queuing discipline is FCFS (i.e., *not* a priority queue), then $\lambda$ is a single value. If the queuing discipline is *priority*, then $\lambda$ is a tuple, representing the set of arrival rates $\boldsymbol{\lambda}$.
+*   $\lambda_k$ (or $\lambda_j$ or $\lambda_i$) always represents the arrival rate for a specific service class designated by the subscript (e.g., $\lambda_2$ is the priority class 2 arrival rate).
+
+Clearly, if $\lambda$ is multivalued, you must aggregate the $\lambda$ values for any queue-level calculation (e.g., $L_q$, $\rho$, etc.). When a call signature calls for $\lambda$, it's asking for the whole thing (including the tuple if $\lambda$ is multivalued). If the spec shows $\lambda_k$, then it's calling for $\lambda_k$, i.e., the class $k$ arrival rate.
+
+Have a look at the Project 4 function call signatures (the function bodies have been omitted here because... well because that's the work for Project 4).
+
+```{python, exec=FALSE}
+def calc_bk_mmc(k, lamda, mu, c=1):
+  pass
+
+def calc_wqk_mmc(k, lamda, mu, c=1):
+  pass
+
+def calc_lqk_mmc(k, lamda, wqk):
+  pass
+
+def use_littles_law(lamda, mu, c=1, **kwargs):
+  pass
+```
+
+*lamda* clearly represents the tuple of $\lambda$ values. How do you know? There is no $k$ subscript (i.e., it is referencing lamda, not lamda_k). If a calculation *inside* the function needs $\lambda_k$, then it simply obtains it from the tuple; if you have the tuple, you can access *any* of the individual priority class $\lambda$'s, right?
+
+## Projects 5 and 6
+
+The handling of $\lambda$ will be a little different our OOP implementations. In these, only priority queues need $\lambda_k$; all queues except the priority queue only need a single $\lambda$ representing the single arrival rate for the queue. The M/M/1 and M/M/c queue classes will inherit this attribute from their base class (you'll understand what this means after we discuss object-oriented). If the value of $\lambda$ provided is multi-valued, then all but the priority queue class can simply sum the values and store the aggregate as $\lambda$. The priority queue class will *additionally store the multi-valued $\lambda$ as $\lambda_k$.
+
+All of this should make more sense to you after you read the Project 5 & 6 description and we've covered object-oriented programming in class. In the meantime, just remember this discussion is here when you're working on projects 5 & 6. 
+
+## Summary
+
+OK, that about wraps it up. Hopefully this makes things more clear, but here's the condensed version:
+
+*   If the spec asks for lamda in the call signature, it is lamda for the entire queue, not a single priority class
+*   If the queue is a *priority* queue, then that lamda requested is the tuple
+*   If a function needs $\lambda_k$, it will index into lamda using $k$ to get the $\lambda_k$ it needs.
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,156 @@
+---
+title: "Indexing and slicing"
+author: "Gary Mitchell"
+date: "8/21/2023"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+We learned about strings, lists, and tuples in previous tutorials. In this tutorial, we take a look at advanced indexing capabilities and slicing.
+
+```{r, echo=FALSE}
+library(reticulate)
+use_python("C:\\Users\\mitchelg\\Anaconda3\\python.exe")
+```
+
+# Sequences
+
+In order to discuss advanced indexing and slicing in Python, it is useful to understand the idea of a *sequence*. A sequence in Python is a data structure that maintains its elements in order, generally first in first out (FIFO), although there are specialized sequences that allow for other orderings.
+
+A *sequence* is not a specific data type. Rather, data types either are or are not sequences. You can think of sequences as a subset of data types with the characteristic of maintaining elements in order. Of the data types we've covered in the tutorials so far, the following are sequences:
+
+-   list
+-   tuple
+-   string
+
+The advanced indexing and slicing behavior we are going to discuss applies to all sequences in Python.
+
+# Indexing
+
+In a previous tutorial, we learned how to access a single element in a sequence using an index (i.e., position number) where the first index is 0 and the last index is $n-1$, where $n$ is the number of elements in the sequence. Alternatively, we can index from the *back* of a sequence, where -1 is the last item in the sequence, -2 is the second to the last item, etc.
+
+```{python}
+animals = ['cat', 'dog', 'mouse', 'moon', 'bird', 'bear', 'Mars']
+print(animals)
+
+print(animals[0])
+print(animals[3])
+print(animals[-1])
+```
+
+
+# Slicing
+
+A *slice* is a consecutive subset of elements in a sequence. We specify a slice using the colon (:) operator. For example, to access the 2nd through 4th elements of the animals list, we use:
+
+```{python}
+print(animals)
+print(animals[1:4])
+```
+
+Remember, the position numbers in Python sequences are all shifted by 1 (e.g. 0 is the 1st position, 1 is the 2nd position, etc.) and the upper bound in the slice is excluded.
+
+To include all elements from the beginning up to a specified element, simply exclude the lower bound in the slice:
+
+```{python}
+print(animals[:4])
+```
+
+Similarly, to elements from a specified position through the end, just exclude the upper bound:
+
+```{python}
+print(animals[4:])
+```
+
+## Non-consecutive slices
+
+We can specify an increment to obtain non-consecutive slices. For example, to select every other element, beginning with the first and ending with the fifth, we would use:
+
+```{python}
+print(animals)
+print(animals[0:6:2])
+```
+
+Because the upper bound is excluded in Python slices, we specify 6 as the upper bound (meaning that the 5th position will be the last included). The 3rd element in our slice specification specifies an increment of 2. Consequently, we can think of 0:6:2 as meaning, start with position 0 and increment by 2 as long as the position is less than 6:
+
+```{python, echo=FALSE}
+[x for x in range(0,6,2)]
+```
+
+Which we interpret as being the 1st, 3rd, and 5th elements (position numbers plus 1).
+
+As with consecutive slices, we can eliminate the lower and/or upper bounds, indicating inclusion of the first and/or last elements. Thus, to select every other element, we'd use:
+
+```{python}
+print(animals)
+print(animals[::2])
+```
+
+and selecting every third value would be as follows:
+
+```{python}
+print(animals)
+print(animals[::3])
+```
+
+
+# Negative slices
+
+We can use negative slices to retrieve from the back of the sequence. Probably the most natural expression would be a slice starting at the last element and moving towards the first:
+
+```{python}
+print(animals[-1:-4:-1])
+```
+
+Here, we've asked for elements -1, -2, and -3 (remember the upper bound is excluded) which Python translates as the last, 2nd to the last, and 3rd to the last elements. Here, we must specify a negative increment to get the set of values we want (elements -1, -2, -3). When omitted, the default increment is +1.
+
+So, to access the last 3 elements of the sequence, we could use:
+
+```{python}
+print(animals[-3:])
+```
+
+Since the increment is +1, we obtain the elements at -3, -2, and -1 (the end of the sequence).
+
+## Tuple slices
+
+Tuple slices work identically to list slices. Nuff said...
+
+## String indexing and slicing
+
+In a previous tutorial, we learned that string variables are used to store text. It's important to note that to Python, text is just a *sequence* of characters. Thus, like lists and tuples, strings are sequences. That means we can index and slice strings just like any other sequence. Let's illustrate with the following string:
+
+```{python}
+text = 'Python is great!'
+```
+
+```{python}
+print(text[0])
+```
+
+```{python}
+print(text[-1])
+```
+
+And we can select *substrings* using slices:
+
+```{python}
+print(text[2:6])
+
+print(text[:8])
+
+print(text[-8:])
+```
+
+And even select and reverse the last 6 characters (remember, the upper bound is excluded):
+
+```{python}
+print(text[-1:-7:-1])
+```
+
+# Numpy and Pandas
+
+We'll see even more flexible indexing and slicing with Numpy and Pandas. We're not quite there yet, but getting comfortable with standard indexing and slicing will help make Numpy's even more flexible capabilities more intuitive.

@@ -1,0 +1,712 @@
+---
+title: "Loops and Conditionals"
+author: "Gary Mitchell"
+date: "8/21/2023"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Python, like nearly all computer programming languages, executes instructions sequentially and, specifically, top to bottom. For example, let's use Python to calculate the Economic Order Quantity (EOQ); the EOQ is the order quantity $Q$ that minimizes the total relevant cost, $TRC(Q)$, for an item when:
+
+-   Annual demand (units), $D$, is deterministic, constant, and stationary
+-   Holding cost ia paid at percentage rate $r$
+-   An order placement cost $A$ is incurred for each order placed, regardless of the order quantity
+-   The unit acquisition cost is $v$.
+
+$$EOQ = \sqrt{\frac{2 D A}{v r}}$$
+$$TRC(Q) = \frac{Q}{2}v r + \frac{DA}{Q}$$
+
+```{r, echo=FALSE}
+library(reticulate)
+use_python("C:\\Users\\mitchelg\\Anaconda3\\python.exe")
+```
+
+```{python}
+import math
+
+# Calculate an EOQ
+
+d = 10000
+a = 500
+v = 12.95
+r = 0.35
+
+num = 2 * d * a
+
+den = v * r
+
+rad = num / den
+
+eoq = round(math.sqrt(rad))
+trc = round(eoq / 2 * v * r + (d * a)/eoq, 2)
+
+print(eoq)
+print(trc)
+
+```
+
+In the code above, we 
+
+1.    assigned values for annual demand, aggregate order placement cost, unit acquisition cost, and unit holding cost percentage rate to the variables $d$, $a$, $v$, and $r$ respectively (remember, the Python variable naming convention is all lower case)
+2.    calculated the value of the numerator, denominator, radicand
+2.    calculated and rounded the $EOQ$, and 
+2.    calculated and rounded (to 2 decimal places) $TRC(Q)$ using the $EOQ$. 
+2.    Finally, we printed the values of $EOQ$ and $TRC(Q)$. 
+
+Now, being able to write a sequence of instructions like this in Python can be useful, to a point. If we have a sequence of operations we must perform regularly, then automating the work in Python can:
+
+-   save us time and money
+-   improve repeatability (i.e., reduce costs associated with errors).
+
+Our EOQ is a good example. It would be relatively easy to make a simple calculation error if we had to perform this calculation many times. However, for any values of $d$, $a$, $v$, and $r$, are code, once tested and we know it works correctly, will *always* calculate the $EOQ$ correctly.
+
+Now, as cool as that is, it would be severely limiting if we could only ever execute a sequence of instructions from top to bottom. In fact, the reason I chose this example is because in practice, calculating the EOQ involves checking conditions and performing different actions based on decisions.
+
+# Conditionals
+
+Conditionals allow us to test conditions and perform different actions depending on the outcome of the condition test. For example, let's say that we'd *like* to do the following in our $EOQ$ calculation:
+
+-   If the demominator is $\leq 0$, assign $-1$ to the $EOQ$ and set $TRC(Q)$ to NaN
+-   If the numerator is $\leq 0$, assign $-2$ to the $EOQ$ and set $TRC(Q)$ to NaN
+-   Otherwise, calculate the $EOQ$ and $TRC{Q}$ as we did above.
+
+In this way, we could check on the outcome of our calculation by checking the value of the $EOQ$. If the resulting $EOQ$ is:
+
++   $>= 0$ - the calculation worked correctly (i.e., all input values were fine). 
++   $= -1$ - the denominator was invalid (0 would lead to a divide by zero error, and a negative value would lead to a problem with calculating the square root; it is not possible to calculate a real valued square root of a negative number). 
++   $= -2$ - the numerator was invalid (0 means there's no demand and/or 0 order placement cost, in which case the $EOQ$ model doesn't apply; again, we cannot calculate a real-valued result of a negative number).
+
+Now, this isn't necessarily the most effective approach to this problem, but it allows us to illustrate conditional processing. The easiest way to explain this is to first show the code:
+
+```{python}
+num = 2 * d * a
+den = v * r
+
+if den <= 0:
+  # the denominator is invalid
+  eoq = -1
+  trc = math.nan
+elif num <= 0:
+  # the numerator is invalid
+  eoq = -2
+  trc = math.nan
+else:
+  # everything looks good, calculate EOQ and TRC
+  num = 2 * d * a
+
+  den = v * r
+  
+  rad = num / den
+  
+  eoq = round(math.sqrt(rad))
+  trc = round(eoq / 2 * v * r + (d * a)/eoq, 2)
+
+print(eoq)
+print(trc)
+
+
+```
+
+This code illustrates *conditional processing*. The **if** statement is Python's way of letting us test a condition (i.e., perform a comparison) and perform something based on the result of the comparison. Note the format of the statement:
+
+```{python, eval=FALSE}
+if condition:
+```
+
+where *condition* is any valid comparison (or other test, such as testing for set membership). Note that the **if **statement ends with a colon (:), telling Python that this marks the end of the condition, and that *all following indented statements until the next *outdent *are performed the condition is True*. 
+
+In the case of our example, the condition checks to see if the denominator is $\leq 0$. If it is, then the two statements following will assign -1 to $eoq$ and $NaN$ to $trc$. After these two statements, we see an *outdented* statement (a statement at the same level of indentation as the original if). This outdented statement tells Python that the *True* condition processing is done. Most computer languages use punctuation (e.g. curly braces {}) to identify the statements that comprise the *block statement* (a group of statements to be treated as a block), in this case, the statements to execute when the condition is true. When processing reaches this *outdented* statement, Python knows that the conditional processing is complete, and it will skip any remaining parts of the conditional, beginning execution following the last statement (in this case, processing will skip everything up to the two print statements).
+
+The general form of the conditional is as follows:
+
+```{python, eval=FALSE}
+if condition1:
+  # statements to execute when condition 1 is True
+elif condition 2:
+  # statements to execute when condition 2 is True
+elif condition 3:
+  # statements to execute when condition 3 is True
+else:
+  # statements to execute when all conditions are False
+```
+
+Only one block of code will execute when the condition is evaluated (i.e. the code associated with the conditions and the otherwise condition are mutually exclusive). Any number of **elif** statements may be included. **elif** and **else** statements are both *optional*. Thus, all of these are valid conditionals:
+
+```{python, eval=FALSE}
+if condition1:
+  # statements to execute when condition 1 is True
+elif condition 2:
+  # statements to execute when condition 2 is True
+else:
+  # statements to execute when all conditions are False
+```
+
+The example above has the same form as our EOQ conditional.
+
+```{python, eval=FALSE}
+if condition1:
+  # statements to execute when condition 1 is True
+else:
+  # statements to execute when all conditions are False
+```
+
+In this case, there are only two execution paths:
+
+1.    Code to execute when condition 1 is True
+2.    Code to execute in all other cases (i.e., when condition 1 is False)
+
+```{python, eval=FALSE}
+if condition1:
+  # statements to execute when condition 1 is True
+```
+
+In the example above, we have no *otherwise* condition(s). In this case, the statements under the **if** will execute when condition 1 is true, but no code will execute (for the conditional anyway) when condition 1 is False. This allows us to perform/skip a section of code based on the condition.
+
+
+# More conditional examples
+
+Consider an online store that offers a 10% discount to *members*. When calculating the purchase total, the cart total must be discounted for members (non-members pay the full cart total).
+
+```{python}
+members = {'Tom', 'Bill', 'Carol', 'Ken', 'Sue', 'Anna', 'Sophia', 'Ted'}
+
+cust = 'Carol'
+cart_total = 195.98
+
+discount = 0.0
+
+if cust in members:
+  discount = 0.10
+  
+purchase_total = (1 - discount) * cart_total
+
+print(purchase_total)
+  
+```
+
+In this case, we read the code as saying the following:
+
+-   Set the discount to the default of no discount
+-   If customer is a member, set the discount to 10%
+-   Calculate the purchase total using the discount.
+
+Now, this isn't the only way the code could be written. One alternative would be to use the following:
+
+```{python}
+members = {'Tom', 'Bill', 'Carol', 'Ken', 'Sue', 'Anna', 'Sophia', 'Ted'}
+
+cust = 'Carol'
+cart_total = 195.98
+
+if cust in members:
+  discount = 0.10
+else:
+  discount = 0.0
+  
+purchase_total = (1 - discount) * cart_total
+
+print(purchase_total)
+  
+```
+
+or even
+
+```{python}
+members = {'Tom', 'Bill', 'Carol', 'Ken', 'Sue', 'Anna', 'Sophia', 'Ted'}
+
+cust = 'Carol'
+cart_total = 195.98
+
+if cust in members:
+  purchase_total = (1 - discount) * cart_total
+else:
+  purchase_total = cart_total
+
+print(purchase_total)
+  
+```
+
+All of these code examples will produce the correct results. I *prefer* the first alternative because the code is simpler and clearly conveys the intent. We'll discuss coding style and logic preferences as we progress through the course. Remember, your goal is not simply to write code that works, **your goal is to write code that is easily readable and understandable**, and works.
+
+The first two code alternatives are superior in that *purchase_total* is calculated in only one location in the code. Thus, if we find there is an error in the calculation, we need only analyze one code location for the problem. In the third example, we would have to look in two locations. I'm not exaggerating when I say that I have seen code where a single variable is calculated in dozens of locations throughout the code. This type of code is a *disaster* to debug and maintain.
+
+Consider another example where we are trying to determine whether a string variable contains a multi-word phrase. We'll treat any string with at least one embedded space that is *not* in the first position as a multi-word phrase (not a very sophisticated criteria, but we're going for a simple example here...).
+
+```{python}
+word = "It's coffee time!"
+
+if (" " in word) and word[0] != ' ':
+  print('\"' + word + '" is a multi-word phrase')
+else:
+  print("not a multi-word phrase")
+```
+
+In this example we used a *compound* conditional. An *and* means that both (all) parts of the compound coundition must evaluate to True. An *or* means that if *any* of the conditions is True, then the conditional evaluates to True. An *xor* (exclusive or) means the conditional will evaluate to True if and only if (**iff**) *exactly one* of the conditions evaluates to true.
+
+When Python evaluates a compound conditional, it evaluates from left to right over the statement. In the case of our example if the first part of the conditional is False (i.e. there is no " " $word$), then the remaining comparison is skipped and the code jumps to execute the **else** block. If, on the other hand, $word$ *does* contain a " ", then Python will continue to evaluate the conditional; then if the first character in word is anything other than " ", the condition will evaluate to True (otherwise, it will evaluate to False and the **else** clause code will execute).
+
+# Loops
+
+Loops are a fundamental building block of every programming language. In fact, loops are so intrinsic that some programming languages (e.g., RPG II, SAS) automatically build a main loop into every program.
+
+Understanding how to write a loop is easy. However, sometimes students find it challenging to know *when* to use a loop. So, we'll start with that. In this section, we'll learn about loops conceptually, learn about the three constructs commonly found in programming languages, and learn, specifically, about Python's looping constructs, **for** and **while**. We'll see that we can accomplish almost any looping task with either of these loop constructs. However, each is better suited to some tasks than others and we'll want to understand them well enough to choose the *best* loop for our purpose.
+
+## When to use a loop
+
+The simple answer is "any time you must do something repetitively or iteratively". The problem with this *simple* answer is that it *still* may not help you recognize when you need a loop in your program. The following examples should help you gain a better sense of when loops are useful.
+
+## Calculating sums
+
+Calculating a summation is a perfect example of an iterating operation. Let's start with a really simple example, summing the numbers from 1 to 10. Mathematically, we want to do the following:
+
+$$total = \sum_{i=1}^{10}i$$
+To calculate this, we *intuitively* calculate the following:
+
+$$1+2=3$$ 
+$$3+3=6$$ 
+$$6+4=10$$ 
+$$10+5=15$$ 
+$$15+6=21$$ 
+$$21+7=28$$ 
+$$28+8=36$$ 
+$$36+9=45$$ 
+$$45+10=55$$
+To be precise, we 
+
+1.    added the first two numbers in the sequence, 1 and 2. 
+2.    added the third number in the sequence to the result of the previous calculation
+2.    added the fourth number in the sequence to the result of the previous calculation
+3.    ...
+9.    added the tenth number in the sequence to the result of the previous calculation.
+
+Dissecting this, we see that at every step, we added one more number from the sequence into an *accumulating total* or *accumulator*. More importantly, steps 2 through 9 all perform the same action: adding the next number in the sequence to the total. **All steps but the first perform exactly the same action.**
+
+Now, with a little bit of thought, we make a small change to our process above:
+
+1.    let total = 0
+2.    add the first number in the sequence to total
+2.    add the second number in the sequence to total
+2.    added the total number in the sequence to total
+3.    ...
+9.    add the last number in the sequence to total.
+
+Illustrating numerically, we now have:
+
+$$total = 0$$
+$$total = total + 1=1$$
+$$total=total+2=3$$ 
+$$total=total+3=6$$ 
+$$total=total+4=10$$ 
+$$total=total+5=15$$ 
+$$total=total+6=21$$ 
+$$total=total+7=28$$ 
+$$total=total+8=36$$ 
+$$total=total+9=45$$ 
+$$total=total+10=55$$
+
+Mentally, we just performed a loop, even though we don't recognize it as such. We initialized $total$ to zero, and then we iterated over the numbers in the sequence, $1,...,10$, adding the next number in the sequence to total.
+
+Translating our work literally to Python would like this:
+
+```{python}
+total = 0
+
+total = total + 1
+total = total + 2
+total = total + 3
+total = total + 4
+total = total + 5
+total = total + 6
+total = total + 7
+total = total + 8
+total = total + 9
+total = total + 10
+
+print(total)
+
+```
+
+By now you must be thinking, "you've got to be kidding me!". There are so many problems with the code above. First, it's **tedious**. I can be very patient, but having to repeat 10 almost identical lines of code... nuh uh. What if I were trying to calculate the sum of the sequence $1, 2, ..., 100$?
+
+Second, repeating this many lines of code is just asking, *begging actually*, for an accidental error. Even with cut and paste, the likelihood of making (and overlooking) a simple mistake is high, and increases with the number of lines of code.
+
+Finally, this code is completely *inflexible*. It works only for the sequence $1, 2, ..., 10$. What if I want to calculate the sum of a the sequence $1, 2, ..., 100$? I have to add 90 lines of code. What if I want to calculate the sum of the first 6 even numbers? I have to delete some lines (so I'm only iterating 6 times) and modify the values being added in the remaining lines.
+
+## for: when we know the number of iterations 
+
+Generally speaking
+
+>**for** loops are best suited for situations when we know the exact number of iterations.
+
+If our problem sounds like "do *something* 10 times", "do *something* for the sequence...", or "do *something* for every item in the collection", then we know exactly how many iterations we need.
+
+Let's see the Python code to sum our sequence using a **for** loop:
+
+```{python}
+total = 0
+
+for i in range(1,11):
+  total += i
+  
+print(total)
+```
+
+Consider the **for** construct:
+
+```{python, eval=FALSE}
+total=0
+
+for i in range(1,11):
+  total += i
+```
+
+Each time through the loop, the **for** statement will obtain the next value from the sequence, range(1, 11), and assign it to the loop control variable, $i$. Next, all statements in the **for** body are evaluated. In this case, there's only one line of code in the **for** body. However, we can include as much code as we like. As with the **if** statement, Python will consider all *indented* statements following the **for** statement as belonging to the **for** body; the first outdent will represent the first executable statement following the **for** body.
+
+range(lower bound, upper bound, increment) creates a sequence as a generator object (more on generators in a future tutorial); the range() function generates a sequence of values, one of which will be assigned to the loop control variable each time through the loop. The upper bound is not included in the generated sequence.
+
+Now that we understand range(), we can interpret our code as follows (i.e., play computer to understand the code and results):
+
+1.    set $total = 0$
+2.    set $i = 1$
+2.    add $i$ to $total$
+2.    bottom of loop, so return to top
+2.    set $i = 2$
+2.    add $i$ to $total$
+2.    bottom of loop, so return to top
+2.    set $i = 3$
+2.    ...
+2.    set $i = 10$
+2.    add $i$ to $total$
+2.    bottom of loop, so return to top
+3.    sequence is empty (we've used all of the values in the range), loop terminates
+4.    execute statements following loop body (i.e., print the total)
+
+Now, let's say we want to sum the even numbers from 0 to 20. Here's the modified code:
+
+```{python}
+total = 0
+
+for i in range(2,21,2):
+  total += i
+  
+print(total)
+```
+
+Notice this code is identical to the previous **for** loop, with the only change being the specification of different parameters for the range function. Whenever possible, we want to write our code in a way so as to minimize the changes required to reuse that code.
+
+In fact, let's do a rewrite:
+
+```{python}
+total = 0
+lb = 2
+ub = 21
+inc = 2
+
+for i in range(lb, ub, inc):
+  total += i
+  
+print(total)
+```
+
+In this version of the code, we never need to modify the **for** loop to accommodate a different sequence; code modifications are limited to changing the boundary and increment variable initializations. This is good code design as it keeps us from modifying, and accidentally breaking, the important operational code. It also makes it easier to find errors in setting the values for the sequence.
+
+It's interesting to note the use of the += operator in the **for** body:
+
+```{python, eval=FALSE}
+total += i
+```
+
+is equivalent to
+```{python, eval=FALSE}
+total = total + i
+```
+
+However, the use of += makes the intent of the statement *very* clear: *add $i$ to $total$ and store the result back in $total$*.
+
+## Iterating over every member in a collection
+
+The *sequence* iterated over in the **for** loop need not be numeric. For example,
+
+```{python}
+members = ['Tom', 'Henry', 'Ada', 'Carol', 'Patty', 'John', 'Pete', 'MaryBeth']
+
+for person in members:
+  print('Hi ' + person)
+```
+
+Each time through the loop, the next element in the list is assigned to $person$, after which the loop body executes (only a single print statement in this case).
+
+## **while** : when we DO NOT know the number of iterations 
+
+Generally speaking
+
+>**while** loops are best suited for situations when we DO NOT know the exact number of iterations.
+
+If our problem sounds like "do *work* until done" of "do *work* as long as a condition is true" then we do not know exactly how many iterations we need. As an example, let's calculate an inverse cumulative Poisson probability. Now, the cumulative Poisson probability is calculated as follows:
+
+$$Pr\{X \leq x\} = \sum_{c=0}^{x}\frac{\lambda^c e^{-\lambda}}{c!}$$
+Let's assume $\lambda=5$, then 
+
+$$Pr\{X \leq 7 \} = \sum_{c=0}^{7}\frac{\lambda^c e^{-\lambda}}{c!} = \frac{\lambda^0 e^{-\lambda}}{0!}+\frac{\lambda^1 e^{-\lambda}}{1!}+\dots+\frac{\lambda^7 e^{-\lambda}}{7!}=`r ppois(5,7)`$$
+Calculating this is *relatively* easy. We can *see* the **for** loop, and we know exactly how many iterations we need (once for every value in the sequence $0, 1, ..., 7$). But what if we wanted to calculate the *inverse cumulative probability*?
+
+$$x: Pr\{X \leq x\} = \alpha$$
+In other words, we want to find the value of $x$ such that the probability that $X$ is less than or equal to $x$ is equal to $\alpha$ (or looked at another way, we have a probability $\alpha$ and we want to find the corresponding value of $x$).
+
+Now this one is a bit harder. We don't have a simple formula we can use to calculate the inverse (because of the summation in the original probability calculation). Really, all we can do is calculate the cumulative probabity $p$ for increasing values of $x$ until $p \geq \alpha$. The smallest value of $x$ for which $p \geq \alpha$ is the inverse cumulative probability for $\alpha$.
+
+The following illustrates for $\alpha = 0.88$ and $\lambda = 5$:
+
+```{r, echo=FALSE}
+
+lamda<-5
+p<-0
+alpha<-0.88
+x<--1
+while (p < alpha)
+{
+  x<-x+1
+  p<-ppois(x, lamda)
+  print(paste("Pr{X <= ",x,"} = ",round(p,4), sep=""), quote=FALSE)
+}
+```
+
+Here we see that when $x = 7$, the cumulative probability is only $0.8666$, which is less than $\alpha=0.88$. When $x = 8$, the cumulative probability is $0.9319 > \alpha$, so the inverse cumulative probability is $8$.
+
+Now, to write the code to find this in Python. We could do this in multiple ways. I'd probably write it like this:
+
+```{python}
+p = 0
+x = -1
+
+lamda = 5
+alpha = 0.88
+
+while p < alpha:
+  x += 1
+  p += lamda**x * math.exp(-lamda) / math.factorial(x)
+  
+print(x)
+```
+
+So what does this code say?
+
+1. Initialize the cumulative probability to 0
+2. Initialize the answer, $x$, to -1 (since the first statement in the loop body increments $x$, initializing it to -1 will result in $x=1$ for the first iteration of the loop body)
+2. Is the cumulative probability $p$  less than the target value $\alpha$? If not, go to the first statement following the loop body (the first *outdented* statement). Otherwise, do the following:  
+    +   Calculate the probability associated with the current value of $x$ and add it into the cumulative probability 
+    +   Go back to the top of the loop
+2. Print the inverse cumulative probability $x$
+
+We could also do it *this* way:
+
+```{python}
+p = 0
+x = -1
+
+lamda = 5
+alpha = 0.88
+
+done = False
+
+while not done:
+  x += 1
+  p += lamda**x * math.exp(-lamda) / math.factorial(x)
+  
+  if p >= alpha:
+    done = True
+  
+print(x)
+```
+
+or even this way:
+
+```{python}
+p = 0
+x = -1
+
+lamda = 5
+alpha = 0.88
+
+
+while True:
+  x += 1
+  p += lamda**x * math.exp(-lamda) / math.factorial(x)
+  
+  if p >= alpha:
+    break
+  
+print(x)
+```
+
+Note that the **break** statement forces the loop to terminate immediately, skipping any code remaining in the loop body and resuming execution at the first outdented statement.
+
+All three ways did the job. So which is best? My *personal* preference is the first one, because I think it best conveys the nature of the work we're doing (e.g., repeating work until the cumulative probability is large enough). In more general terms, we are repeating the work *until* the *continuation condition* (p < alpha) is no longer true. We know the loop executes while (as long as) the continuation condition is true.
+
+# Understanding looping logic *in general*
+
+In general, there are three (3) classic looping structures:
+
+1. for
+2. while (continuation condition is true)
+3. do-until (termination condition is true)
+
+## for
+
+*Conceptually*, the **for** loop also has two variations:
+
+-   **for** (i = start; continuation condition; change i)
+-   **foreach** (item in a collection)
+
+The first of these two is common to C, C++, Java, etc. (and doesn't exist in Python). The code in the parenthesis represents three separate statements. The first part (before the first semi-colon) is the initialization code. For example, in the sample **while**  loops above, we had to initialize $p = 0$. When summing the sequence, we might want to initialize the starting value of $x$ to $1$. 
+
+The second term, following the first semi-colon, is the continuation condition. In other words, the **for** loop would execute as long as the continuation condition is True.
+
+Finally, the third term represents the change that must be made to the loop control variable (e.g. $i$ in the statement above) at the end of every iteration. So, a **for** statement for calculating the sum of the sequence $1, 2, ..., 10$ in C or Java would appear as follows:
+
+```{c, eval=FALSE}
+total = 0
+
+for(i = 1; i <= 10, i++)
+{
+  total += i
+}
+
+```
+
+This form of a **for** statement is very compact as it includes initialization, continuation checking, and loop control variable change code all within the **for** statement itself.
+
+### Python is different...
+
+When programming in Python, we effectively always use a foreach (even though the Python keyword is for). Even when we iterated over a numeric sequence in our example above, the Python code behaved like a foreach, executing the loop body for each value in range(1, 11). 
+
+This Python code using a range object
+
+```{python, eval=FALSE}
+
+# the actual Python code
+for x in range(1, 11):
+
+```
+
+is equivalent to the following Python code that more transparently illustrates how Python iterates over a sequence. In other words, to iterate over the sequence, Python performs a foreach...
+
+```{python, eval=FALSE}
+
+# the actual Python code
+for x in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]:
+
+```
+
+This isn't a problem, as long as we're conscientious about the *size* of the sequence/collection and how much memory and time it takes to construct. We'll discuss more about this aspect when we discuss generators/generator functions in a future tutorial. In the meantime, just think of Python's **for** as a **foreach** and use it accordingly.
+
+Again, **for** loops are most appropriate when we know exactly how many iterations are required (or equivalently, we know a fixed set of values over which we must iterate).
+
+## **while** 
+
+Traditional while loops, including Python's, perform a continuation at the start of every loop iteration. For example, in the following:
+
+```{python, eval=FALSE}
+while p < alpha:
+```
+
+Python evaluates the comparison each time it begins evaluating code at the top of the loop. If $p < \alpha$, then the loop body will execute. If, on the other hand, $p \geq \alpha$, then Python will skip past the loop body and resume execution at the first outdented statement. 
+
+>If the condition is already False when the **while**  loop is first encountered (i.e., prior to the first time through the loop), then the loop is skipped entirely.
+
+This is really important, because it means that a **while**  loop may not execute if the continuation condition is never true. This may be exactly what we want.
+
+>**while**  loops have the potential to be **endless* loops.
+
+If not coded correctly, a **while**  loop can run infinitely. How does this happen? The continuation condition is *always* satisfied; the code that should be in the loop body to eventually resulting in the continuation condition evaluating False (thereby stopping the loop) is either missing or contains an error.
+
+We can use the example of summing a numeric sequence $1, 2, ..., $10$ to illustrate:
+
+```{python, eval=FALSE}
+total = 0
+i = 1
+
+while i < 11:
+  total += i
+```
+
+The above loop will run endlessly. Why? Well, the code initializes $total$ and $i$. Each time through the loop, it adds $i$ to $total$ and stores the result back in $total$. However, **the loop body never changes $i$**; $i = 1$ in every iteration of the loop. Consequently, each time the continuation condition is checked, $i < 11$ is always true, and the loop never terminates...
+
+So the moral of the story is **be careful/meticulous when using while loops**. Always ensure that code in your loop body will eventually ensure that the continuation condition evaluates to False.
+
+
+## do-until
+
+But what if skipping the **while**  loop entirely *isn't* what we want. Then a classic do-until structure may do the job. In a do-until, the termination condition isn't evaluated until the end of the loop. This means that a do-until is always executed at least once. When the end of the loop is reached, the loop executes repeatedly until the termination condition evaluates to True.
+
+Here's what a do-until appears in Visual Basic:
+
+```{r, eval=FALSE}
+do
+  # perform work here
+
+until termination condition
+```
+
+But here's the big caveat:
+
+>Python does not offer an explicit do-until construct.
+
+However, that doesn't mean that we're completely stuck. We can *simulate* a do-until with a **while**  and a conditional. Here's what that might look like:
+
+```{python, eval=FALSE}
+done = False
+
+while not done:
+  # do work here
+  
+  # test for termination
+  if condition 1:
+    done = True
+
+```
+
+or, alternatively:
+
+```{python, eval=FALSE}
+while True:
+  # do work here
+  
+  # test for termination
+  if condition 1:
+    break
+
+```
+
+You might recognize these from the second and third alternatives above for calculating inverse cumulative Poisson probabilities. In both cases, the loop bodies here will execute *at least one time*. If the termination condition is satisfied at the end of the first iteration, then the loop stops.
+
+# A special case
+
+Frequently, when writing analytic code, we may not know the number of iterations in advance, but we are worried about the code running for ever (e.g., because a stopping condition is never satisfied). If you've used Solver in Microsoft Excel, you may be familiar with this from one of the Solver options:
+
+![Solver Options Dialog](C:\Users\mitchelg\OneDrive - University of Portland\Teaching\2023 Fall\BUS 449\Lecture Notes\Loops and Conditionals\solver options dialog 60 percent.jpg)
+
+The dialog allows us to specify a limit on the number of iterations allowed. If Solver can't find a solution within the specified number of iterations, it terminates with an error message.
+
+So how would we do something like this in Python? That is, how do we set up a loop when the number of iterations is unknown, but we want to *cap* the number of iterations? We use for-break:
+
+```{python, eval=FALSE}
+max_iterations = 1000
+
+for i in range(0, max_iterations)
+  # do work here
+  
+  if termination condition:
+    break
+```
+
+This code will run a maximum of $1,000$ iterations. However, if the termination condition is satisfied (e.g., the algorithm finds an optimal solution or the algorithm converges to a solution) then we terminate the loop early using **break**.
+
+# **break** and **continue**
+
+Think of **break** and **continue** as *loop modifiers*. As we've seen previously, **break** immediately terminates the current loop. **continue** is slightly different; **continue** terminates the rest of the *current* iteration and returns to the top of the loop, where execution *continues*.
+
+While I find that I use **break** more often than **continue**, it is good to be aware of both statements.

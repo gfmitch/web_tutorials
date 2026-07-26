@@ -1,0 +1,272 @@
+---
+title: "Python Basics"
+author: "Gary Mitchell"
+date: '2023-08-16'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This tutorial introduces fundamental concepts in Python programming. The concepts and language elements below are essential building blocks for any Python program.
+
+# Variables
+
+Variables in Python are analogous to variables in Algebra or cells in Excel. Think of them as storage locations where you can hold results until you're ready to use them. However, variables have a built-in advantage over cells in Excel; Python does not have to constantly display variables. Now, this might not sound like an advantage to you. After all, you're used to seeing all of your data in Excel and that makes it easy for you to work with. However, displaying updated values at all times requires a *lot* of processing, making Excel *very* inefficient for any analyses involving large data volumes or extensive calculations.
+
+## Assignment
+
+Creating variables in Python is accomplished using **assignment** operations. Assignments are performed using the assignment operator, "=".
+
+```{r, echo=FALSE}
+library(reticulate)
+```
+
+```{python}
+x = 5
+```
+
+Python variables are *implicitly typed*, meaning that you don't have to specify what *type* of variable you are trying to create; Python determines the type of variable from the type of the value being assigned (more on variable types later). For example, in the code above, Python created an integer variable $x$ and stored the value 5 in $x$. 
+
+A valid assignment *statement* must have the following format:
+
+```{python, eval=FALSE}
+variable = expression
+
+```
+
+An *expression* is *any* valid Python code. Literal values and arithmetic operations (e.g. 5 * 10, a / b) are just two examples of valid expressions. 
+
+A *literal* is any value that is exactly specified directly in an expression (i.e. in lieu of using a variable). For example, the value 5 in the example above. In general, unless a value can never change (e.g. the number of days in a week is always 7), it is best to avoid spreading literal values throughout your code. Instead, assign the value to a variable with a meaningful name (more on variable names later) and use the variable throughout your code.
+
+Assignments always proceed right to left in Python (and most other languages). In other words, Python will *evaluate* the statement on the right hand side (RHS) of the assignment operator and assign the result to the variable specified on the left hand side (LHS).
+
+## Using variables
+
+Using variables is easy, simply reference the variable in place of a literal value in any expression. For example:
+
+```{python}
+
+8 * x
+```
+
+To *evaluate* the expression, Python first resolves the variable $x$ to the value it contains, 5, and then performs the specified operation (multiplication).
+
+## Variable types
+
+Python has a number of *single-valued* **built-in** including:
+
+- Integers (int) - whole numbers
+- Floating point (float) - real numbers
+- Strings (str) - Text/character data
+- Booleans (bool) - True or False
+
+We'll discuss other Python *scalar* (single-valued) types at another time. Additionally, many specialized data types may be imported from packages (more on this later).
+
+### Numeric types
+
+Let's experiment with ints:
+
+```{python}
+y = 8
+z = x * y
+half = z / 2
+
+print(half)
+```
+
+In the example above, we assign the literal value 8 to the variable $y$ and then perform arithemtic operations, creating two new variables $z$ and $half$. We never see the value for $z$, but we know it's there. After all, if it weren't, then value of $half$ printed, `r py$half`, would have been incorrect given the values of $x$ (`r py$x`) and $y$ (`r py$y`).
+
+Working with floats is just as easy. As an example, we can calculate the average number of customers waiting for an M/M/1 queue:
+
+$$L_q = \frac{\lambda^2}{\mu(\mu - \lambda)}$$
+
+```{python}
+lamda = 20.0
+mu = 25.0
+
+lq = lamda**2 / (mu * (mu - lamda))
+print(lq)
+```
+
+Notice in Python, the exponentiation operator is '**' (in contrast to Excel's use of '^'). In this case, the resulting value of $L_q$, `r py$lq`, is a real number. I assigned floating point numbers `r sprintf("%.1f",py$lamda)` and `r sprintf("%.1f",py$mu)` to the variables lamda and mu respectively and the following calculations were performed on floats. Would I get the same result if I assigned integer values?
+
+```{python}
+lamda = 20
+mu = 25
+
+lq = lamda**2 / (mu * (mu - lamda))
+print(lq)
+```
+
+Hmmm... The result is the same, even though lamda and mu are defined as integers. The reason for is that Python will perform *implicit type conversions* automatically. Since the result of division operation was not an integer, Python automatically created the variable lq as a float, so that it could preserve the decimal value.
+
+So, does it matter whether I use `r py$lamda` or `r sprintf("%.1f", py$lamda)` in the assignment? The answer is, *sometimes*. Python will do it's best to perform the correct implicit type conversions, but it may not always understand exactly what you want. As a result, it may not perform the type conversions you would like. Therefore, it is better to state exactly what you want in your code. If the value is supposed to be a real number, use 5.0; if it is supposed to be an integer, use 5.
+
+In addition to ints and floats, Python is also capable of working with other numeric types as well. For more information, check out [complex](https://www.geeksforgeeks.org/complex-numbers-in-python-set-1-introduction/)), [decimal](https://docs.python.org/3/library/decimal.html#module-decimal), and [fraction](https://docs.python.org/3/library/fractions.html).
+
+## Strings
+
+We can represent character data using string variables. The usage is essentially the same as for numeric types. For example:
+
+```{python}
+first = "Gary"
+last = "Mitchell"
+
+print(first + " " + last)
+```
+
+Notice that I surrounded the literal values on the RHS of the assignment expressions in quotes. When specifying string literals, they must be surround in either double quotes(") or single quotes('). This is necessary so that Python can distinguish between variables and literals. If I wrote:
+
+```{python, eval=FALSE}
+first = Gary
+
+```
+
+Python would look for a variable named $Gary$ when evaluating the RHS before completing the assignment. In almost all instances, I'll get the wrong result. If a variable named $Gary$ exists, Python will assign its contents to the variable $first$. If $Gary$ *doesn't* exist, my code will blow up (i.e. the program will crash). Only if $Gary$ exists and contains "Gary" would the code above produce the desired results (not very likely), so **always** remember to surround your string literals with quotes.
+
+As the example above showed by concatenating $first$ and $last$ using the concatenation operator ("+" means addition for numeric variables and concatenation for string variables), we can perform a variety of operations on string variables. For more info, check out the [str documentation](https://docs.python.org/3/library/stdtypes.html#text-sequence-type-str).
+
+## Booleans
+
+Booleans are extremely useful when you want to limit the possible values a variable may assume to True or False. While an int or a str could be used, neither limits the allowable values to only two outcomes, which *could* lead to unintended consequences. We'll see that this will prove useful in controlling loops and in many other cases. In the meantime, creating and using booleans is easy:
+
+```{python}
+done = True
+print(done)
+```
+
+# Arithmetic operations
+
+Performing arithmetic operations in Python is very similar to doing them in Excel. Python offers the standard complement of arithmetic operators:
+
+![Standard Arithmetic Operators](C:\Users\mitchelg\OneDrive - University of Portland\Teaching\2023 Fall\BUS 449\Images\arithmetic-operation-in-python.png)
+
+Most of the same as their Excel counterparts. Only a couple bear further elaboration. For example, as previously seen, exponentiation in Python uses the "**" operator.
+
+The modulus of a number can be found using the "%" operator.
+
+```{python}
+remainder = 5 % 2
+print(remainder)
+
+```
+
+The related integer division operation is performed using the "//" operator:
+
+```{python}
+remainder = 5 // 2
+print(remainder)
+
+```
+
+Python also offers shortcut operators which combine an operation and an assignment:
+
+![Assignment Operators](C:\Users\mitchelg\OneDrive - University of Portland\Teaching\2023 Fall\BUS 449\Images\Assignment-Operators.png)
+
+## Arithmetic order of operations
+
+Python follows the algebraic order of operations when evaluating numeric expressions, [PEMDAS](https://www.splashlearn.com/math-vocabulary/algebra/order-of-operations):
+
+-   Parentheses
+-   Exponentiation
+-   Multiplication
+-   Division
+-   Addition
+-   Subtraction.
+
+These operations are shown in precedence order, sort of. Multiplication and division have the same precedence, as do addition and subtraction. When two operations have the same precedence, then evaluation proceeds left to right.
+
+A common mistake in Python arithmetic, as in Excel formulas, is failing to consider the order of operations when writing code. Let's use the $L_q$ calculation we looked at previously to illustrate:
+
+$$L_q = \frac{\lambda^2}{\mu(\mu-\lambda)}$$
+
+The following shows a common mistake in writing the Python code for this expression:
+
+```{python}
+lamda = 20.0
+mu = 25.0
+
+lq = lamda**2 / mu * (mu - lamda)
+print(lq)
+```
+
+We know this is incorrect (the 3.2 we obtained previously is the correct value), but the formula seems right, doesn't it? After all lamda**2 is the numerator and mu * (mu - lamda) is the denominator.
+
+Of course, the issue here is the order of operations. The division and multiplication (within the denominator) have the same precedence so, proceeding left to right, the division is performed before the multiplication. The resulting calculation is as follows
+
+$$L_q = \frac{\lambda^2}{\mu}(\mu-\lambda)$$
+This is clearly not what we intended. Thus, we use an additional set of parentheses to ensure the *entire* denominator is calculated before the division is performed, producing the correct result.
+
+
+```{python}
+lamda = 20.0
+mu = 25.0
+
+lq = lamda**2 / (mu * (mu - lamda))
+print(lq)
+```
+
+Note this is **exactly the same as in Excel**, so you should be able to handle this just fine. Don't let the fact that you're writing code in Python freak you out. If you can do this in Excel, then you can do it in Python!
+
+# Special values
+
+Python has a number of special values that will be important for us as we progress, these are:
+
+- None
+- math.inf - $\infty$
+- math.nan - Not a number ($NaN$).
+
+We'll discuss these again as we go, but for now it's important to note the following:
+
+> None represents *nothing*. A variable that contains None is an empty variable. It has no value associated with it (if a variable is a bucket that holds something, then a variable assigned None is like an empty bucket).
+
+> math.inf represents $\infty$ (and -math.inf represents $-\infty$). Unlike Excel, Python understands how to do math with $\infty$, giving Python an edge over Excel when performing any type of mathematical analysis.
+
+> math.nan represents *not a number*. This is different than None, which is the *absence of a value*. A not a number is the result of an invalid mathematical operation that cannot yield a numeric answer. For example, $\frac{x}{0}$ yields $NaN$. Thus a $NaN$ is actually a value representing the result of an invalid mathematical operation. In some cases, as we'll see when we start working with NumPy, math.nan is sometimes used to represent missing data values in Python.
+
+# Comparisons
+
+You should be familiar with comparison operators from working with Excel. Python provides the same operators:
+
+![Comparison (i.e. relational) Operators](C:\Users\mitchelg\OneDrive - University of Portland\Teaching\2023 Fall\BUS 449\Images\relational-operator-in-python.png)
+
+The only difference from Excel relational operators is that the *not equal* operator is "!=" rather than Excel's "<>". Actually, the != is a more standard operator (i.e. it's more common in computer languages).
+
+Comparison operators are normally used in conjunction with conditional statements, but the following directly illustrates Python's relational operators.
+
+```{python}
+lamda == mu
+```
+
+```{python}
+lamda > mu
+```
+
+```{python}
+lamda > 20
+```
+
+```{python}
+lamda >= 20
+```
+
+```{python}
+lamda < mu
+```
+
+```{python}
+lamda <= 20
+```
+
+```{python}
+lamda != mu
+```
+
+```{python}
+lamda != 20
+```
+
+
+

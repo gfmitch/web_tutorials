@@ -1,0 +1,464 @@
+---
+title: "Getting Started with NumPy"
+author: "Gary Mitchell"
+date: "3/31/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+# load reticulate so we can evaulte Python
+suppressMessages(require(reticulate))
+
+# need to specify to use anaconda so that Python will find pandas
+use_python("c:/users/Gary/anaconda3/python.exe")
+
+matplotlib <- import("matplotlib")
+matplotlib$use("Agg", force = TRUE)
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Getting started with NumPy
+
+The Data Camp courses should have prepared you well for this exercise. This is just a quick run-through to make sure that you are on track.
+
+One of the really cool things about NumPy is that it understands vectors and matrices, and even allows you to perform arithmetic on them. The purpose of these tasks is to familiarize you with NumPy ndarrays.
+
+Vectors and vector operations are incredibly useful for performing sensitivity analyses (and gaining computational efficiencies), so be sure that you understand and practice using vectors. The exercises below are a good place to start. 
+
+## Creating Arrays
+
+There are many ways to create arrays in NumPy. Describe/show the result
+for each of the following :
+
+```{python}
+
+import numpy as np
+
+# use a List to initialize
+np.array([1, 3, 3, 5, 9])
+
+
+```
+
+```{python}
+# initialize with a sequence from lower bound, to upper bound by increment
+np.arange(10, 200, 2.5)
+
+```
+
+```{python}
+# evenly space values between lower bound and upper bound (third parameter is the number of values)
+np.linspace(10, 30, 40)
+
+```
+
+```{python}
+# generate random variates from an available distribution
+np.random.binomial(10, 0.9, 50)
+
+```
+
+```{python}
+# fill with zeros
+np.zeros((5,4))
+
+```
+
+```{python}
+# file with ones
+np.ones((5,4))
+
+```
+
+```{python}
+# use reshape to create an n-dimensional array
+mat1 = np.arange(1,21).reshape((5,4))
+mat1
+
+```
+
+```{python}
+# the same, but filling in columnwise order
+mat2 = np.arange(1,21).reshape((5,4), order='F')
+mat2
+
+```
+
+## Vector Arithmetic
+
+All of the standard arithmetic operators work with ndarrays in a pairwise 
+fashion. Execute the following statements and describe the results:
+
+```{python}
+
+
+x = np.array([4, 4.67])
+b = np.array([4, 3])
+
+# vector addition
+
+x + b
+
+
+```
+
+```{python}
+# vector subtraction
+
+x - b
+
+
+```
+
+```{python}
+# vector (pairwise) multiplication
+
+x * b
+
+
+```
+
+```{python}
+# vector (pairwise) division
+
+x / b
+
+
+```
+
+```{python}
+# vector (pairwise) integer division
+
+x // b
+
+
+```
+
+```{python}
+# exponentiation
+
+x**b
+
+
+```
+
+```{python}
+# modulus (i.e. remainder of division)
+
+x % b
+
+
+```
+
+```{python}
+# vector multiplication (i.e. the dot product)
+
+b.dot(x)
+```
+
+## Matrix Arithmetic
+
+NumPy also performs matrix/matrix and matrix/vector operations.
+Execute the following statements and describe/show the results:
+
+```{python}
+
+# create a numpy 2D array (i.e. a matrix)
+
+mat = np.arange(1,13).reshape((4,3))
+mat
+
+# addition
+
+mat + mat
+
+```
+
+```{python}
+#subtraction
+
+mat - mat
+
+```
+
+```{python}
+# multiplication (elementwise)
+
+mat * mat
+
+```
+
+```{python}
+# division (elementwise)
+
+mat / mat
+
+```
+
+```{python}
+# matrix multiplication (i.e. dot product)
+
+mat.dot(mat.transpose())
+
+```
+
+## Mixing Vectors, Matrices and Scalars
+NumPy handles operations between scalars (single valued variables) 
+and ndarrays in a very natural fashion (and consistent with the 
+way R handles vectors and scalars). It will perform the requested 
+operation for each value in the vector.
+
+Here’s an example:
+
+```{python}
+
+# Adding a scalar to an array
+
+a = 50
+x = np.array([4, 4.67])
+a + x
+
+```
+
+Observe what happens here. You will find that this ability is very 
+useful for doing sensitivity analyses.
+
+```{python}
+# multiping an array by a scalar
+
+a * x
+
+```
+
+```{python}
+# exponentiating an array with a scalar
+
+x**2
+
+#%%
+
+```
+
+```{python}
+# dividing an array by a scalar
+x / 2
+
+```
+
+```{python}
+# Calculating the product of a matrix and a vector (i.e. a 1D array)
+
+b = np.array([4, 3])
+A = np.array([[14, 6],
+              [7, 12]])
+b.dot(A)
+
+```
+
+
+
+## Subscripting
+
+NumPy provides very flexible capabilities for getting at individual or groups of elements within an array. Do each of the following and record your outcomes. You can copy these lines into Python, execute them, and then copy the command and the results into your write up (although you may wish to alter the statements to improve the visibility of the result). Be sure to state what you believe the command does.
+
+### 1.
+```{python}
+
+#1
+v = np.arange(start=5, stop=100, step=5)
+v
+
+```
+
+### 2.
+```{python}
+
+v[1:5]
+
+```
+
+### 3.
+```{python}
+v[[1,9,10]]
+v[[1] + list(range(9,11))]
+v[[i for i in (1, 2, 5)]]
+
+```
+
+### 4.
+
+```{python}
+v > 65
+
+```
+
+### 5.
+```{python}
+
+v[v>65]
+
+```
+
+### 6.
+```{python}
+np.where(v > 65)
+np.arange(1,6).cumsum()
+np.arange(1,6).cumsum()[4]
+np.arange(1,6).cumsum()[-1]
+
+```
+
+### 7.
+```{python}
+x = np.arange(1,17)
+mat1 = x.reshape((4,4), order='F')
+print(mat1)
+mat1[1:3,2:4]
+
+```
+
+### 8.
+```{python}
+mat2 = x.reshape((4,4), order='C')
+mat2[1:3,2:4]
+
+```
+
+# Sensitivity Analysis
+Now we’re going to take advantage of NumPy’s capabilities to perform a sensitivity analysis. 
+The EOQ is a popular inventory management model. You learned/will learn more about this in Foundations of 
+Operations Management (BUS 361) and Supply Chain Management (BUS 453). 
+
+The key equations you’ll need are for the 
+
+  - total relevant cost ($TRC(Q)$)
+  - annual total cost ($ATC(Q)$)
+  - the cost minimizing order quantity, i.e. the EOQ ($Q^*$)
+
+$$Q^* = \sqrt{\frac{2DA}{vr}},\quad$$ 
+$$TRC(Q) = \frac{Qvr}{2} + \frac{DA}{Q}$$
+$$ATC(Q) = TRC(Q) + Dv$$
+
+where: 
+
+$D = $ annual demand (units)
+
+$A = $ aggregate order placement cost
+
+$v = $ unit acquistion cost
+
+$r = $ unit holding cost percentage rate (as a % of unit cost).
+
+Note: the time units for $D$ and $r$ must be the same.
+
+Assuming annual demand of 10,000 units, a $\$$500$ cost to place an 
+order, unit cost of $\$$12.95$, and an annual holding cost percentage 
+rate of 35%, we can find the cost minimizing order quantity and its 
+associated annual total cost.
+
+```{python}
+import math
+import matplotlib.pyplot as plt
+
+# initialize parameters
+
+D = 10000
+A = 500
+v = 12.95
+r = 0.35
+
+Q = np.arange(1500, 3200, 100)
+Q
+
+# Calculate the optimal order quantity
+
+Qstar = math.sqrt(2 * D * A / (v * r))
+Qstar
+
+```
+
+```{python}
+# Calculate vectors of costs corresponding to order quantity Qstar
+
+ahc = Qstar * v * r / 2
+aoc = (D * A) / Qstar
+trc = ahc + aoc
+trc
+atc = trc + D * v
+atc
+
+```
+
+Now, using NumPy vector calculations and operations, we will calculate 
+the total relevant and annual total costs for order quantities 
+between 1000 and 2000 in 100 unit increments (np.arange will 
+be useful here). How do these compare to the annual total cost 
+we previously calculated for the cost minimizing order quantity?
+
+
+```{python}
+Q = np.arange(1000, 2000, 100)
+Q
+
+# Calculate vectors of costs corresponding to order quantities Q
+
+ahcq = Q * v * r / 2
+aocq = (D * A) / Q
+trcq = ahcq + aocq
+trcq
+atcq = trcq + D * v
+atcq
+
+```
+
+
+```{python}
+import pandas as pd
+
+cost_prem = trcq - trc
+cost_prem_pct = trcq / trc - 1
+
+# use a DataFrame to print a formatted table of results
+qtable = pd.DataFrame({'Q': Q, 
+                       'Cost Prem': cost_prem, 
+                       'Cost Prem %': cost_prem_pct})
+print(qtable)
+
+```
+
+Here we can see the cost premium in dollars, and as a percentage, for each of the quantities tested. The cost minimizing order quantity of $`r py$Qstar`$ yields the lowest possible total relevant cost of $\$`r py$trc`$. We can see that the quantity $1500$, the closest value of Q for which $TRC(Q)$ was calculated, yields the smallest cost premium for all of the order quantities.
+
+We can use the matplotlib library to visualize the relationship between order quantity and cost. We'll separately plot the annual holding cost $(AHC(Q))$, annual ordering cost $(AOC(Q))$, and the total relevant cost $(TRC(Q))$. This will illustrate the nature of the EOQ cost function.
+
+```{python}
+# Plot EOQ Tradeoff Curves
+
+plt.plot(Q, trcq, label='TRC(Q)')
+plt.plot(Q, ahcq, label='AHC(Q)')
+plt.plot(Q, aocq, label='AOC(Q')
+plt.xlabel('Q')
+plt.ylabel('Cost')
+plt.legend()
+plt.title('EOQ costs as a function of $Q$')
+plt.show()
+
+```
+
+We see how easily we are able to visualize our analysis. Of the 8 statements above, *half* were just related to formatting; if we leave out some of the formatting statements, we still obtain a graph that facilitates visualizing the relationships.
+
+```{python}
+# Plot EOQ Tradeoff Curves
+
+plt.plot(Q, trcq, label='TRC(Q)')
+plt.plot(Q, ahcq, label='AHC(Q)')
+plt.plot(Q, aocq, label='AOC(Q')
+plt.legend()
+plt.show()
+
+```
+
+Of course, without axis labels and a title, we wouldn't want to include this graph in a presentation or report, but the example serves to show how easily we can create a visual representation of our results using Python and NumPy.
+

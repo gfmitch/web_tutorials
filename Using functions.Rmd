@@ -1,0 +1,166 @@
+---
+title: "Using Functions"
+author: "Gary Mitchell"
+date: '2023-08-25'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Using functions in Python is really straightforward. In fact, using (i.e., calling or invoking) a function in Python looks just about like using one in Excel:
+
+```{python}
+x = 5.43
+
+print(round(x, 1))
+```
+
+See, just like Excel. Here we calculate a square root.
+
+```{pyton}
+print(sqrt(5))
+```
+
+Now, if we try to run the above, we'll get a Name error:
+
+<span style="color: red;">NameError: name 'sqrt' is not defined</span>
+
+I guest it *isn't* exactly like Excel...
+
+So what happened here? **round** worked fine, but **sqrt** failed. If we Google how to calculate a square root in Python, we'll get something like the following:
+
+```{r, out.width = "700px", echo=FALSE}
+knitr::include_graphics("C:\\Users\\mitchelg\\OneDrive - University of Portland\\Teaching\\2023 Fall\\BUS 449\\Lecture Notes\\Using Functions\\using sqrt Python.JPG")
+```
+
+Note the answer shown looks like:
+
+```{python, eval=FALSE}
+math.sqrt()
+```
+
+What's the **math.** prefix on the call to **sqrt**. That's a *module* or *package* name. In Python, many (most?) functions are contained in *modules* or *packages*. Some functions, like the built-in **round** function, are included in modules that are automatically loaded when Python starts. For these, there's no need to specify a package/module name as part of the function call. For others, like **sqrt**, their containing package is not automatically loaded so we must explicitly *import* the module.
+
+## Importing modules and packages
+
+Importing a module is straightforward (as long as the package is already installed in the current interpreter's environment). One reason we prefer using Anaconda's Python is that many of the packages *we* want to use (e.g. NumPy, Pandas, SciPy, etc., are already installed in the *conda* environment).
+
+Now, since we need to import **math**, we need to add an import statemment to our code:
+
+```{python}
+import math
+
+print(math.sqrt(5))
+```
+
+OK, great! Now we know everything there is to know about modules, right? Not so fast...
+
+Python gives us a number of ways to use imports. For example, if we *know* there are know other sqrt methods in any other packages/modules we wish to import, then we could use the following:
+
+```{python}
+from math import sqrt
+
+print(sqrt(5))
+```
+
+In this version of the import, we specify the package and the specific item we wish to import (e.g., **sqrt** in this case). While this can be a nice way to avoid having to type the package/module prefix each time you reference the imported item, you have to be careful that your import doesn't *hide* a previous import.
+
+### Hiding a prior import
+
+In Python, imports are executable statements. That means that they are processed in order, just like any other Python statements. Now, let's say you have a specialized **sqrt** function in a package called *mymath* that performs an operation called **sqrt** on strings (I have no idea what that would look like, exactly; this is just a made up example to illustrate *hiding*). Then, in the following example:
+
+```{python, eval=FALSE}
+from mymath import sqrt
+
+test1 = sqrt("abcd")
+
+from math import sqrt
+test2 = sqrt(5)
+test3 = sqrt("abcd")
+```
+
+The second call to **sqrt** will work fine, but the third call will result in a type error (the math sqrt method is only valid when called with numeric arguments):
+
+<span style="color: red;">TypeError: must be real number, not str</span>
+
+Why did we receive the error? Well, when Python performed the first import, the specialized string **sqrt** function became available. We then create $test1$, calculating the **sqrt** for a string and everything was just fine.
+
+Next, Python executes the second import statement, this time importing **sqrt** from the standard math module. This **sqrt** is a normal square root function valid only on numeric values. When Python executes the import, it loads the new **sqrt** function from the **math** module and assigns it the name **sqrt**; this import statement *replaces* (sometimes referred to as hiding) the previously imported **sqrt**. The *original* **sqrt**, that operated on strings, is no longer available. The *current* **sqrt** method is only valid with numeric arguments. So, the third **sqrt** call fails with the TypeError.
+
+## Avoiding hiding
+
+How do we avoid an import replacing a previously imported object? Just avoid this form of the import unless you *know* there will be no name conflicts across all of your imports (which, since your imported module may do its own imports, *can* be a challenge). In other words, we generally prefer:
+
+```{python, eval=FALSE}
+from module import object
+
+object(arg)
+```
+
+in favor of:
+
+```{python, eval=FALSE}
+import module
+
+module.object(arg)
+```
+
+Illustrating with the square root function, use:
+
+```{python, eval=FALSE}
+import math
+
+math.sqrt(5)
+```
+
+instead of 
+
+```{python, eval=FALSE}
+from math import sqrt
+
+sqrt(5)
+```
+
+## Import aliases
+
+Python provides a handy alias capability that can help us reduce the typing associated with imported objects. For example, to use the **arange** method in NumPy (don't worry about what this is just yet, it isn't important to understand the example; we'll cover NumPy usage later in the semester), we would normally use:
+
+```{python, eval=FALSE}
+import numpy
+
+array = numpy.arange(10)
+```
+
+To reduce the required typing when using the imported item, we can assign an alias on the import:
+
+```{python, eval=FALSE}
+import numpy as np
+
+array = np(10)
+```
+
+In the example above, we assigned the alias *np* to numpy in the import statement. Following the import, we can use *np* interchangeably with *numpy*, saving typing. Frequently used packages like NumPy, typically have conventions for the alias (e.g., np for NumPy, pd for Pandas, sp for SciPy).
+
+## Hierarchical packages
+
+Some packages have an internal structure. For example, the SciPy package contains a class for calculating metrics for a normally distributed random variable. The class, **norm**, is contained in the **stats** submodule of SciPy. To import norm, we might use an import like the following:
+
+```{python, eval=FALSE}
+import scipy.stats as sps
+
+rv = sps.norm()
+
+```
+
+Alternatively, if we're *sure* that we'll have no other object named norm *anywhere* in the code, we could also use the following:
+
+```{python, eval=FALSE}
+from scipy.stats import norm
+
+rv = norm()
+```
+
+And that's it. Using functions in Python looks just like using them in Excel, as long as you account for loading functions and using module prefixes.
+

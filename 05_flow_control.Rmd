@@ -1,0 +1,381 @@
+---
+title:  "Python Flow Control"
+author: "Gary Mitchell"
+date:   '`r format(Sys.Date(), "%m/%d/%Y")`'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo=FALSE}
+suppressMessages(require(reticulate))
+
+```
+
+```{python, echo=FALSE}
+import math
+```
+
+*Flow control* involves the *conditional* and/or *repetitive* execution of designated blocks of code. Python provides two types of flow control statements:
+
+  - Conditionals
+    - if
+    - ternary assignment
+  - Loops
+    - for
+    - while.
+    
+In this tutorial, angle brackets (<>) will be used to denote *replacement text*. In other words, in the following statement you must replace <expr> with a valid Python expression:
+
+# Conditionals
+
+The Python conditionals are pretty typical for programming languages. The *if* statement is the primary way to perform logical conditionally. However, ternary assignment may be useful when the only purpose of the conditional is to make an assignment conditionally.
+```{python, eval=FALSE}
+print(<expr>)
+```
+
+## if
+
+We use the *if* statement to perform actions based on *conditions*. Conditional execution is a common requirement. For example, in standard infinite capacity queuing models (e.g. M/M/c), we must determine queue feasibility *before* we calculate the average number of customers waiting, $L_q$. If the queue is *infeasible*, then the $L_q = \infty$, otherwise we calculate the value of $L_q$ according to the specific queueing model (e.g. M/M/1, M/D/1, M/M/c, etc.). A queue is feasible when 
+
+$$\rho = \frac{\lambda}{c \mu} < 1$$
+
+Logically, we want to perform something like the following:
+
+![flowchart fragment: calculating $L_q$](./if_example_1.jpg){width=30%}
+
+### Python if syntax
+
+The Python if syntax is relatively straightforward:
+
+```{python eval=FALSE}
+
+if <condition 1>:
+   # perform actions when <condition 1> is true
+
+elif <condition 2>:
+  # perform actions when <condition 2> is true
+  
+elif <condition n>:
+  # perform actions when <condition n> is true
+  
+else:
+  # perform actions when all conditions are false (i.e. otherwise)
+```
+
+You can include as many *elif*s as necessary, including none. The *elif* and *else* components are optional. In other words, if you want to conditionally perform actions when a condition is true, but you have no secondary conditions or *otherwise* code to execute, then you can simply write:
+
+```{python eval=FALSE}
+
+if <condition>:
+   # perform actions when <condition 1> is true
+
+```
+
+### A Python *if* example
+
+The following code implements the flowchart above. In the examples, the Greek character *lambda* is spelled *lamda*, to avoid conflicting with Python's lambda expression keyword.
+
+```{python, eval=FALSE}
+rho = lamda / (c * mu)
+
+if rho < 1:
+  # feasible queue, calculate Lq using appropriate model. For an M/M/1 queue
+  # we calculate lamda^2 / (mu * (mu - lamda))
+  Lq = lamda**2 / (mu * (mu - lamda))
+  
+else:
+  # queue is infeasible, Lq is infinity (by definition)
+  Lq = math.inf
+```
+
+*math.inf* is a special constant defined in the Python standard math package. To access math.inf, you must include an *import math* statement at the beginning of your code.
+
+## Ternary Assignment
+
+Ternary assignment simply allows for compressing the entire if/else structure into a single statement:
+
+```{python, eval=FALSE}
+x = <true value> if <condition> else <false value>
+```
+
+Using ternary assignment emphasizes that the only purpose of the conditional is to make an assignment. As our objective is to write code that clearly communicates intent, using a ternary assignment clearly communicates that no action other than an assignment is taking place in the conditional.
+
+### Ternary assignment example
+
+Here is the $L_q$ calculation written as a ternary assignment:
+
+```{python, eval=FALSE}
+Lq = lamda**2 / (mu * (mu - lamda)) if rho < 0 else math.inf
+```
+
+## Creating a *switch* structure
+
+Some programming languages have a dedicated conditional structure that is useful for conditionally executing from among mutually exclusive cases:
+
+  - switch (C, C++, Java)
+  - select (Visual Basic).
+  
+Python does not offer a switch type of conditional. However, we can easily construct one using if/elif/else. For example, let's we operate a chain of supermarkets in Arizona, California, Idaho, Nevada, Oregon, and Washington, and that the sales tax calculation rules are state specific. Assuming that we have a variable *state* which indicates for which state we are calculating sales tax and that the values of *state* are the standard two character state abbreviations, the following code illustrates how we would write an appropriate conditional:
+
+```{python, eval=FALSE}
+if state == 'AZ':
+  # calculate Arizona sales tax
+  
+elif state == 'CA':
+  # calculate California sales tax
+  
+elif state == 'NV':
+  # calculate Nevada sales tax
+  
+elif state == 'OR':
+  # Oregon doesn't have sales tax
+  pass
+  
+elif state == 'UT':
+  # Calculate Utah sales tax
+  
+elif state == 'WA':
+  # Calculate Washington sales tax
+  
+else:
+  # An error has occurred, we only operate in AZ, CA, NV, OR, WA
+  # take corrective/error action.
+```
+
+In the code above, we used the *pass* keyword in the conditional body for Oregon. This keyword tells Python to keep going without taking any action (like passing a turn in a board game). This code correctly handles all six states in which we operate as well as *trapping* any situations where we encounter a valid state code.
+
+Contrast the above to the code fragment below. The following is a less robust implementation of the same logic. What's the difference? The code below works fine when the state code contains only AZ, CA, ID, NV, OR, or WA. However, what happens if $state = 'NM'$? The code would *silently* calculate 0 sales tax for the sale. In other words, it would not detect that an error condition (we don't have stores in New Mexico) has occurred and would treat the sale as a normal sale where no sales tax is due. 
+
+```{python, eval=FALSE}
+if state == 'AZ':
+  # calculate Arizona sales tax
+  
+elif state == 'CA':
+  # calculate California sales tax
+  
+elif state == 'NV':
+  # calculate Nevada sales tax
+  
+elif state == 'UT':
+  # Calculate Utah sales tax
+  
+elif state == 'WA':
+  # Calculate Washington sales tax
+
+```
+
+A second disadvantage of the code above is that it provides no place holder for Oregon. If Oregon were to begin assessing sales tax on purchases, then we would have to modify the conditional structure to accomodate tax calculation, introducing the potential for inadvertently introducing a bug into the evaluation. In contrast, with the previous conditional that explicitly tested for Oregon, we would only have to modify the conditional block for Oregon. There's still an opportunity for introducing a bug, but the probability is lower that the bug would affect any state other than Oregon.
+
+# Loops
+
+Traditionally, there are four common looping structures:
+
+  - for - repeat for a designated number of iterations
+  - foreach - repeat once for each value in a list
+  - while - repeat while a condition is true (loop continuation evaluated at the beginning of the loop)
+  - do-until - repeat until a condition becomes true (loop termination evaluated at the end of the loop).
+  
+yet Python provides only for and while statements. At first, it might seem as though Python is shortchanging us on loop control stateements, but this not the case. We can use Python's *for* statement to perform both types of for loops and its *while* statement to perform both while and do-until types of loops.
+
+*for* loops are useful when:
+
+  - we know exactly the number of iterations, 
+  - or we want to repeat for a known set of values. 
+  
+*for* loops perform all of the work of loop control, including updating the loop control variable each time through the loop. This means that *for loops are guaranteed to terminate* and are therefore the safest loop construct to use (avoiding any possiblity of an endless loop).
+
+*while* and *do-until* loops are *not* guaranteed to terminate. The loop body must include code that eventually ensures that the *continuation* condition becomes false for a while loop or the *termination* condition becomes true for a do-until. Thus, while and do-until loops are less safe than for loops, but are useful when we do not know, a priori, the exact number of required loop iterations.
+
+## Writing a for
+
+Python's for loop is implemented as a foreach loop. However, in conjunction with Python's range function, we can make Python perform the same work as a standard for loop in languages like C/C++.
+
+Python's range function generates a list of values between upper and lower bounds, with an optional increment specification. For example, if we want to execute a loop's body 10 times, we could use the following *range* statement to generate a set of 10 values for use in the for statement
+
+```{python, eval=FALSE}
+range(10)
+```
+
+which produces the following set of 10 values:
+
+```{python, echo=FALSE}
+print([x for x in range(10)])
+```
+
+Now, to perform a loop body 10 times, we combine the list generated using range with Python's for statement. For example:
+
+```{python}
+# print the squares of 10 values
+
+for x in range(10):
+  # print x and the squared value of x
+  
+  print(f'{x}: {x**2}')
+  
+```
+
+We can be more specific about the 10 values for which we compute the squares. Let's repeat, but for the numbers 1 through 10:
+
+```{python}
+# print the squares of 1 through 10
+
+for x in range(1, 11):
+  # print x and the squared value of x
+  
+  print(f'{x}: {x**2}')
+  
+```
+
+Or, we could print the squares of odd numbers 1 through 19:
+
+
+```{python}
+# print the odd number squares through 19
+
+for x in range(1, 20, 2):
+  # print x and the squared value of x
+  
+  print(f'{x}: {x**2}')
+  
+```
+
+In range(1, 20, 2), the third argument represents the increment value. The range will begin at 1 and increase by 2 for each subsequent value in the generated sequence (i.e. 1, 3, 5, ..., 19).
+
+## Writing a foreach
+
+Implementing *foreach* loops with Python is easy. Pyton's *for* statement actually implements a foreach. For example, let's say we needed to perform some work for each of the six states in which we operate grocery stores. We could write the following:
+
+```{python}
+states = ['AZ', 'CA', 'ID', 'NV', 'OR', 'WA']
+
+for state in states:
+  # do some work for the current state
+  print(state)
+  
+```
+
+## Writing a while
+
+Python's *while* statement implements a standard while loop. Unlike for loops, the while construct does not ensure that the loop will terminate. It is up to the loop body to ensure that the loop will eventually terminate; the loop body must change the state tested by the condition to ensure that the loop body will terminate.
+
+Additionally, the loop body in a while loop is not guarantreed to execute. If the *continuation* condition is false when the loop is first encountered, the loop will be skipped.
+
+### While loop example
+
+Calculating an inverse cumulative Poisson is a good application for a *while* loop. In this case, we are trying to calculate $x: Pr\{X <= x\} >= \alpha$. In other words, we need to calculate $Pr\{X \leq x\}$ for $x = 0, 1, 2, ...$ until the result is greater than $\alpha$. We can write this as follows:
+
+```{python}
+x = -1
+lamda = 3
+alpha = 0.95
+
+cumprob = 0
+
+while cumprob < alpha:
+  x = x + 1
+  cumprob = cumprob + (lamda**x * math.exp(-lamda)) / math.factorial(x)
+
+
+```
+
+```{r, echo=FALSE}
+x = py$x
+cumprob = py$cumprob
+
+```
+
+This loop determines that $x = `r x`$ and $Pr\{X \leq `r x` \} = `r cumprob`$. The loop continues executing, increasing $x$ by 1 in each iteration, until the *continuation* condition, cumprob < alpha, is no longer true. If we had instead written the code as follows, accidentally leaving the "cumprob +" out of the statement in the loop body, we get a very different result: our execution *crashes* with an integer overflow error.
+
+```{python, eval=FALSE}
+x = -1
+lamda = 3
+alpha = 0.95
+
+cumprob = 0
+
+while cumprob < alpha:
+  x = x + 1
+
+  # the RHS below should be cumprob + (lamda**x * math.exp(-lamda)) / math.factorial(x)
+  cumprob = (lamda**x * math.exp(-lamda)) / math.factorial(x)
+
+
+```
+
+So what happened? Because we left the "cumprob +" out of the accumulation calculation, cumprob never came close to the value of $\alpha$, so the loop just kept running. However, each time through the loop, $x$ increased by 1, eventually become large enough that Python could not calculate $x!$ (the result exceeded the computer's ability to perform the calculation).
+
+A simple error in our loop body resulted in our code's not being able to properly evaluate the continuation condition. Now, we didn't get an endless loop, but our crash probably isn't much better. The bottom line is that with a while loop, you must take great care that the *continuation* condition can eventually become false, resulting in loop termination.
+
+## Writing a do-until
+
+Although Python doesn't provide a *do-until*, we can effectively create one using a while loop. Remember, the primary difference between while and do-until is when the condition is evaluated:
+
+  - while - condition evaluated at the beginning of the loop
+  - do-until - condition evaluated at the end of the loop
+  
+To produce a *do-until equivalent*, we can utilize a *boolean* variable to control the loop:
+
+```{python, eval=FALSE}
+done = False
+
+while not done:
+  # include loop body statements here
+  
+  # now evaulate the termination condition
+  if <condition>:
+    done = True
+```
+
+
+*Technically*, this is still a while loop. However, there are two key aspects of the way this is written:
+
+  - Like a do-until, the loop body will always be executed at least once
+  - Like a do-until, a condition used to terminate the loop is evaulated at the end of the loop.
+  
+At the end of this loop, the condition is evaluated and if found True, the boolean done variable is set to True. Python will return to the top of the while loop, but not the *continuation* condition is no longer satisfied (i.e. not done $\neq$ True) and the loop will terminate.
+
+### do-until example
+
+Here's the Poisson inverse cumulative probability example written as a do-until:
+
+```{python}
+x = -1
+lamda = 3
+alpha = 0.95
+
+cumprob = 0
+done = False
+
+while not done:
+  x = x + 1
+  cumprob = cumprob + (lamda**x * math.exp(-lamda)) / math.factorial(x)
+  
+  if cumprob >= alpha:
+    done = True
+
+```
+
+```{r, echo=FALSE}
+x = py$x
+cumprob = py$cumprob
+
+```
+
+This *do-until* equivalent loop determines that $x = `r x`$ and $Pr\{X \leq `r x` \} = `r cumprob`$, the same as our original *while* loop.
+
+If you're not comfortable with the statement:
+
+```{python, eval=FALSE}
+while not done:
+```
+
+you can use the equivalent:
+
+```{python, eval=FALSE}
+while done == False:
+```
+
+Personlly, I prefer *while not done* because I believe it succinctly and clearly conveys the intent.

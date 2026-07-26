@@ -1,0 +1,705 @@
+---
+title: "Tutorial: A state-preserving EOQ item class"
+author: "Gary Mitchell"
+date: "2023-10-04"
+output: html_document
+---
+
+```{r, echo=FALSE}
+library(reticulate)
+```
+
+
+One of the significant ways that object-oriented programming differs from procedural programming is it's ability to implement state-preserving objects. We discussed this during the OOP introduction in class. However, I thought it would help you to *see* what I mean when I talk about state-preservation.
+
+# EOQ item
+
+In this tutorial, we are going to implement a state-preserving EOQItem class. An EOQ item has a number of model parameters that must be managed in order to represent the item:
+
+-   d - demand (usually annual) in units/unit time (e.g., units per year)
+-   a - aggregate order placement cost. The cost to place an order, independent of the order quantity
+-   v - unit acquisition cost. The cost to purchase one unit of product
+-   r - unit holding cost percentage rate.
+
+These parameters are used to calculate the EOQ models principal metrics:
+
+$$Q^* = \sqrt{\frac{2da}{vr}}$$
+$$TRC(Q^*) = \sqrt{2davr}$$
+$$ATC(Q^*) = TRC(Q^*) + dv$$
+where $Q^*$ is the Economic Order Quantity (i.e., the cost-minimizing order quantity) for which the model is named, $TRC(Q^*)$ is the total relevant cost, and $ATC(Q^*)$ is the annual total cost. A more general form of the total relevant cost is:
+
+$$TRC(Q) = \frac{Q}{2}vr + \frac{da}{q}$$
+whereas the initial expression given represent the $TRC$ in the special case where $Q = Q^*$. These model metrics may be calculated dynamically (i.e., when needed) from the model parameters. As we will see, our EOQItem class will employ a *smarter* approach.
+
+
+To operational manage any item in an inventory system, the item's inventory position must be tracked. Therefore, the represent additional state information for an EOQItem:
+
+-   oh - units on hand (i.e., inventory available for satisfying demand)
+-   oo - units on order with the supplier (inbound inventory that *will* be available for).
+
+# EOQItem state
+
+Since our EOQItem should be able to completely represent an inventory item in our system, an EOQItem object must manage its own state. The allows the larger system to simply track the EOQItems, which is a much simpler task than tracking the complete state for all EOQ items. At a minimum, this state would include the following (described above):
+
+-   EOQ model parameters
+-   Inventory position data.
+
+In our case, we note that the principal EOQ model metrics $Q^*$, $TRC(Q^*)$, and $ATC(Q^*)$, are completely determined by the four model parameters. Although these parameters are certainly not fixed, they change with relatively less frequency than do the inventory position data. 
+
+It's reasonable to assume, for example, that we would need to access $Q^*$ multiple times for an item given the same model parameters. In a procedural system, would we have to either:
+
+-   Call an EOQ function, passing the four model parameters, every time we needed the order quantity, or
+-   Call an EOQ function each time one of the model parameters changes and store the result.
+
+Neither of these approaches is overly efficient. In the first, we'll make an unnecessarily large number of calls to the EOQ function. This could become a significant calculation cost in a large inventory system. For the second approach, the system would have to keep track and monitor the four parameters for every item in the inventory system (a sizeable task), calling the EOQ function and storing the result any time one of these parameter values changes.
+
+## An object-oriented alternative
+
+Since an EOQItem knows its own state (including the model parameters), it's possible for the EOQ item to recognize when one of these arguments changes. Only after a change do the principal metrics require calculation. Actually, the most efficient situation is slightly more nuanced than that. *The principal metrics only need to be calculated the first time they are accessed after a model parameter has changed.* In other words, we do not have to recalculate the metrics immediately following a parameter change. If the metric is never requested, an automatic recalculation would be a wasted operation.
+
+The solution? An additional state attribute, *recalc_needed*, that indicates whether recalculation is required, can be added to the EOQItem. *recalc_needed* would be set to **True** any time a model parameter is changed (it will be **False** otherwise). When a principal metric is requested, recalculation is performed only when *recalc_needed* is **True**.
+
+# The EOQItem class
+
+Now that you have the big picture, let's look at the implementation. The discussion which follows will show and explain parts of the EOQItem class code. For a complete code listing, see the file *EOQItem.py* on the course web site.
+
+## ErrorEOQ Exception
+
+What if we want to create an EOQItem object only if it will be a valid instance? In order for it to be valid, the model parameters must all be positive numbers. In other words, if any of the model parameters is non-numeric or is less than or equal to zero, then we wouldn't be able to calculate any of the EOQ principal metrics. In this situation, we would say the EOQItem is invalid.
+
+But, how do we prevent an EOQItem from being created instead of just assigning values that can be used to determine the object's validity? We use Python's Exception handling capabilities. Specifically, any time the constructor detects an invalid model parameter value, it will *throw* an Exception. This will prevent the object from being constructed and create a software execution event that can be used to determine why the object wasn't created (or cause program termination if not handled gracefully).
+
+While we could use the standard Exception class, we can offer more information if we create a customized Exception. The code below defines an ErrorEOQ exception:
+
+```{python, eval=FALSE}
+class ErrorEOQ(Exception):
+    """
+    EOQ specific exception that can be raised whenever an invalid argument is attempted for an EOQ object.
+    """
+
+    def __init__(self, msg: str, *args):
+        """
+        ErrorEOQ specific constructor
+        :param msg: Message for customizing the information raised.
+        :type msg: str
+        :param args: variable argument list passed to Exception's constructor
+        :type args: list
+        """
+        super().__init__(args)
+        self.msg = msg
+
+
+    def __repr__(self):
+        """
+        Console representation of the exception
+        :return: Pretty representation
+        :rtype: str
+        """
+        return f'\nException: {type(self)} - {self.msg}\n'
+
+
+    def __str__(self):
+        """
+        Print representation of the exception
+        :return: Pretty representation
+        :rtype: str
+        """
+        return self.__repr__()
+```
+
+Note that to define an *exception*, we simply create a new class that inherits the Exception class.
+
+Our new ErrorEOQ exception doesn't really do much. In fact, the only functionality it adds over the standard Exception class (that it inherits) involves accepting a message about the error that caused the Exception condition. This message is then included in the *pretty* output produced by the __repr__ and __str__ methods.
+
+## EOQItem model parameters
+
+All of the model parameters are required for an EOQItem, and all must be positive numeric values. To ensure this at construction time, we have two choices:
+
+-   Include validation and error processing logic in the constructor for all four model parameters
+-   Define setter properties that include validation and error processing logic and use these setters in the constructor.
+
+Of the two approaches, we prefer the latter. If we *did* include the validation logic in the constructor, we would still have to include the same validation logic in setters for each of the model parameters because we also need to prevent parameters from being changed to invalid values post-construction. Since we *always* want to **avoid code duplication**, including validation in the setters and using it in the constructor is the way to go.
+
+The code fragment below defines the getter and setter properties for the aggregate order cost (a).
+
+```{python, eval=FALSE}
+    @property
+    def a(self) -> Number:
+        """
+        Aggregate order cost getter.
+
+        :return: Aggregate order cost (a)
+        """
+
+        return self._a
+
+    @a.setter
+    def a(self, a: Number) -> None:
+        """
+        Aggregate order cost setter. Ensures a is numeric and positive or raises an ErrorEOQ exception.
+        :param Aggregate order cost (a):
+        :return: None
+        """
+        if not isinstance(a, Number) or a <= 0:
+            raise ErrorEOQ(f'Terminal error! Aggregate order cost (a) must be numeric and positive.')
+        else:
+            self._recalc_needed = True
+            self._a = a
+
+```
+
+As is typical for a stored attribute, the getter simply returns the private variable **self._a**. The setter, however, is a bit more interesting. Here we see that the setter verifies that the value provided value for **a** in the calling argument is validated as a positive numeric value. If either test fails, the code uses **raise** to *throw* an exception. The message provided in the ErrorEOQ construction provides detail about what caused the error (Python's Exception processing will automatically track and indicate where the exception occurred).
+
+### Signalling recalculation
+
+If all validation tests are passed, then two things happen:
+
+-   The calling argument value is assigned to the private attribute
+-   The **recalc_needed** state variable is set to **True**, signalling that a recalculation is needed before the principal metrics can be returned.
+
+### Accessing a recalculation-dependent metric
+
+All three EOQ principal metrics are recalculation-dependent; that is, it may be necessary to perform a recalculation before returning a principal metric's value. The code fragment below illustrates this for $Q^*$:
+
+```{python, eval=FALSE}
+   def eoq(self) -> Number:
+        """
+        Economic order quantity (i.e., the cost minimizing order quantity)
+        :return Economic order quantity:
+        """
+
+        if self.recalc_needed:
+            self._calculate()
+
+        return self._q
+
+```
+
+When invoked, the **eoq** method checks to see whether a recalculation is required. If so, it calls a private *calculate* method, which will calculate and store the values of all three principal metrics (if one changes, they all change). If no recalculation is required, this step is simply skipped. Finally, the method returns the *current* value of the stored quantity (which will have been updated if recalculation was required).
+
+These three elements accomplish our state-preservation and *lazy* (i.e. on demand) recalculation:
+
+-   A state attribute, **_recalc_needed** that holds the current recalculation state
+-   Setters that set **_recalc_needed** to **True** whenever a model parameter value is changed
+-   Getters or accessor methods that invoke a recalculation if **_recalc_needed** is **True**.
+
+
+```{python, echo=FALSE}
+# EOQ.py
+import math
+from numbers import Number
+
+class ErrorEOQ(Exception):
+    """
+    EOQ specific exception that can be raised whenever an invalid argument is attempted for an EOQ object.
+    """
+
+    def __init__(self, msg: str, *args):
+        """
+        ErrorEOQ specific constructor
+        :param msg: Message for customizing the information raised.
+        :type msg: str
+        :param args: variable argument list passed to Exception's constructor
+        :type args: list
+        """
+        super().__init__(args)
+        self.msg = msg
+
+
+    def __repr__(self):
+        """
+        Console representation of the exception
+        :return: Pretty representation
+        :rtype: str
+        """
+        return f'\nException: {type(self)} - {self.msg}\n'
+
+
+    def __str__(self):
+        """
+        Print representation of the exception
+        :return: Pretty representation
+        :rtype: str
+        """
+        return self.__repr__()
+
+
+class EOQItem:
+    """
+    The EOQItem class represents an EOQ item for managing replenishment. The class encapsulates the EOQ model parameters
+    and provides methods obtaining:
+    - Q - the economic order quantity
+    - TRC - the total relevant cost of the inventory policy
+    - ATC - the annual total cost of the inventory policy (TRC + acquisition cost)
+    """
+
+    def __init__(self, d: Number, a: Number, v: Number, r: Number, oh: Number = 0, oo: Number = 0) -> None:
+        """
+        EOQ constructor. Raises ErrorEOQ if any of the following required arguments are invalid:
+        :param d: demand (units/unit time)
+        :param a: aggregate cost per order (independent of quantity ordered)
+        :param v: unit acquisition cost
+        :param r: unit holding cost percentage rate (per unit time)
+        :param oh: Units on hand (default 0)
+        :param oo: Units on order (default 0)
+        :return: None
+        """
+
+        # All arguments are valid so we can construct the EOQ object using the setters, where existing, so
+        # that construction validation is the same as assignment validation. The setters will also set the
+        # recalculation state to True (recalculation needed).
+
+        # EOQ model parameters - less volatile state
+        self.d = d
+        self.a = a
+        self.v = v
+        self.r = r
+
+        # EOQItem volatile state
+        if oh >= 0:
+            self._oh = oh
+        else:
+            raise ErrorEOQ(f'Terminal error! Units on hand (oh) must be numeric and positive.')
+
+        if oo >= 0:
+            self._oo = oo
+        else:
+            raise ErrorEOQ(f'Terminal error! Units on hand (oh) must be numeric and positive.')
+
+    def __repr__(self) -> str:
+        """
+        Console representation of EOQ object.
+        :return: Prettified EOQ representation
+        """
+
+        return (f'{type(self)} at {id(self)}: d={self.d}, a={self.a}, v={self.v}, r={self.r}, '
+                f'oh={self.oh}, oo={self.oo}, recalc_needed={self.recalc_needed}')
+
+    def __str__(self) -> str:
+        """
+        Print representation of EOQ object.
+        :return: Prettified EOQ representation for print()
+        """
+
+        return f'{type(self)} at {id(self)}: \n\td={self.d}, \n\ta={self.a}, \n\tv={self.v}, \n\tr={self.r}, ' \
+               f'\n\toh={self.oh}, \n\too={self.oo}, \n\trecalc_needed={self.recalc_needed}'
+
+    @property
+    def a(self) -> Number:
+        """
+        Aggregate order cost getter.
+
+        :return: Aggregate order cost (a)
+        """
+
+        return self._a
+
+    @a.setter
+    def a(self, a: Number) -> None:
+        """
+        Aggregate order cost setter. Ensures a is numeric and positive or raises an ErrorEOQ exception.
+        :param Aggregate order cost (a):
+        :return: None
+        """
+        if not isinstance(a, Number) or a <= 0:
+            raise ErrorEOQ(f'Terminal error! Aggregate order cost (a) must be numeric and positive.')
+        else:
+            self._recalc_needed = True
+            self._a = a
+
+    @property
+    def d(self) -> Number:
+        """
+        Demand getter.
+        :return: Demand (d)
+        """
+
+        return self._d
+
+    @d.setter
+    def d(self, d: Number) -> None:
+        """
+        Demand setter. Ensures d is numeric and positive or raises an ErrorEOQ exception.
+        :param d:
+        :return: None
+        """
+        if not isinstance(d, Number) or d <= 0:
+            raise ErrorEOQ(f'Terminal error! Demand (d) must be numeric and positive.')
+        else:
+            self._recalc_needed = True
+            self._d = d
+
+    @property
+    def oh(self) -> Number:
+        """
+        On hand units (oh) getter.
+
+        :return: on hand units (oh)
+        """
+
+        return self._oh
+
+    @property
+    def oo(self) -> Number:
+        """
+        On order (with supplier) units (oo) getter.
+
+        :return: on order units (oo)
+        """
+
+        return self._oo
+
+    @property
+    def r(self) -> Number:
+        """
+        Unit holding cost percentage rate getter.
+        :return: Unit holding cost percentage rate (r)
+        """
+
+        return self._r
+
+    @r.setter
+    def r(self, r: Number) -> None:
+        """
+        Unit holding cost percentage rate setter. Ensures r is numeric and positive or raises an ErrorEOQ exception.
+        :param r:
+        :return: None
+        """
+        if not isinstance(r, Number) or r <= 0:
+            raise ErrorEOQ(f'Terminal error! Unit holding cost percentage rate (r) must be numeric and positive.')
+        else:
+            self._recalc_needed = True
+            self._r = r
+
+    @property
+    def recalc_needed(self) -> bool:
+        """
+        Recalculation state getter.
+        :return: Recalculation state
+        """
+
+        return self._recalc_needed
+
+    @property
+    def v(self) -> Number:
+        """
+        Unit acquisition cost getter.
+        :return: Unit acquisition cost (a)
+        """
+
+        return self._v
+
+    @v.setter
+    def v(self, v: Number) -> None:
+        """
+        Unit acquisition cost setter. Ensures v is numeric and positive or raises an ErrorEOQ exception.
+        :param v:
+        :return: None
+        """
+        if not isinstance(v, Number) or v <= 0:
+            raise ErrorEOQ(f'Terminal error! Unit acquisition cost (v) must be numeric and positive.')
+        else:
+            self._recalc_needed = True
+            self._v = v
+
+    def _calculate(self) -> None:
+        """
+        Private recalculation method, called before returning any metric when recalculation is required
+        (i.e., whenever any EOQ argument has changed)
+
+        :return: None
+        """
+
+        # recalculate all EOQ metrics. No rounding applied so that calling application can control rounding
+        self._q = math.sqrt(2 * self.d * self.a / (self.v * self.r))
+        self._trc = math.sqrt(2 * self.d * self.a * self.v * self.r)
+        self._atc = self._trc + self.d * self.v
+
+        # Calculations have been completed, so change recalculation state to recalc NOT needed
+        self._recalc_needed = False
+
+    def atc(self) -> Number:
+        """
+        Annual total cost (ATC) resulting from purchasing the cost minimizing order quantity.
+        :return Annual total cost:
+        """
+
+        if self.recalc_needed:
+            self._calculate()
+
+        return self._atc
+
+    def decrease_oh(self, qty=1) -> Number:
+        """
+        Decreases the oh inventory balance by the specified quantity. Does not allow for negative oh.
+        :param qty: quantity to be removed from oh balance.
+        :return: new oh.
+        """
+
+        if not isinstance(qty, Number) or qty < 0:
+            raise ErrorEOQ(f'Terminal error! Unit quantity (qty) must be numeric and non-negative.')
+
+        # qty is ok so decrement oh but prevent negative on hand
+        self._oh = max(0, self._oh - qty)
+        return self.oh
+
+    def decrease_oo(self, qty=1) -> Number:
+        """
+        Decreases the oo inventory balance by the specified quantity. Does not allow for negative oo.
+        :param qty: quantity to be removed from oo balance.
+        :return: New oo.
+        """
+
+        if not isinstance(qty, Number) or qty < 0:
+            raise ErrorEOQ(f'Terminal error! Unit quantity (qty) must be numeric and non-negative.')
+
+        # qty is oo so decrement oo but prevent negative on hand
+        self._oo = max(0, self._oo - qty)
+        return self.oo
+
+    def eoq(self) -> Number:
+        """
+        Economic order quantity (i.e., the cost minimizing order quantity)
+        :return Economic order quantity:
+        """
+
+        if self.recalc_needed:
+            self._calculate()
+
+        return self._q
+
+    def increase_oh(self, qty=1) -> Number:
+        """
+        Increases the oh inventory balance by the specified quantity.
+        :param qty: quantity to be added to oh balance.
+        :return: New oh.
+        """
+
+        if not isinstance(qty, Number) or qty < 0:
+            raise ErrorEOQ(f'Terminal error! Unit quantity (qty) must be numeric and non-negative.')
+
+        # qty is ok so increment oh
+        self._oh += qty
+        return self.oh
+
+    def increase_oo(self, qty=1) -> bool:
+        """
+        Increases the oo inventory balance by the specified quantity.
+        :param qty: quantity to be added to oo balance.
+        :return: New oo.
+        """
+
+        if not isinstance(qty, Number) or qty < 0:
+            raise ErrorEOQ(f'Terminal error! Unit quantity (qty) must be numeric and non-negative.')
+
+        # qty is oo so increment oo
+        self._oo += qty
+        return self.oo
+
+    def order_policy(self, precision: Number = 0.001) -> dict:
+        """
+        Returns the complete order policy (i.e., Q*) plus ATC and TRC as a dictionary
+        :param precision: The precision for all metrics. Defaults to 0.001 (3 decimal places). If >= 1,
+                          then 0 decimal places will be used.
+        :return: Order policy (EOQ, TRC, ATC)
+        """
+
+        # calculate the number of decimal places (using ternary operator)
+        dec = 0 if precision >= 1 else int(-math.log10(precision))
+
+        rslt = {'Q': round(self.eoq(), dec),
+                'TRC': round(self.trc(), dec),
+                'ATC': round(self.atc(), dec),}
+
+        return rslt
+
+    def trc(self) -> Number:
+        """
+        Total relevant cost (TRC) resulting from purchasing the cost minimizing order quantity.
+        :return Total relevant cost:
+        """
+
+        if self.recalc_needed:
+            self._calculate()
+
+        return self._trc
+
+```
+
+# EOQItem in action
+
+The following shows how to use an EOQItem.
+
+```{python}
+from EOQItem import EOQItem
+
+item = EOQItem(10000, 500, 12.95, 0.35)
+print(item)
+```
+
+The *pretty* output (beauty is in the eye of the beholder) was provided by the __str__ method we created:
+
+```{python, eval=FALSE}
+   def __str__(self) -> str:
+        """
+        Print representation of EOQ object.
+        :return: Prettified EOQ representation for print()
+        """
+
+        return f'{type(self)} at {id(self)}: \n\td={self.d}, \n\ta={self.a}, \n\tv={self.v}, \n\tr={self.r}, ' \
+               f'\n\toh={self.oh}, \n\too={self.oo}, \n\trecalc_needed={self.recalc_needed}'
+
+```
+
+At this point, the on hand and on order values are 0 because they were defaulted on construction. Here's the constructor code:
+
+```{python, eval=FALSE}
+   def __init__(self, d: Number, a: Number, v: Number, r: Number, oh: Number = 0, oo: Number = 0) -> None:
+        """
+        EOQ constructor. Raises ErrorEOQ if any of the following required arguments are invalid:
+        :param d: demand (units/unit time)
+        :param a: aggregate cost per order (independent of quantity ordered)
+        :param v: unit acquisition cost
+        :param r: unit holding cost percentage rate (per unit time)
+        :param oh: Units on hand (default 0)
+        :param oo: Units on order (default 0)
+        :return: None
+        """
+
+        # All arguments are valid so we can construct the EOQ object using the setters, where existing, so
+        # that construction validation is the same as assignment validation. The setters will also set the
+        # recalculation state to True (recalculation needed).
+
+        # EOQ model parameters - less volatile state
+        self.d = d
+        self.a = a
+        self.v = v
+        self.r = r
+
+        # EOQItem volatile state
+        if oh >= 0:
+            self._oh = oh
+        else:
+            raise ErrorEOQ(f'Terminal error! Units on hand (oh) must be numeric and positive.')
+
+        if oo >= 0:
+            self._oo = oo
+        else:
+            raise ErrorEOQ(f'Terminal error! Units on hand (oh) must be numeric and positive.')
+
+```
+
+Note the positive number validation for **oh** and **oo** was performed inside the constructor. That's because we typically do not provide methods for *setting* the value of inventory position attributes. Instead, we provide methods for *increasing* or *decreasing* those values resulting from operational events such as *receiving orders* or *selling units*, respectively.
+
+At this point, we would expect that the three principal metrics should be undefined at this point, since no attempt to access them has occurred (i.e., due to our implementation of *lazy* recalculation, the values will not actually be calculated until the first access attempt).
+
+```{python}
+try:
+  print(f'existing value of _q: {item._q}')
+except:
+  print("_q does not exist!")
+
+```
+
+In the above, we needed to wrap the **print** call in the **try/except** block because **_q** does not exist. Attempting to access a non-existent attribute results in Python *throwing* an exception which would cause our code to blow up (including this tutorial). The **except** clause allows us to *catch* the exception and gracefully handle the situation (rather than letting Python blow up our code).
+
+Now, if we access **_q** using the accessor method **eoq**, the recalculation will occur, and the subsequent print will show that the internal private attribute now exists:
+
+```{python}
+print(f'Accessing principal metric q: {item.eoq()}')
+print(f'\nSubsequent access shows the attribute now exists... {item._q}')
+```
+
+## Going a bit deeper
+
+Now, let's observe the *lazy* execution a bit more closely. To start, we'll change the value of annual demand:
+
+```{python}
+item.d = 500
+print(item)
+print(f'\nInternal _q: {item._q}')
+```
+
+Here we see that the value of d now shows as $500$ (the state attribute was updated) and **recalc_
+needed** is **True**. However, because no action has actually triggered the recalc cycle, the value of **_q** remains unchanged (i.e., it has not yet been updated from the value for $d=10000$).
+
+Next, we'll access the $TRC$ (remember that accessing any of the principal metrics triggers the recalc cycle for all three) and see that the internal value for **_q** has now been updated:
+
+```{python}
+print(f'TRC(Q*): {item.trc()}')
+print(f'\nInternal _q: {item._q}')
+```
+
+# Managing multiple items
+
+Now, with our EOQItem class, managing multiple items in inventory is easy. We need only track the EOQItem objects after they are created. If we need to know anything about any of the EOQItem objects, we simply *ask* it:
+
+```{python}
+# construct an empty list
+items = []
+
+# add new EOQItems to the list
+items.append(EOQItem(10000, 500, 12.95, 0.35))
+items.append(EOQItem(500, 500, 617.98, 0.25))
+items.append(EOQItem(1000, 2500, 1500.00, 0.35))
+items.append(EOQItem(1000, 2500, 125.95, 0.21))
+items.append(EOQItem(47, 125, 2.95, 0.35))
+
+for item in items:
+  print(f'{item}\n')
+
+```
+
+Now, we'll add starting inventory to each of the items. We'll use the EOQ as the starting on hand position for all items (a reasonable assumption since the EOQ is the amount we would order to minimize the total cost):
+
+```{python}
+for item in items:
+  item.increase_oh(round(item.eoq()))
+  print(f'{item}\n')
+  
+
+```
+
+And now, we'll process same sales transactions against the inventory. We'll treat the item position within the list as an item number. We could also have made a dictionary of items with arbitrarily assigned item identifiers used as the keys.
+
+```{python}
+# for each transaction, the first element is the item identifier and the second element is
+# the number of units sold.
+
+transactions = [(3, 5),
+                (0, 25),
+                (3, 1),
+                (1, 17),
+                (4, 1),
+                (2, 12),
+                (0, 13),
+                (0, 1),
+                (2, 1),
+                (4, 3)
+                ]
+                
+for t in transactions:
+  id, qty = t
+  
+  boh = items[id].oh
+  
+  # decrease_oh returns the new oh value, so we save and use in output
+  eoh = items[id].decrease_oh(qty)
+  
+  print(f'Item {id}: boh={boh}, qty={qty}, eoh={eoh}')
+
+```
+
+And of course, we can get the inventory policies for *all* of the items without even having to know how to calculate the policy metrics:
+
+```{python}
+for item in items:
+  policy = item.order_policy()
+  print(f"Item inventory policy: Q*={policy['Q']}, TRC={policy['TRC']}, ATC={policy['ATC']}")
+```
+
+
+
+The EOQItem objects did all of the heavy lifting here. We really didn't need to know much about the objects. For example, we didn't have to know rules about decrementing inventory, the starting inventory on hand, how to calculate the order policy, etc. All we needed was to know *the EOQItem object which we asked to do everything for us*. This is a great example of how OOP simplifies data/object management.
+
+

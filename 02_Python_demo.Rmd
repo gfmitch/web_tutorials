@@ -1,0 +1,205 @@
+---
+title: "02 Python Demo"
+author: "Gary Mitchell"
+date: "1/22/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+suppressMessages(require(reticulate))
+
+# need to specify to use anaconda so that Python will find pandas
+use_python("c:/users/Gary/anaconda3/python.exe")
+
+```
+
+```{r}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This tutorial illustrates using Python to perform some typical *business* analysis tasks:
+
+  - Evaulating the robustness of the economic order quantity (EOQ)
+  - Plotting Barry Bonds homeruns by year
+  - Calculation that are *messy* in Excel.
+
+```{r, echo=FALSE}
+suppressMessages(require(plyr))
+data(baseball)
+
+```
+
+```{python, echo=FALSE}
+# SET PATH FOR PyQT plugin, otherwise using matplotlib will cause R to crash
+
+import os
+os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = 'C:/Users/Gary/anaconda3/Library/plugins'
+
+# load the necessary Pandas and Matplotlib libraries
+import pandas as pd
+import matplotlib.pyplot as plt
+
+
+```
+
+# EOQ sensitivity
+
+The EOQ is a common inventory model that determines a cost-minimizing ordering quantity (i.e. an order quantity such that no other order quantity can yield a lower annual total cost). Howeve,r the EOQ is a *deterministic* demand inventory model; the EOQ model assumes that demand is deterministic, constant, and stationary.
+
+The obvious question is *what happens when demand is* not * deterministic* (because it rarely is)? It turns out that we can compute the cost sensitivity of the EOQ model to demand estimation errors using the following:
+
+$$Cost Premium \% =\frac{1}{2} \left[ \sqrt{\frac{D}{\hat{D}}} + \sqrt{\frac{\hat{D}}{D}} \thinspace \right] -1 $$
+Looking at the radical expressions, we see that each is the reciprocal of the other. In other words,
+
+$$\frac{\hat{D}}{D} = \frac{1}{D / \hat{D}}$$
+and $\frac{D}{\hat{D}} = 1 - Demand \thinspace Error\%$. Using Python, we can easily *visualize* the EOQ's sensitivity to demand estimate errors. The code below is all that it takes to perform the sensitivity analysis.
+
+```{python}
+
+import numpy as np
+
+# generate the demand estamate error percentages
+pct_err_dmd = np.arange(-0.5, 2.01, 0.05)
+
+# calculate the percentage cost premiums for ALL demand error percentages
+pct_cost_prem = 0.5 * (np.sqrt(1.0 + pct_err_dmd) + np.sqrt(1.0 / (1.0 + pct_err_dmd))) - 1
+
+# Create the demand sensitivity plot
+plt.plot(pct_err_dmd * 100, pct_cost_prem * 100)
+
+# These statements make the plot nicer, adding a title and axis labels
+plt.xlabel('% Demand Estimate Error')
+plt.ylabel('% Cost Premium')
+plt.title('EOQ Sensitivity to Demand Estimate Error')
+
+
+```
+
+Really straightforward, right? This type of analysis is typically *much* easier/faster to prepare in Python than in Excel. Once you are comfortable with Python, NumPy, and Pandas, this would take about 30 seconds to put together. However, for something so easily done, we get a *lot* of value; this analysis clearly shows that the EOQ is *very* robust to demand estimation errors with relatively large estimation errors, underestimating by half (-50%) and overestimating by double (100%), yielding costs only 6% higher than the minimum cost possible with now demand estimation error.
+
+
+# Plotting Barry Bonds' Homeruns
+
+Analyzing data in CSV files, Excel workbooks, and databases is a fairly common analytics task. Python makes this easy. In this example, we show how easy it is to analyze the data contained in a CSV (comma separated values) file. Python makes it equally easy to work with Excel workbooks and relational databases.
+
+The *baseball.csv* file contains `r nrow(baseball)` annual player statistics records for seasons between `r min(baseball$year)` and `r max(baseball$year)`. We'll start by showing how easy it is to access the records in the CSV file:
+
+```{python}
+
+# load data from CSV file
+baseball = pd.read_csv("baseball.csv")
+
+```
+
+That's it! Our *baseball* data frame now contains the all `r nrow(baseball)` records in the dataset. Next, we'll obtain some metadata on the dataset (e.g. columns, data types, etc.):
+
+```{python}
+print(baseball.info())
+
+```
+
+We can also take a look and a few of the records, just to get a feel for the data:
+
+```{python}
+print(baseball.head(5))
+```
+
+The elipsis (...) in the middle of the columns indicates that some columns have been eliminated for the display, but the output also tells us that there are 23 columns total and we can see from the previously printed metadata which of the columns are missing.
+
+Now, for the task at hand, plotting Barry Bonds homeruns. As a first step, we'll create a subset of the baseball dataset containing only records for Barry Bonds. This step isn't *required* in order to plot the homeruns, but it does simplify the plotting statements.
+
+```{python}
+
+# select subset from full dataset
+sub = baseball[baseball.id == 'bondsba01']
+
+
+```
+
+Anticlimactic, right? With the simple statement above, we extracted all of Barry Bond's records and created a new data frame called *sub*. Now we'll plot the homeruns...
+
+```{python}
+
+# one line creates the scatter plot
+plt.scatter(sub['year'], sub['hr'])
+
+# add some details (title, axis labels) to make the graph more professional
+plt.title("Barry Bonds' Homeruns")
+plt.xlabel('Year')
+plt.ylabel('Homeruns')
+
+```
+
+
+# Calculations that are *messy* in Excel
+
+Excel's 2D grid worksheets were an effective model for Excel's original intent, replacing paper accounting ledgers and worksheets. However, there are classes of calculations we commonly have to perform in OTM analyses that are difficult/messy to perform in Excel and which cannot be calculated within a single cell, making sensitivity analysis (the *primary* purpose for using Excel) challenging and messy. These include:
+
+  - Iterating calculations - calculations that require a sequence of repetitive calculations
+    - Calculating cumulative probabilities
+    - The sum over limits of a mathematical expression
+  - Searching calculatinos - calculations that must be performed repeatedly until a stopping point is reached
+  - Converging calculations - Calculations must be performed repeatedly until the result converges to a desired level of precision.
+  
+Fortunately for us, all of these are easy to perform in Python. Let's consider one example. Assume that we need to determine the number of workers we need to allocate to a task. We need a minimum of 10 workers or we cannot start the task. Unfortunately, workers show for work with only a 90% probability. How many workers do we need to allocate to be 98% sure that we have the minimum 10 workers required?
+
+This problem relates to a binomial probability. Recall that the binomial distribution has two parameters:
+
+  - $p$ - the probability of a success for an individual trial
+  - $n$ - the number of trials.
+  
+Given $p$ and $n$, we can calculate:
+
+  - $F(x) = Pr\{X \leq x\}$ - the cumulative distribution function
+  - $F^{-1}(\alpha) = x: Pr\{X \leq x\} = \alpha$ - the inverse cumulative probality function
+  
+In other words, given $p$ and $n$ we know how to find $\alpha$ given $x$, or $x$ given $\alpha$. However, *our* problem involves trying to find $n$ given $x$, $\alpha$, and $p$. There is no *simple* mathematical expression for finding this result (nor any built-in Excel calculation). However, we solve this easily in Python.
+
+For a binomial distribution, we know that:
+
+$$F(x) = \sum_{r=0}^{x}{n\choose{r}}p^r(1-p)^{n-r}$$
+and
+
+$$\bar{F}(x) = Pr\{X > x\} = 1 - F(x)$$
+In other words, $\bar{F}(10)$ would be the probability that we have *more* than 10 workers available. Since we can start with 10 workers, we need to have *more than* 9 workers available. 
+
+Given $p = 0.90$, and $x \geq 10$, we can find the required value of $n$ that will yield $F(9) \geq 0.98$; we will start at $n = 9$ and iteratively calculate $\bar{F}(9)$ until we obtain a cumulative probability that meets our 98% confidence level, i.e. until:
+
+$$\bar{F}(9) = 1 - F(9) \geq 0.98$$. 
+
+Python's scipy package offers a cumulative binomial probability function, so we won't have to write the code to calculate $F(9)$ and can focus entirely on our search loop:
+
+```{python}
+import scipy.stats as st
+
+# start n at 10, the minimum workers required
+n = 9
+
+# increase n until the probability of 10 or more workers >= 0.98
+while (1 - st.binom.cdf(9, n, .90)) < .98:
+  n = n + 1
+
+print(n)
+
+
+```
+
+In other words, we would need to assign 14 workers to the task in order to be sure that we had at least 10 available when needed.We can verify this by checking that
+
+$$Pr\{X > 9\} = 1 - Pr\{X \leq 9\} \geq 0.98$$
+
+```{python}
+print(1 - st.binom.cdf(9, 14, 0.90))
+```
+
+Similarly, we can show that 13 workers would be insufficient for our desired 98% confidence:
+
+```{python}
+print(1 - st.binom.cdf(9, 13, 0.90))
+```
+
+Maybe `r round(1 - pbinom(9, 13, 0.90),3) * 100`% confidence is enough, but if we really want to be 98% sure, we will need to assign 14 workers.
+
+

@@ -1,0 +1,130 @@
+---
+title: "Running Execution Tests"
+author: "Gary Mitchell"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+I provide the same execution tests I will use to determine your execution test score for you to run against your code before you submit your assignment. No tricks! If you pass the execution tests on your machine, than you *should* pass them when I run them. 
+
+The *should* is italicized because there are always little gotchas that could be a problem. For example, if you define a variable in the console that your code requires (but doesn't define in the code), and then run the tests in the same console, you could pass the test because in your current environment, the variable is defined. However, when I run the tests in a clean environment, the variable would not exist and your code would fail.
+
+So, the moral of the story is to be very careful with your work, and testing, and don't rely on defining variables in the console.
+
+## Downloading the tests
+
+There will be one or more .py files and a .bat file for each test. Using the .bat file is optional. It will (assuming your environment is configured correctly) run the execution tests and save the results to a file called capture.txt. You can do this by running that .bat file at a command prompt or by double-clicking on it in Windows explorer. Apologies if you're a Mac user, the .bat files are specific to Windows. In addition to the .py and .bat files, there may be other files containing data and expected results for the tests. Just be sure to download **ALL** of the execution test files.
+
+When you download your tests, regardless of where you initially download them, **make sure that ALL of the test files are in the same folder as the .py file(s) to be tested**. The figure below shows *queues.py*, the file containing the functions to be tested, and *test_queues.py*, the file containing the execution tests, in **exactly** the same folder (not in a subfolder, not in downloads).
+
+![Project Explorer showing files](C:\Users\Gary\OneDrive - University of Portland\Teaching\2023 Fall\BUS 449\Lecture Notes\Running Execution Tests\project explorer - file location.JPG)
+
+## Configuring for UnitTest
+
+Once the test files are in your project folder, running the tests is pretty straighftorward. The only tricking part is configuring the test runner. In our case, the execution tests use the UnitTest framework, so we want to configure the test runner accordingly. The default is usually *autodetect*, which seems like it should work. However, in the past, I've observed issues with relying on *autodetect*. Here's what you need to do:
+
+### 1. File | Settings
+
+![Selecting File | Settings in the PyCharm Menu](C:\Users\Gary\OneDrive - University of Portland\Teaching\2023 Fall\BUS 449\Lecture Notes\Running Execution Tests\file settings.JPG)
+
+### 2. Tools
+
+![Selecting Tools within](C:\Users\Gary\OneDrive - University of Portland\Teaching\2023 Fall\BUS 449\Lecture Notes\Running Execution Tests\tools.png)
+
+
+### 3. Python Integrated Tools
+
+
+![Select Python Integrated tools](C:\Users\Gary\OneDrive - University of Portland\Teaching\2023 Fall\BUS 449\Lecture Notes\Running Execution Tests\python integrated tools.JPG)
+
+In this dialog, make sure that **Default test runner** is set to Unittests (see figure above). While you're here, make sure that your Docstring format is set while you're at it. Click <OK> and your set.
+
+## Running tests
+
+The PyCharm support for the test framework allows you to run all tests at once, or run them one at a time. In the figure below, you'll see a class 
+*Test_queues* defined (derived from TestCase). *Inside* Test_queues, you'll see a number of test functions, e.g., *test_is_valid*. All of the test function names begin with *test_*.
+
+The test class and all of the test functions should have *play* buttons next to them, as shown in the diagram. You can run an individual test by clicking its play button. Click the play button next to the test class and PyCharm will execute all of the tests at once.
+
+![test_queues.py showing test play/run buttons](C:\Users\Gary\OneDrive - University of Portland\Teaching\2023 Fall\BUS 449\Lecture Notes\Running Execution Tests\running tests in pycharm.jpg)
+
+&nbsp;
+
+If you open PyCharm's *structure pane*, you'll see a roadmap of the test class; the test functions should appear at the top of the class' structure. You can jump directly to any function by clicking on its name in the structure pain. This will make it easier to find/goto the test you wish to execute.
+
+&nbsp;
+
+![test_queues.py structure showing all test functions](C:\Users\Gary\OneDrive - University of Portland\Teaching\2023 Fall\BUS 449\Lecture Notes\Running Execution Tests\running tests in pycharm structure pane.jpg)
+
+&nbsp;
+
+After you run tests, PyCharm will display the test results. Here we see the results from running *all* of the execution tests. In this case, we can see that we passed *all* tests; PyCharm ran all 4 tests defined in the Test_queues class and all test were passed:
+
+&nbsp;
+
+![Test results](C:\Users\Gary\OneDrive - University of Portland\Teaching\2023 Fall\BUS 449\Lecture Notes\Running Execution Tests\test results.jpg)
+
+&nbsp;
+
+We can obtain more (or at least more polished) information by *exporting* the test results. Click the *export test results* button:
+
+&nbsp;
+
+![Exporting test results](C:\Users\Gary\OneDrive - University of Portland\Teaching\2023 Fall\BUS 449\Lecture Notes\Running Execution Tests\export test results.jpg)
+
+&nbsp;
+
+and a dialog will popup asking how you want the test results to be exported. Generally, you can accept the default values which will be to generate an HTML file with the test results. Be sure to check the *Open exported file in browser* checkbox if you want the results automatically loaded in your browser. 
+
+&nbsp;
+
+![Export test results dialog](C:\Users\Gary\OneDrive - University of Portland\Teaching\2023 Fall\BUS 449\Lecture Notes\Running Execution Tests\export test results dialog.png)
+
+&nbsp;
+
+
+The HTML test results should look something like the following:
+
+
+![HTML test results](C:\Users\Gary\OneDrive - University of Portland\Teaching\2023 Fall\BUS 449\Lecture Notes\Running Execution Tests\html test results.jpg)
+
+&nbsp;
+
+## How to approach your testing
+
+You'll find that the best approach is to perform the tests one at a time, generally in order they appear in the Test class. The earlier functions are used to establish the basics/precedents are working. Once you pass *all* of the tests individually, you can run the entire test class to get a clean test profile (and verify that you didn't accidentally break something as you worked).
+
+It's always a good idea to run all tests you've previously passed each time you make changes to your code. It's actually fairly easy to inadvertently change something that could cause you to fail a test you previously passed. Reconducting all prior tests (i.e., regression testing), will help you catch such errors early, before they pile up.
+
+## When you fail a test
+
+The figure below shows the testing output for a failed test.
+
+&nbsp;
+
+
+![Failed test output](C:\Users\Gary\OneDrive - University of Portland\Teaching\2023 Fall\BUS 449\Lecture Notes\Running Execution Tests\failed test output.jpg)
+
+&nbsp;
+
+If I take the time to analyze the output, it can give me a good idea about where my error is. For example, this output tells me that the error occurred in the *test_is_valid* function at line 55 in the test_queues.py test file. In fact, it even shows me that is_valid(5, 10, 5, mu) was the call that produced the incorrect results (False when it should have returned True). The filename (pathname) shown is a hyperlink, so I can click it and jump right to the call in the test function that generated the error.
+
+From there, you'll be on your own. You'll have to figure out *why* your is_valid returned **False** when it should have returned **True**. In this case, it was a typo; I had a $>=$ instead of a $<=$ in my validation logic, so the test was backwards. 
+&nbsp;
+
+![Validation code bug](C:\Users\Gary\OneDrive - University of Portland\Teaching\2023 Fall\BUS 449\Lecture Notes\Running Execution Tests\queues with error.jpg)
+
+&nbsp;
+
+All I have to do is fix the line and rerun thest test, verifying that the error has been resolved.
+
+![Test results](C:\Users\Gary\OneDrive - University of Portland\Teaching\2023 Fall\BUS 449\Lecture Notes\Running Execution Tests\test results.jpg)
+
+&nbsp;
+
+
+

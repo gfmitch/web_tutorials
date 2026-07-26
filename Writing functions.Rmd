@@ -1,0 +1,227 @@
+---
+title: "Writing Functions"
+author: "Gary Mitchell"
+date: "2023-08-28"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo=FALSE}
+library(reticulate)
+use_python("C:\\Users\\mitchelg\\AppData\\Local\\anaconda3\\python.exe")
+```
+
+Functions, in any programming language, are useful for solving many problems. Specifically they allow for:
+
+-   Code *reuse*
+-   Encapsulating functionality behind a *protected interface*
+-   Creating *building blocks* for analyses and tasks that can be used to quickly and cleanly construct applications.
+
+## Just like math functions
+
+Functions in Python (and other languages) are just like the functions you learned about in math. For example, a simple function you learned might be:
+
+$$f(x) = x^2$$
+
+Then, you new that the following would be true:
+
+$$5f(2) = 20$$
+
+Why is this true? Because a function is like a black box that takes something in (the *calling arguments*), does *something*, and then returns *output*. In the case of the example, the calling argument is $2$, and this particular black box (our function) returns the square of the calling argument. So ultimately $5f(2) = 5 \cdot 4 = 20$.
+
+So what did we learn here? Functions:
+
+-   Are like black boxes
+-   Take calling arguments (although some functions may not require arguments)
+-   Return values (the results of whatever work they perform)
+-   Do the work so that we don't have to.
+
+## Writing functions in Python
+
+Every function in Python begins with a **def** statement:
+
+```{python, eval=FALSE}
+def funcname(args):
+  # The function "body" (the code that does the work) goes here
+  
+  # Explicit return statements are best
+  return value
+
+```
+
+The **def** statement tells Python to create a function object, named *funcname* to contain your code. Once the **def** statement executes, you can access your function by name (we'll show examples below); the **def** statement *must execute before you can use the function*.
+
+Here's how we would create our function $f$ from the example above:
+
+```{python}
+def f(x):
+  return x**2
+```
+
+In its simplest form, that's all there is to it. We used **def** to create a function, identified a single calling argument named $f$, and returned the square of the calling argument. Not much to it really. Here it is in action.
+
+```{python}
+print(5 * f(2))
+```
+
+## Always create a *docstring*
+
+Always create a docstring for any function you create. A docstring provides *usage documentation* for your function. Here's an example:
+
+```{python}
+def f(x):
+  """
+  Calculates and returns the square of a number.
+    
+  :param x: numeric value to be squared
+  :return: number
+  """
+    
+  return x**2
+```
+
+Not very exciting, but useful. Anyone looking at our code will immediately understand how to use function $f$ and what it does (after all, $f$ is not a very descriptive name). Python also has a rather nifty feature; we can access *help* for our function.
+
+```{python}
+help(f)
+```
+
+What's great about this *help* feature is that, if you're using an interactive Python console, you can type the help request in the console and see how to use the function (once your **def** has executed that is).
+
+```{r, out.width = "350px", echo=FALSE}
+knitr::include_graphics("C:\\Users\\mitchelg\\OneDrive - University of Portland\\Teaching\\2023 Fall\\BUS 449\\Lecture Notes\\Writing Functions\\docstring help from console.jpg")
+```
+
+Incorporating *type hints* in your code provides a lot of information:
+
+```{python}
+def f(x: float) ->float: 
+  """
+  Calculates and returns the square of a number.
+  
+  :param x: numeric value to be squared
+  :return: x * x
+  """
+    
+  return x**2
+```
+
+In the code above
+
+```{python, eval=FALSE}
+X: float
+```
+
+tells anyone reading the code that we expect $x$ to be a floating point number (i.e. a real number). Technically, Python will *completely ignore* the type hint; it's up to anyone using the function to follow the *suggestion* about the type of value to pass.
+
+The return type is *hinted* at using the "->float" before the colon (:). Again, the function may return just about anything (Python won't enforce the type hint), but, if the function is well behaved, it will always return a float.
+
+## Positional arguments
+
+The $x$ calling argument we used in $f$ is referred to as a *positional* argument. Just like Excel does, Python will pass the arguments to the function body in the order they are provided, aligning the names in the argument list with the supplied values.
+
+```{python}
+import math
+
+def eoq(d: float, a: float, v: float, r: float)->float:
+    """
+    Returns the Economic Order Quantity (EOQ), the quantity that minimizes the sum of holding and order costs.
+    
+    :param d: Annual demand (units)
+    :param a: Aggregate order placement cost
+    :param v: Unit acquisition cost
+    :param r: Annual unit holding cost percentage rate
+    :return: EOQ
+    """
+    
+    # skipping the argument validation code for example simplicity
+    
+    return math.sqrt(2 * d * a / (v * r))
+  
+
+eoq(10000, 500, 12.95, 0.35)
+
+```
+
+In the example above, we called the $eoq$ function with 4 arguments. When Python transfers control to the eoq code, it assigns 10000 to $d$, 500 to $a$, 12.95 to $v$, and 0.35 to $r$. This makes it easy for our function body to utilize the arguments supplied by the *calling* code.
+
+## Optional arguments
+
+Python allows us to provide *default* values in the function declaration. When an argument is defined with a default value, the argument is optional; if an optional argument is ommitted in a function invocation, the optional value is supplied.
+
+For example
+
+```{python}
+def greet(name="friend"):
+  print("Greetings, " + name + ", welcome to PyWorld!")
+  
+greet("Benjamin")
+
+greet()
+```
+
+You can see in the first invocation, the function accepted and used "Benjamin" as the value of $name$. However, in the second invocation, when no value was passed (the empty parenthesis in the function call), $greet$ used the default value "friend" as the value of $name$.
+
+## Named arguments
+
+Now, just to add to your confusion, we can specify positional arguments in *any* order. For example:
+
+```{python}
+eoq(r=0.35, v=12.95, d=10000, a=500)
+```
+
+By using *named* arguments, we weren't restricted to using the arguments in their original order. Generally, this isn't all that useful, *except* when a function takes a large number of arguments. In that case, using named arguments allows you to specify the arguments in any order and the function call becomes self-documenting (i.e., anyone reading the code will understand the arguments being passed using name=value pairs).
+
+## Functions aren't limited to numbers
+
+The functions you write are not limited to operating on numbers. We can write functions to do anything we need:
+
+-   Accept any types of arguments
+-   Return any type of value
+-   Do any work that is required.
+
+We saw this in the *greet* function example above which accepted a *string* argument and printed to the console.
+
+## **Every** function returns a value
+
+Every function returns a value. No exception. But, you ask, "What about the *greeting* function example? Here's the code again:
+
+```{python}
+def greet(name="friend"):
+  print("Greetings, " + name + ", welcome to PyWorld!")
+  
+greet("Benjamin")
+
+greet()
+```
+
+We can see here that there is no return statement in *greet*. How, then, does it return a value? And, without a return statement, exactly *what* does it return?
+
+### NoneType
+
+One of Python's *special* values is **None**, which indicates the absence of a value. However, Python can't really represent the *absence* of something (there's no way to hold nothing...). So, it does the next best thing. It provides an actual type that it understands to mean *None*.
+
+Have a look at what happens when we call *greet* and test the type of the returned value:
+
+```{python}
+return_value = greet('Stephanie')
+
+print(type(return_value))
+```
+
+We can see that *greet* returned something call a **NoneType**, making it clear that *greet* did not explicitly return a value. Note that we can test for a **NoneType** as follows:
+
+```{python}
+if greet('Stephanie') is None:
+  print('nothing returned')
+else:
+  print('something returned')
+
+print(type(return_value))
+```
+
+The **None** keyword can be used to check for a **NoneType**. Remember this. When using third-party functions, you may need to test returns for *None* to verify that you received a real return value (rather than the absence of a value).
+

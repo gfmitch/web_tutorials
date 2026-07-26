@@ -1,0 +1,322 @@
+---
+title: "Testing your code"
+author: "Gary Mitchell"
+date: "2023-08-30"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo=FALSE}
+library(reticulate)
+use_python("C:\\Users\\mitchelg\\AppData\\Local\\anaconda3\\python.exe")
+```
+
+
+Testing is an important part of writing code in any programming language. It's import to:
+
+-   Ensure the code performs as expected (e.g., accepts the correct calling arguments, returns the right type of value)
+-   Produces correct results
+-   Handles bad input.
+
+In many cases, the process of writing and running tests, and correcting the bugs discovered during testing, takes longer than originally writing the code. **You must plan for the time required to test and debug your code**.
+
+## Using testing frameworks
+
+Later in the semester, we'll look at using UnitTest, a unit testing framework that simplifies (and organizes) the process/work involved in testing code. In the remainder of this tutorial, we'll focus on a simple approach to testing that requires no additional Python knowledge (beyond what you already need to complete the assignment).
+
+## Testing without a testing framework
+
+The simplest approach to testing only requires you to execute your code and *manually* verify that it works correctly. Manual verification generally means visually. 
+
+A better approach involves running tests and *programmatically* verifying the test results. This is the work that testing frameworks simplify, providing an infrastructure that saves a lot of coding. We'll be using the UnitTest framework in this course (it's only one of many for Python) for running the execution tests on your submitted assignments. I encourage you to consider using UnitTest to write your own tests once we've covered it in class.
+
+### EOQ
+
+In the rest of this tutorial, we'll illustrate the process of writing tests using a function to calculate the EOQ. Here are the specifications for the function:
+
+-   Accept 4 positional arguments
+  -   D - annual demand(units)
+  -   A - aggregate order placement cost
+  -   v - unit acquisition cost
+  -   r - unit holding cost percentage rate
+-   Validate all arguments
+  -   Numeric
+  -   Positive $(> 0)$
+-   Calculate the EOQ, $\sqrt{\frac{2DA}{vr}}$
+-   Return
+  - Error code if an argument is invalid
+    -   -1 if D non-numeric or $\leq 0$
+    -   -2 if A non-numeric or $\leq 0$
+    -   -3 if v non-numeric or $\leq 0$
+    -   -4 if r non-numeric or $\leq 0$
+  - EOQ otherwise.
+  
+If we wanted to be *really* helpful, we could return a list of error codes. For example, what 0 is passed for both $A$ and $r$. We'd have two error conditions, invalid $A$ (-2), and invalid $r$ (-4). Returning a list like the following would tell the *caller* everything it needed to know:
+
+```{python, echo=FALSE}
+print([-2, -4])
+```
+
+However, to keep this example simple, we'll return a single error code for the first error identified.
+  
+Now that we have our specification we can *plan* and *write* our tests. Wait, what? We're writing tests before we write the code? Absolutely. Of course, this isn't the only way to sequence our work, but it means we can use our test code to verify that our function is working as we go.
+
+### Planning the test
+
+The first step in testing our code is just figuring out what to test. One of the common mistakes that programmers make is in only testing the *positive* cases; that is, they test only that the code performs correctly under ideal conditions (i.e., valid data is supplied.).
+
+We're going to be better than that. So, what do we need to test? We want to test that our EOQ function:
+
+-   Returns the correct calculated value when valid arguments are supplied
+-   Returns the correct error code based for the invalid argument
+-   Ideally, we should test all combinations of valid and invalid arguments. However, in this case, we will be fairly safe if we test the following conditions for each of the calling arguments:
+  -   non-numeric value
+  -   value $\leq 0$
+  
+Consequently, we have 4 calling arguments, each with two invalid cases, plus one valid case. Therefore, we need to test a minimum of 9 cases. Writing test functions is a nice way to organize our testing. 
+
+First, we'll write an eoq *stub* function so that we can *test* our test function:
+
+```{python}
+def eoq(d, a, v, r):
+  return 0
+```
+
+The stub will allow us to call our test function and verify that it runs. Next, we'll write the actual test function using a set of known argument values and their corresponding calculated result.
+
+```{python}
+import math
+import inspect
+
+d = 10000
+a = 500
+v = 12.95
+r = 0.35
+expected = 1485.358
+
+def test_eoq_valid():
+  testname = inspect.currentframe().f_code.co_name
+
+  actual = eoq(d, a, v, r)
+  
+  if math.isclose(expected, actual, abs_tol=0.001):
+    print(testname)
+    print(f"{testname} passed: actual={actual}, expected={expected}")
+  else:
+    print(testname)
+    print(f"{testname} failed: actual={actual}, expected={expected}")
+    
+test_eoq_valid()
+```
+
+In this case, eoq failed the test. We expected this though, right? The eoq function call just returned 0, but the expected result (which we found in a textbook) was 1485.358 to 3 decimal places. So, our eoq_test_valid function *worked*! If the eoq function *had* been a real function, instead of a stub, then our would have *caught* the fact that eoq returned an incorrect value. Excellent, one test down.
+
+Before we move ahead, note the first line in the function. This is *utility* code. We're using Python to grab the name of the current test function. That way, we don't have to change the print statements for each of the functions we have to write. This allows us either to copy/paste, or write a function so that we don't even have to do that. I like that idea, let's try it:
+
+```{python}
+def compare_numbers(testname, expected, actual, abs_tol=0.001):
+  if math.isclose(expected, actual, abs_tol=0.001):
+    result = 'PASSED'
+  else:
+    result = 'FAILED'
+    
+  print(f"{testname} {result}: actual={actual}, expected={expected}")
+
+```
+
+Now we can rewrite test_eoq_valid to use this helper function:
+
+```{python}
+import math
+import inspect
+
+# define arguments and expected result globally for use in all tests
+d = 10000
+a = 500
+v = 12.95
+r = 0.35
+expected = 1485.358
+
+def test_eoq_valid():
+  testname = inspect.currentframe().f_code.co_name
+
+  actual = eoq(d, a, v, r)
+  
+  compare_numbers(testname, expected, actual, abs_tol=0.001)
+  
+
+
+```
+
+Notice how little code we now need to write our tests! Now, let's write some validation tests. We'll start by showing a couple of ways to write the D argument validation tests.
+
+```{python}
+
+def test_eoq_valid_d():
+  testname = inspect.currentframe().f_code.co_name
+  
+  actual = eoq(d, a, v, r)
+  compare_numbers(testname, expected, actual)
+```
+
+And now, we'll run our execution tests:
+
+```{python}
+print('Beginning EOQ unit testing...')
+
+test_eoq_valid()
+test_eoq_valid_d()
+
+print('EOQ unit test complete.')
+```
+
+Notice that we are printing string literals showing the start and completion of the tests. This is just information from us that let's us know the test started and ran to completion. If we don't see that final print, that the tests are complete, we'll know that our code crashed while executing one of the test functions.
+
+OK, let's write the rest of the validation test functions:
+
+```{python}
+def test_eoq_non_numeric_d():
+  testname = inspect.currentframe().f_code.co_name
+  expected = -1
+  
+  actual = eoq('ten thousand', a, v, r)
+  compare_numbers(testname, expected, actual)
+  
+def test_eoq_negative_d():
+  testname = inspect.currentframe().f_code.co_name
+  expected = -1
+  
+  actual = eoq(-100, a, v, r)
+
+  compare_numbers(testname, expected, actual)
+
+def test_eoq_zero_d():
+  testname = inspect.currentframe().f_code.co_name
+  expected = -1
+  
+  actual = eoq(0, a, v, r)
+
+  compare_numbers(testname, expected, actual)
+
+```
+
+And now to run the tests:
+
+```{python, eval=FALSE}
+print('Beginning EOQ unit testing...')
+
+test_eoq_valid()
+test_eoq_valid_d()
+test_eoq_non_numeric_d()
+#test_eoq_negative_d()
+#test_eoq_zero_d()
+
+print('EOQ unit test complete.')
+```
+
+```{python, echo=FALSE}
+
+def test_eoq():
+  print('Beginning EOQ unit testing...')
+  
+  test_eoq_valid()
+  test_eoq_valid_d()
+  test_eoq_non_numeric_d()
+  test_eoq_negative_d()
+  test_eoq_zero_d()
+  
+  print('EOQ unit test complete.')
+  
+test_eoq()
+```
+
+Well, we failed all of the tests. But that's what we expected, because we don't have a real EOQ function. Now, we'll incrementally add code to our eoq function, and rerun the tests. When a test passes, we'll know that we're done with that part of the code. *If a test that we previously passed starts to fail, then we'll know the code we just added BROKE previously working code*. This approach will save us time and frustration when we're debugging our code.
+
+Also, one more thing to note. We wrapped up all of the individual test function calls in an *aggregating* function called *test_eoq*. In the future, this will allow us to run *all* of the tests just by calling *test_eoq*.
+
+OK, let's add argument validation and calculations to our EOQ function:
+
+```{python}
+from numbers import Number
+
+def eoq(d, a, v, r):
+  # omitting doc string to reduce example code size. YOUR code should have docstrings
+  
+  # Validate d is numeric and > 0
+  if not isinstance(d, Number) or d <= 0:
+    # d is invalid
+    return -1
+  
+  # Validate a is numeric and > 0
+  if not isinstance(a, Number) or a <= 0:
+    # a is invalid
+    return -2
+  
+  # Validate v is numeric and > 0
+  if not isinstance(v, Number) or v <= 0:
+    # v is invalid
+    return -3
+  
+  # Validate r is numeric and > 0
+  if not isinstance(r, Number) or r <= 0:
+    # r is invalid
+    return -4
+  
+  # all arguments valid, calculate and return EOQ
+  q = math.sqrt(2 * d * a / (v * r))
+  
+  return q
+  
+
+test_eoq()
+```
+
+Woohoo! We passed all the tests!!
+
+OK, let's say we were modifying the code and accidentally changed one of the $d$ validation checks to $<$ instead of $\leq$.
+
+```{python}
+from numbers import Number
+
+def eoq(d, a, v, r):
+  # omitting doc string to reduce example code size. YOUR code should have docstrings
+  
+  # Validate d is numeric and > 0
+  if not isinstance(d, Number) or d < 0:
+    # d is invalid
+    return -1
+  
+  # Validate a is numeric and > 0
+  if not isinstance(a, Number) or a <= 0:
+    # a is invalid
+    return -2
+  
+  # Validate v is numeric and > 0
+  if not isinstance(v, Number) or v <= 0:
+    # v is invalid
+    return -3
+  
+  # Validate r is numeric and > 0
+  if not isinstance(r, Number) or r <= 0:
+    # r is invalid
+    return -4
+  
+  # all arguments valid, calculate and return EOQ
+  q = math.sqrt(2 * d * a / (v * r))
+  
+  return q
+  
+
+test_eoq()
+```
+
+Notice that we now *failed* the test_eoq_zero_d test. Why is that? Well, we inadvertently changed the $d$ validation to only restrict values to be positive, not non-negative. So now, a test that used to pass, fails. We KNOW we must have changed something in the most recent edits. But we know two things here that will help us narrow down the problem; the error is almost certainly in the expected results or in the validation logic. That significantly narrows where we have to look, at least initially. We go back, find and fix the bug, and *voila*, we are done!
+
+## Wrapping up
+
+To complete the testing for our EOQ function, we would have had to write all of the validation test functions for $A$, $v$, and $r$ as well. Fortunately, those would follow the same pattern as the functions we wrote to validate $d$, so it should be hard.
+
+One more thing, note that we did separate validation tests for zero and negative argument values. That was absolutely necessary to ensure that we handled both cases correctly. A common mistake might be to only test with negative or zero values and *assume* that everything is covered. However, we saw in this example that it's *easy* to compare $<$ instead of $\leq$. The only way we can be sure that our code is really solid is to test for *both* error conditions. Translate that to, *always* test *all* error conditions...

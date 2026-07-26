@@ -1,0 +1,67 @@
+---
+title: "Using f-Strings"
+author: "Gary Mitchell"
+date: "8/29/2023"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## f-Strings
+
+f-Strings, i.e., formatted strings, are Python's newest way of creating formatted output, combining string literals and variable contents. For example,
+
+```{python}
+name = 'Frodo'
+age = '52'
+
+f'I am a hobbit named {name}. I am {age} years old.'
+```
+
+The f-String allows us to substitute any valid Python expression; any valid expression contained within curly braces in an f-string is evaluated by Python and substituted in place. So, in the example above, {name} was replaced with 'Frodo' and {age} was replaced with 52.
+
+*Any Python expression* is not limited to the contents of variables. For example:
+
+```{python}
+import math
+
+def eoq(d, a, v, r):
+  # this function ignores possible type errors. your functions should
+  # valid the arguments.
+  
+  return math.sqrt(2*d*a / (v*r))
+
+d = 10000
+a = 500
+v = 12.95
+r = 0.35
+
+f"Given demand {d}, order placement cost {a}, unit acquisition cost {v}, holding cost rate {r}, the EOQ is {eoq(d, a, v, r)}."
+```
+
+You can even do math in the replacements (although I'm not sure why you'd want to):
+
+```{python}
+f'The answer is {2 + 5 * 3}.'
+```
+
+## Formatted f-strings
+
+*Formatted f-strings*. Seems like a redundant statement, since f-string really stands for *formatted string literal*. However, what I mean by this is including formatting instructions in the replacements.
+
+For example, let's output the EOQ as a whole number:
+
+```{python}
+f"Given demand {d}, order placement cost {a}, unit acquisition cost {v}, holding cost rate {r}, the EOQ to two decimal places is {eoq(d, a, v, r):.2f}, and {eoq(d, a, v, r):.0f} as a whole number."
+```
+
+## More on f-strings
+
+For more on f-strings, check out the following links:
+
+-   ["Python 3's F-Strings: An Improved String Formatting Syntax (Guide)"](https://realpython.compython-f-strings#f-strings-a-new-and-improved-way-to-format-strings-in-python)
+-   ["Official Python Documentation: Formatted String Literals](https://docs.python.org/3/tutorial/inputoutput.html#formatted-string-literals)
+-   ["Format Specificiation Mini-Language](https://docs.python.org/3/library/string.html#formatspec)
+

@@ -1,0 +1,258 @@
+---
+title: "Built-in ADTs"
+author: "Gary Mitchell"
+date: "8/18/2023"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Python provides some really useful general-purpose abstract data types (ADTs). While we'll make extensive use of NumPy and Pandas for numerical analysis and large-scale data management/manipulation, Python's lists, tuples, sets, and dictionaries are useful for solving many problems. Python also offers (through importable modules) other specialized ADTs such as queues, deques, etc., but we'll limit our discussion to the standard built-ins for now.
+
+All of the ADTs are multi-valued; meaning they can retain multiple values (unlike ints and floats which can store only single values).
+```{r, echo=FALSE}
+library(reticulate)
+use_python("C:\\Users\\mitchelg\\Anaconda3\\python.exe")
+```
+
+
+# List
+
+Python's [list](https://docs.python.org/3/library/stdtypes.html#lists) (like tuple, set, and dictionary) is a multi-valued data type, meaning that it can be used to hold multiple values (in contrast to the scalar types like int and float). Moreover, a list is an *ordered* sequence; values in a list are stored in the order in which they are added to the list.
+
+We can create an empty list as follows:
+
+```{python}
+example = list()
+
+```
+
+We can append values to the list using the list's append method:
+
+```{python}
+example.append(2)
+example.append(5)
+example.append(9)
+
+print(example)
+```
+
+The print output shows the values held in the list, separated by commas. Note that the order in the printed output matches the order in which the values were added using the append method.
+
+Lists can also be initialized with data (instead of creating an empty list and adding values with append). Note the use of the *square brackets* ([]) for specifying the values to be used in initializing the list.
+
+```{python}
+example2 = [2, 5, 9, 14]
+print(example2)
+
+```
+
+Lists are *mutable* data types, meaning that a list's contents may be changed. We'll have a separate discussion about mutable vs. immutable data types shortly.
+
+## Indexing
+
+We can retrieve the elements from a list using an index (or subscript). The first element in a Python list exists at position 0 (i.e. Python uses zero-relative indexing). For example:
+
+```{python}
+print(example[0])
+
+```
+
+where [0] is tells Python the position from which we want to retrieve the value. We can retrieve any element we desire. To retrieve the 3rd element in the list, we index into position 2:
+
+```{python}
+print(example[2])
+
+```
+
+Python also allows us to index from the end of the list using negative indexes:
+
+```{python}
+print(example2[-1])
+
+```
+
+Ironically, when indexing from the *back* of the list, the indexes are one-relative. Go figure...
+
+Lists maintain *all* elements added, regardless of whether there is duplication. In other words, lists are non-unique, multi-valued sequences:
+
+```{python}
+example2 = [2, 5, 9, 2, 2, 9, 14, 14]
+print(example2)
+```
+
+
+Finally, lists are *heterogeneous* data types, meaning they can be used to store different types of values. For example:
+
+```{python}
+different = [1, 5.0, "heterogeneous", False]
+print(different)
+```
+
+Note that lists can even be used to store other *lists* (in fact, they can be used to store any combination of data types).
+
+```{python}
+different = [1, 5.0, 'heterogeneous', ["Hitchhiker's", 'Guide', 42]]
+print(different)
+```
+
+In this example, I used a combination of double and single quotes ("Hitchhiker's"). Python understands that the single quote (actually, an apostrophe in this case) is part of the string literal. This is because we *delimited* the string using double quotes. In contrast, the following would *not* work as Python would think we had an imbalanced quoted expression and the program would crash, i.e. abend (abnormal end):
+
+```{python, eval=FALSE}
+different = [1, 5.0, 'heterogeneous', ['Hitchhiker's', 'Guide', 42]]
+print(different)
+```
+
+
+# Tuple
+
+Tuples are similar to lists (ordered, non-unique sequences), except they are *immutable* (i.e., you cannot change a tuple once it has been created). Initializing a tuple is similar to initializing a list, except you use parentheses instead of square brackets:
+
+```{python}
+extuple = (10, 12, 15, 19)
+print(extuple)
+
+```
+
+Notice that the values in the output are displayed within parentheses, telling us that those values are contained in a tuple (in contrast to the list example above, where the values are contained displayed within square brackets, indicating a list).
+
+Tuples can be indexed (subscripted) just like lists:
+
+```{python}
+print(extuple[0])
+print(extuple[-1])
+
+```
+
+Like lists, tuples are *ordered sequences*, meaning that the values are stored in order.
+
+OK, why use tuples at all? It seems like lists can do everything tuples can, but lists are mutable, right? Well, the fact is that sometimes we want to make a sequence of values available, but we want to make sure that we cannot (accidentally) change them. In this case, a tuple is the right choice. In addition to ensuring that the values cannot change, tuples are slightly more efficient than lists (there's less overhead associated with a tuple's capabilities).
+
+Like lists, tuples are able to store heterogeneous values. 
+
+# Set
+
+In contrast to lists and tuples, [sets](https://docs.python.org/3/library/stdtypes.html#set-types-set-frozenset) are unordered, unique *collections*. For example:
+
+```{python}
+exset = {2, 5, 9, 2, 2, 9, 14, 14}
+print(exset)
+```
+
+The output shows us that the set only stored each value once, so there are four unique elements in the set. The example also shows that the values are not in the same order as in the initializing data. With lists and tuples, we can count on the ordering. With sets we cannot.
+
+Like lists, sets are mutable and heterogeneous:
+
+```{python}
+exset2 = {2, 5, "nine", 25.0, 5, "nine", "one"}
+print(exset2)
+
+# now, we'll add another value
+exset2.add(42)
+print(exset2)
+```
+
+We can easily determine whether a value is contained in a set:
+
+```{python}
+"nine" in exset2
+
+"ten" not in exset2
+```
+
+In this example, we verify that "nine" is contained in the set and "ten" is not.
+
+# Dictionaries
+
+[Dictionaries](https://docs.python.org/3/library/stdtypes.html#dict) are collections of *key-value* pairs. So what's a key-value pair? It is a key value (think of it like a lookup value) with an *associated* value. 
+
+For Excel afficianados, you can think of a dictionary as allowing you to do really advanced vlookups. Dictionaries are mutable and heterogeneous, so they are incredibly powerful and flexible.
+
+```{python}
+# create an empty dictionary
+characters = {}
+
+# add elements to the dictionary
+characters['Tom'] = 'cat'
+characters['Jerry'] = 'mouse'
+characters['Droopy'] = 'dog'
+characters['Topsy'] = 'cat'
+characters['Nibbles'] = 'mouse'
+
+print(characters)
+```
+
+The printed dictionary shows us the key-value pairs. Note that for each pair, the key is listed, followed by a colon (:) separater and the value. The entire group is surrounded in curly braces; when the values inside the curly braces are key-value pairs, then we have a dictionary. When there are only values in the curly braces (i.e. no keys), then we have a set.
+
+We can also initialize dictionaries with key-value pairs:
+
+```{python}
+# initialize a dictionary
+characters = {'Tom': 'cat',
+              'Jerry': 'mouse',
+              'Droopy': 'dog',
+              'Topsy': 'cat',
+              'Nibbles': 'mouse'}
+
+
+print(characters)
+```
+
+## Indexing dictionaries
+
+Like lists and tuples, we can retrieve specific values from dictionaries. However, instead of specifying index positions, we retrieve values by key:
+
+```{python}
+print(characters['Jerry'])
+print(characters['Tom'])
+```
+
+## Testing for existence
+
+As with sets, we can test for existence in a dictionary:
+
+```{python}
+'Mickey' in characters
+'Jerry' in characters
+```
+
+## Getting all keys or values
+
+Dictionaries provide some very useful functions allowing us to retrieve a group of values at once:
+
+- keys() - returns the keys for all values in the dictionary
+- values() - returns all of the values in the dictionary
+- items() - returns a collection of all key-value pairs in the dictionary.
+
+These can be very useful when, for example, we want to:
+
+- produce a list of keys
+- iterate over and process all values.
+
+```{python}
+characters.keys()
+```
+
+
+The collection returned by keys() is a dict_keys object. This is useful if we want to iterate over the keys, but less useful if we just want to access the keys as a group. We can, however, easily turn convert the dict_keys object into a list:
+
+```{python}
+list(characters.keys())
+```
+
+The dict_values object returned by values behaves similarly to dict_keys objects. We'll illustrate more uses of these in future tutorials.
+
+Finally, because dictionaries are mutable, we can change the entries:
+
+```{python}
+print(characters)
+
+characters['Donald'] = 'duck'
+characters['Jerry'] = 'SMART mouse'
+
+print(characters)
+```
+
+Note in this example, we added an entry for Donald and changed the entry for 'Jerry'. This, dictionary assignment will create new entries if the key used doesn't exist; when the dictionary key exists, the RHS in the assignment replaces the previous value associated with the key.

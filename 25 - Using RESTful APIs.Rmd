@@ -1,0 +1,397 @@
+---
+title: "Using RESTful APIs"
+author: "Gary Mitchell"
+date: "01/25/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+# load reticulate so we can evaulte Python
+suppressMessages(require(reticulate))
+
+# need to specify to use anaconda so that Python will find pandas
+use_python("c:/users/Gary/anaconda3/python.exe")
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# What is an API?
+
+In generic terms, an API is an *Application Programming Interface*. APIs have existed for decades, since long before the Internet, and the term API does not automatically imply accessing data from the Internet. In fact, if you create a .R file that defines one or more functions and share that .R file with a friend, *technically* you have  given your friend an API.
+
+Yet today, when many (if not most) people mention using an API, they *are* referring to accessing online data. In these instances, they are most often referring to a *RESTful* API.
+
+## RESTful APIs
+
+Representational State Transfer (REST) is a standard that defines how computers can communicate (i.e. exchange data) over the Internet. Using RESTful APIs makes it *relatively* easy to obtain data programmatically. The benefits of doing so are obvious:
+
+  - Easily access data regularly, including periodic updates
+  - Eliminate manual processes, including data entry (and the errors associated with manual process)
+  - Improve the timeliness of data.
+  
+## Understanding RESTful APIs
+
+RESTful APIs allow programmatic communication using standard HTTP transactions (i.e. GET, POST). A program constructs and sends a request in much the same way that a web browser (e.g. Chrome or Safari) constructs and sends an HTTP page request. In the case of a typical web server, the server obtains/constructs the requested page and returns the page (as HTML) to the requesting browser (which subsequently displays the page).
+
+A RESTful API works similarly. The requesting program constructs a request that it sends via HTTP. The receiving server (the API) performs the requested action (usually retrieving data), and constructs and returns an HTTP response. This response will conform to the REST standard and contains information about the request status (e.g. success, etc.) and the response (i.e. data content).
+
+The diagram below illustrates this process. In the center we see the API (which resides on a server somewhere on the Internet). The API acts as an intermediary between the *back end* system (e.g. a database) and the *front end* application. The API allows the *front end* application to be relatively ignorant about the *back end* system. In other words, the *front end* application doesn't need to understand how the data is stored, what database management system (DBMS) is being used, or whether the data is even stored or dynamically constructed. The *front end* application need only understand the requests supported by the API and the structure of the responses returned.
+
+Similarly, the *back end* system needs to know nothing about the hundreds (or even millions) of *front end* applications that will be making requests. It only needs to understand requests and construct responses in a single format understood by the API.
+
+![Alt text](planningpme-api.jpg)
+
+Today, the majority of applications accessing data via the Internet, as well as most web-based applications, rely on RESTful APIs. Of course, there are alternatives, some of which are gaining in popularity and adoption. However, we'll focus on using RESTful APIs in this course because:
+
+  - Most of the data you will want to access will be available using a RESTful API
+  - Once you understand the use of RESTful APIs, learning others (e.g. GraphQL APIs) will be *relatively* straightforward.
+  
+# What do we *need* to access a RESTful API?
+
+Well, to start, we need to understand the request and response formats for a particular API. Then, we need support in our programming environment for sending/receiving HTTP requests and parsing the response.
+
+Most programming environments today provide good library support for accessing RESTful APIs and Python is no exception. These *libraries* provide functions (and/or Classes) that encapsulate all of the technical details associated with sending and receiving API requests and responses via HTTP. In PYthon, we'll use the *requests* package to:
+
+  - send/receive HTTP requests
+  - parse binary encoded payloads into JSON objects.
+  
+## What is JSON?
+
+JSON stands for Javascript Object Notation. It is a portable format for transferring data that originated with Javascript web applications. Many (most?) APIs use JSON to return their responses. Alternative formats include XML and related standards.
+
+The example below shows a JSON representation of an employee list. JSON is a fairly *verbose* representation of the data because it includes defining tags (e.g. "employees", "firstName") intermixed with the data, and the tags must be repeated with every occurrence (so we see that "firstName" appears 3 times, once for each employee's record).
+
+![Alt text](JSON.jpg)
+  
+You might see some similarities between JSON and Python dictionaries...
+
+# Authorized API access
+
+Many APIs require some form of *authentication* before they will accept and respond to queries. Unfortunately, there isn't a lot of consistency across APIs:
+
+  - Some require usernames and passwords, while others require unique API keys or tokens
+  - There is little/no consistency in how these are specified in the request (e.g. key=..., api_key=..., token=..., rapidapi_key=...).
+  
+As a result, just accessing the API and getting an authenticated response can be a challenge. The good news is that once you are *in*, it is generally straightforward to refine your query to obtain the data you want.
+
+# A simple example
+
+As a first example, let's acquire some data about COVID-19 from a free online database. While there are many free sources of data available online, the quality/integrity of data from such sources should be considered with care. Additionally, the data obtained from such sources may be *stale* (i.e. not containing the most current data).
+
+For our first example, we're going to obtain data from a COVID-19 database using a RapidAPI API to obtain the data. The API can be used for free, but the data is current only through August 19, 2020.
+
+RapidAPI provides a number of free APIs that can be used to pratice (and discover interesting things you didn't previously know). You can find their available APIs at the link below. Some of these impose access restrictions relating to requests per month, results returned, etc., so they may not be ideal for a research project. But, they provide a great base of APIs for practicing your data acquisition skills.
+
+A different API key is required for each of these APIs, and you can request/receive the necessary key(s) through their website (typical for free online APIs).
+
+```{python, echo=FALSE}
+
+apikey = "b40c0c1b6emsh596c6f0db46255ep15ce4djsn54e56cc771fd"
+
+```
+
+The first step in accessing an API is to import the *requests* and *pandas* packages:
+
+```{python}
+import requests 
+import pandas as pd
+
+```
+
+Next, we need to construct a query string. I like to do mine in pieces, and then construct the final query string. In this case I have already assigned my API key to a variable named *apikey*. I then assign the API URL to *urlbase* and construct my query (which is assigned to *query*)":
+
+```{r, eval=FALSE}
+urlbase = "https://covid-19-data.p.rapidapi.com/report/totals?"
+query = urlbase + "rapidapi-key=" + apikey
+
+```
+
+This particular API is very simple. The only argument I need to pass to the API is my API key. Here's the resulting query:
+
+```{python, echo=FALSE}
+urlbase = "https://covid-19-data.p.rapidapi.com/report/totals?"
+query = urlbase + "rapidapi-key=" + apikey
+
+```
+
+```{python, echo=FALSE}
+querydisplay = urlbase + "rapidapi-key=" +  "*" * len(apikey)
+
+print(querydisplay)
+```
+
+Looking at the query is instructive. We see that the call arguments are specified as key-value pairs following the question mark (the asterisks are placeholders for the API key). Preceding the question mark is the address of the API, i.e. it's URI.
+
+Now we're ready to execute our query, which we do using the *get* function (provided by the *requests* package).
+
+```{python}
+response = requests.get(query)
+
+```
+
+The first thing we'd like to do is understand a little bit more about the data we've obtained. A first step is using the *type* function to see what we've obtained:
+
+```{python}
+
+print(type(response))
+
+```
+
+From this we see that the *response* is a requests.models.Response object. We can get a feel for what's contained in the Response object with a couple of lines of code; the code fragment below lists *public* Response object members that are not methods:
+
+```{python}
+# Extract "public" variables that aren't methods
+publicvars = [{'attribute': x, 'type':type(getattr(response, x))} 
+              for x in dir(response) 
+              if not x[0] == '_' and not callable(getattr(response,x))]
+ 
+# print our metadata             
+print(pd.DataFrame(publicvars))
+
+
+```
+
+We can see that there are quite a few attributes. However, at this point, we are most interested in the status_code and the content. The status_code tells us whether our query was successful (typically a 200 status_code indicates success) and the content holds our *payload*, i.e. the result of our query. Generally, the first thing we should do after executing the query is to check the status code:
+
+```{python, eval=FALSE}
+if(response.status_code == 200):
+  # do work for good queries - 200 is usually the status_code for a good query
+else:
+  # do work to handle the unsuccessful query
+```
+
+Once we know our query was successful, we're ready to extract the payload. In its current binary encoded form, the payload isn't directly usable. However, the requests Response object provides a convenient function to convert the binary encoded content into JSON (JavaScript Object Notation):
+
+```{python}
+covid = response.json()
+```
+
+The resulting json object will most likely be a list or a dictionary, depending on the complexity and organization of the data. Let's see for sure:
+
+```{python}
+print(type(covid))
+```
+
+Since our object is a list, let's have a look at the first few elements:
+
+```{python}
+for i in range(5):
+    print(covid[i])
+```
+
+It appears that our payload is a list of dictionaries. Given the structured nature of our data, the logical next step is to convert the list of dictionaries into a Pandas data frame and look at the metadata:
+
+
+```{python}
+coviddf = pd.DataFrame(covid)
+print(coviddf.info())
+```
+
+```{python, echo=FALSE}
+rows = coviddf.shape[0]
+cols = coviddf.shape[1]
+
+```
+
+The Pandas info function shows us that we have `r py$rows` rows with `r py$cols` columns. We see that all but one of these columns are numbers (64 bit integers actually), except for the *date* column. Ideally, we want the *date* column to be a Pandas datetime object. We can check to see the actual type as follows:
+
+```{python}
+print(type(coviddf['date']))
+```
+
+So, we see that the column does *not* contain datetime values. Instead, the dates are stored as string objects. That won't do for our purposes, because we can't really operate on them as dates (e.g. calculate differences, etc.). Converting to datetimes will also facilitate producing graphs.
+
+We can convert the date column's values to datetime objects with a single instruction:
+
+```{python}
+coviddf['date'] = pd.to_datetime(coviddf['date'])
+```
+
+Just for grins, let's have another look at the dataframe metadata:
+
+```{python}
+print(coviddf.info())
+```
+
+Now we see that the date column contains datetime values. Good! Let's have a look at rows from the top and bottom of the data frame:
+
+```{python}
+print(coviddf.head())
+print(coviddf.tail())
+```
+
+```{python, echo=FALSE}
+
+mindate = coviddf['date'].min().strftime('%m/%d/%y')
+maxdate = coviddf['date'].max().strftime('%m/%d/%y')
+
+```
+
+From our output, we see that the earliest data is from `r py$mindate` and the most recent data is for `r py$maxdate` (see what I mean about timely data?). 
+
+Now, that we have the data, we can do anything we want with it. For example, let's have a look at the death rate as a function of confirmed cases:
+
+```{python, fig.width=8}
+# import matplotlib to produce graph
+import matplotlib.pyplot as plt
+
+# need to set an environment variable so that the QT library can be found
+import os
+os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = 'c:/users/gary/Anaconda3/Library/plugins/platforms'
+
+# plot mortality rate as function of time
+plt.plot(coviddf['date'], coviddf['deaths'] / coviddf['confirmed'])
+plt.title('COVID Mortality Rate')
+plt.xlabel('Date')
+plt.ylabel('Deaths as % of Confirmed Cases')
+```
+
+# A More Extensive Example
+
+We can use the OpenWeather API to obtain weather data for any location, specified by a latitude and longitute. Here I use separate variables for the API URL, latitude, longitude, and the apikey (variable *owkey*, not shown) to construct my query.  
+
+```{python, echo=FALSE}
+owkey = "e1dbd1cdc7e988caae33428c7afb61fd"
+```
+
+As before, I construct my query using a base URL and the query arguments. The API URL precedes the question mark (?) and the API arguments follow. However, in this case, we have multiple arguments (lat, lon, and appid). We will separate our multiple arguments with ampersands (&). The value of owkey was set previously. This example shows constructing the query using an fstring.
+
+```{python}
+
+URLbase = "http://api.openweathermap.org/data/2.5/onecall?"
+
+lat = 45.51
+lon = -122
+
+query = f'{URLbase}lat={lat}&lon={lon}&appid={owkey}'
+
+```
+
+Here's the resulting query (API key shown as askterisks (*):
+
+```{r, echo=FALSE}
+querydisplay<-paste(py$URLbase, "lat=", py$lat, "&lon=", py$lon, "&appid=", paste(rep("*",nchar(py$owkey)), collapse=""), sep="")
+print(querydisplay)
+```
+
+Finally, we'll execute and print the type of the payload. 
+
+```{python}
+
+owres = requests.get(query)
+owjson = owres.json()
+print(type(owjson))
+
+
+```
+
+This query returns a great deal of information (which highlights the need to understand the API before attempting to use it). Here are the top-level keys in the response dictionary:
+
+```{python}
+for k in  owjson.keys():
+  print(k)
+
+```
+
+Here's the contents of the *current* entry in the dictionary:
+
+```{python}
+
+print(owjson['current'])
+
+```
+
+Because each entry in the dictionary is another dictionary that holds the detailed weather data. We can access the individual values as follows:
+
+```{python}
+visibility = owjson['current']['visibility']
+temp = owjson['current']['temp']
+
+print(f'visibility:  {visibility}')
+print(f'temperature: {temp}')
+
+```
+
+
+```{python, echo=FALSE}
+visibility = owjson['current']['visibility']
+temp = owjson['current']['temp']
+
+```
+
+
+Notice this query produces a great deal of information, and also highlights the need to understand the API. For example, in this case it shows the temperature, `r py$temp`, above 200 degrees. Of course, the temperature readings must be specified in degrees Kelvin because that is the only temperature metric that makes sense with numbers that high. But what about the *visibility* of `r py$visibility`? Is that metric specified in *feet*, *meters*, or some other unit of measure? We must always take care to understand the data before we begin to interpret or analyze it. The best way to do that is to review the API documentation.
+
+# A Final Example
+
+From the previous example, we know the weather at latitude `r py$lat` and longitude `r py$lon`. But where is *that*? We can use the Google Mapping API to find out.
+
+```{python, echo=FALSE}
+mapskey="AIzaSyDWc1BAF2OGwL7xz273tFO4Bc7Uy_m3AZk"
+```
+
+Here we construct and execute a query to find mapping information using the latitude and longitude from our previous example. The finished query looks as follows:
+
+```{python, echo=FALSE}
+base = "https://maps.googleapis.com/maps/api/geocode/json?"
+parms = {'latlng': f'{lat},{lon}',
+         'key': "*" * len(mapskey)}
+
+displayquery = base + "&".join([f'{k}={v}' for k,v in parms.items()])
+print(displayquery)
+
+```
+
+Here is the whole script, including constructing and executing the query (excluding the API key value assignment). It *appears* that we found the weather for somewhere in Multnomah County, OR.
+
+```{python}
+base = "https://maps.googleapis.com/maps/api/geocode/json?"
+
+parms = {'latlng': f'{lat},{lon}',
+         'key': mapskey}
+
+query = base + "&".join([f'{k}={v}' for k,v in parms.items()])
+
+rglres = requests.get(query)
+
+if rglres.status_code == 200:
+  # if the query succeeds, print the content
+  print(rglres.json())
+else:
+  # query failed - print message
+  print(f'Query error - status code = {rglres.status_code}')
+
+
+```
+
+OK, *that's* a bit overwhelming. Let's have a look at the dictionary keys:
+
+```{python}
+response = rglres.json()
+
+for k in response.keys():
+  print(k)
+```
+
+We most likely are interested in the *results*. Let's see what type of object it is:
+
+```{python}
+print(type(response['results']))
+```
+
+
+It turns out that results is a list of dictionaries. The query returns multiple matches in a list, with the first result (index 0) being the best match. Let's have a look at that first element:
+
+```{python}
+print(response['results'][0])
+```
+
+There's a lot of information here, and it looks like we found an address somewhere in Multnomah County. What we most likely want is a formatted address corresponding to the coordinates which we can obtain using the 'formatted_address' key:
+
+```{python}
+print(response['results'][0]['formatted_address'])
+```
+
+It requires a bit of experimentation, but we just used the Google Maps API to find a street address corresponding to geographic coordinates. Way cool!

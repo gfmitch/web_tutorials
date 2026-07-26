@@ -1,0 +1,145 @@
+---
+title: "Thinking Functions"
+author: "Gary Mitchell"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+require(reticulate)
+```
+
+## Why Functions?
+
+There's no arguing that functions are a fundamental building block of procedural programs. The question is why? What's the big deal?
+
+Functions are essential for a number of reasons:
+
+-   They allow code to be reused (instead of replicated)
+-   They allow for code abstraction/simplification
+-   They facilitate incremental development.
+
+Leveraging code you've previously written is important because it saves you time:
+
+-   Writing code (you don't have to rewrite something that already exists)
+-   Testing (you don't have to retest the function code once it's tested)
+-   Debugging code (you ensure that a specific set code exists only within the function so there's only one possible place to search/edit).
+
+It also makes your code less susceptible to accidental breakage...
+
+### An example of a code reuse opportunity
+
+To illustrate a code reuse opportunity, let's say that we need to calculate an order-up-to-level (OUTL) for two different inventory policies:
+
+-   (s,S) - order point/order-up-to model where $s$ is the order point and $S$ is the OUTL. Here $OUTL = S = \bar{d}(lt + dts) + F^{-1}(tsl) \sigma_{rt+lt}$, where $\bar{d}$ is the average daily demand (units), $lt$ is the lead time, $dts$ is the desired time supply, $tsl$ is the target service level, and $F^{-1}(x)$ is the normal (Gaussian) inverse cumulative probability function (we're assuming normally distributed demand)
+-   EOQ - economic order quantity model. For the EOQ, $OUTL = \sqrt{\frac{2DA}{vr}} + \bar{d}(lt) + F^{-1}(tsl)$, where $D$ is the annual demand (units), $A$ is the aggregate order placement cost, $v$ is the unit acquisition cost, and $r$ is the unit holding cost percentage rate.
+
+Without writing functions, are code might look something like the following:
+
+```{python, eval=FALSE}
+
+import scipy.stats as sps
+
+# Code for retrieving values of variables would go here. Assume this code would assign values to all
+# variables used in the following calculations
+
+if replenishment_type == 's,S':
+  dbar1 = dbar7 / 7
+  outl = dbar1 * (lt + dts) 
+       + sps.norm.ppf(tsl, dbar1 * rt + lt, sqrt((rt + lt) / 7) * sigma7)
+elif replenishment_type == 'EOQ':
+  outl = sqrt(2 * 52 * dbar7 * A / (v * r)) 
+       + dbar1 * lt + sps.norm.ppf(tsl, dbar1 * rt 
+       + lt, sqrt((rt + lt) / 7) * sigma7)
+else:
+  outl = NA
+  
+```
+
+In the Python code above, dbar7 and sigma7 represent average weekly demand and demand standard deviation respectively, based on a 7 day week (most forecasting systems forecasting demand on a weekly basis because daily demand is typically *very* noisy). Additionally, $rt$ represents the *review time* (i.e., the time between order opportunities). The final else *traps* the case where the replenishment_type is not valid (not recognized) and assigns NA to the OUTL indicating an error condition. Any mathematical operation performed on NA returns NA, so assigning OUTL = NA ensures that no subsequent calculations can produce results that *appear* valid but which are incorrect.
+
+There are some obvious *code replications* here, and for quality coding, **replication = BAD**. Both calculations include:
+
+-   safety stock: sps.norm.ppf(tsl, dbar1 * rt + lt, sqrt((rt + lt) / 7) * sigma7)
+-   Expected demand until order arrival: dbar1 * lt.
+
+Since we've incorporated the same code in two places, that means:
+
+-   We have twice as many places to make coding errors
+-   We have twice as much code to test
+-   We have twice as many places to debug incorrect results.
+
+See, **replication = BAD **.
+
+### A Better Solution: functions for code reuse
+
+Now, with a little bit of advance planning (i.e., design...), we might write the following code instead, which introduces two new functions:
+
+```{python, eval=FALSE}
+
+import scipy.stats as sps
+
+# Code for retrieving values of variables would go here. Assume this code would assign values to all
+# variables used in the following calculations
+
+# Safety stock function
+def safety_stock(tsl, rtlt, d7, s7):
+  return(sps.norm.ppf(tsl, d7/7 * rtlt, sqrt(rtlt/7) * sigma7))
+
+# lead time demand function
+def lt_demand(lt, dbar7):
+  return(lt * dbar7/7)
+
+# calculate exposure time
+rtlt = rt + lt
+
+if replenishment_type == 's,S':
+  outl = dbar7/7 * dts + lt_demand(lt, dbar7) + safety_stock(tsl, rtlt, dbar7, sigma7)
+elif replenishment_type == 'EOQ':
+  outl = sqrt(2 * 52 * dbar7 * A / (v * r)) + lt_demand(lt, dbar7) + safety_stock(tsl, rtlt, dbar7, sigma7)
+else:
+  outl = NA
+  
+```
+
+### Illustrating how functions allow for code abstraction
+
+This code is *much* better:
+
+-   All safety stock calculation is done by the safety_stock function (i.e., exists in only one place)
+-   All lead time demand calculation is done by lt_demand function (again, exists in only one place)
+-   Both OUTL calculations now appear very similar; both calculations have a call to lt_demand to calculate lead time demand, and a call to safety_stock to calculate the buffer stock required to satisfy demand from stock with probability $tsl$. This code now highlights the similarities between these two calculations rather than emphasizing their differences.
+
+In both calculations, we see that we're calculating lt_demand and safety_stock. Without looking up the code in the functions, we can't see the details about how those two calculations take place. That's abstraction. However, once we are calculating the OUTL we don't really care how lead time demand and safety stock are calculated. We know that we need to incorporate those two calculations and that the functions correctly calculate them (more on this in the discussion on incremental development).
+
+Abstracting the code makes it easier to follow. When we are looking at the OUTL calculations, we clearly see that both calculations are of the following form:
+
+$$OUTL = time\ supply\ units + lead\ time\ demand + safety\ stock$$
+Because the lead time demand and safety stock components are abstracted via function calls, we see that the remainder of the calculation represents $time\ supply\ units$.
+
+### Facilitating incremental development
+
+Incremental development involves:
+
+1.    writing a small amount of code
+2.    testing the code
+
+and repeating steps 1 and 2 until we've completed all of the development. 
+
+Functions are *one* very good way to incrementally develop code (object-oriented programming is another approach that we'll cover later in the semester). To develop the OUTL calculation code above incrementally, we'd do the following:
+
+1.    Analyze the application looking for *partionable* units
+2.    Design functions for each of the *partionable* units
+3.    Design the application to use the functions
+4.    Write and test functions (i.e., write and test one function, then write and test another function, ...)
+5.    Write and test the application (or, if it's large, parts of the application iteratively).
+
+In our OUTL example, lead time demand and safety stock represented partionable units. By partioning the code into functions, we would:
+
+1.    Write and test the lt_demand function
+2.    Write and test the safety_stock function
+3.    Code the OUTL calculations using the lt_demand and safety_stock functions.
+
+In this approach, when working on step 3 (assuming we did an adequate job of testing in steps 1 and 2), we could ignore the code in lt_demand and safety_stock. That code has already been verified independently. Thus we can proceed with OUTL coding/testing, only testing new code (because the functions were already tested). Better yet, if the results in the OUTL code are incorrect, we know it *must be* with the new code, because the lt_demand and safety_stock functions were already independently verified!
+
