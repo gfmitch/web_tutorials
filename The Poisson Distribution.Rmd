@@ -1,0 +1,138 @@
+---
+title: "The Poisson Distribution"
+author: "Gary Mitchell"
+date: "July 26, 2026"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+suppressMessages(require(reticulate))
+```
+
+
+The Poisson distribution has many applications in business. The number of customers arriving in a time interval, weekly demand, and the number of defects in a new automobile are all random variables that may follow a Poisson distribution.
+
+The Poisson is a non-negative integer distribution with a single parameter, $\lambda$, the *rate* of the distribution. Note that a rate always denotes a *quantity* per *interval*. For example, 100 customers/hour, 15 packages/microsecond, 5 defects/unit, 15 potholes per mile are all valid rates. Moreover, rates and intervals are inversely related. So, if the customer arrival rate is 100 customers/hour, then the interval, i.e. average time between customers, is 1/100th of an hour (i.e. 0.6 minutes or 36 seconds).
+
+## Poisson Known Properties
+
+For *any* Poisson distribution with rate $\lambda$:
+
+$$\mu_x = E[x] = \lambda$$
+$$\sigma_x^2 = V[x] = \lambda$$
+$$\sigma_x = \sqrt{\sigma_x^2} = \sqrt{\lambda}$$
+
+
+## Poisson Probability Mass Function
+
+As with all discrete distributions, the Poisson's *probability mass* function is used to calculate a *point probability*, that is the mass function yields $Pr\{X=x\}$. The Poisson's probability mass function is:
+
+$$Pr\{X = x\} = \frac{\lambda^x e^{-\lambda}}{x!}$$
+
+## Cumulative Probability Function
+
+As with most discrete probability distributions, the Poisson Distribution's  cumulative probability is calculated simply as the sum of the corresponding point probabilities:
+
+$$Pr\{X \leq x\} = \sum_{c = 0}^{x}\frac{\lambda^c e^{-\lambda} }{c!}=\sum_{c = 0}^{x}Pr\{X=x\}$$
+
+## Inverse Cumulative Poisson Probability
+
+For the Poisson distribution, the inverse cumulative probability is given by:
+
+$$F^{-1}(\alpha) = x:Pr\{X \leq x\} \geq \alpha$$
+In other words, $F^{-1}(\alpha)$ is the smallest value of $x$ for which $F(x) \geq \alpha$. To calculate this programmatically, it's necessary to calculate values of $F(x)$, starting from $0$, until the resulting value of $F(x) \geq \alpha$.
+
+It is important to note that multiple values of $\alpha$ can yield the same value of $F^{-1}(\alpha)$. The reason for this is that for the Poisson, as with all discrete distributions, any value in the interval $(x, x+1)$ (i.e., the interval between $x$ and $x+1$ with the endpoints excluded) has probability 0. For example, the table shows the values of $F(x)$ for $x \in {18.0, 18.2, 18.4, \dots, 23.0}$ for a random variable $x \sim Poisson(20)$:
+
+```{python, include=FALSE}
+
+from scipy.stats import poisson
+import numpy as np
+import pandas as pd
+
+rv = poisson(20)
+
+x = np.round(np.arange(18,23.1,0.2),1)
+Fx = np.round(rv.cdf(x.astype(int)),4)
+
+df = pd.DataFrame({'x': x, 'F(x)': Fx})
+
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+suppressMessages(require(kableExtra))
+
+kable(py$df) %>%
+  kable_styling(bootstrap_options = "striped", "hover", full_width=FALSE)
+
+```
+
+Here we see, for example, that $F(x)$ is the same for $18.0, 18.2, 18.4. 18.6, 18.8$. Similarly, the table below shows $F^{-1}(\alpha)$ for various $\alpha \in [0.4, 0.6]$; we see that multiple values of $\alpha$ yield the same value for $F^{-1}(\alpha)$:
+
+```{python, include=FALSE}
+
+from scipy.stats import poisson
+import numpy as np
+import pandas as pd
+
+rv = poisson(20)
+
+alpha = np.round(np.arange(0.4, 0.61, 0.025), 3)
+qx = np.round(rv.ppf(alpha),1)
+
+df = pd.DataFrame({'\(\\alpha\)': alpha, '\(F^{-1}(\\alpha)\)': qx})
+
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+suppressMessages(require(kableExtra))
+
+kable(py$df) %>%
+  kable_styling(bootstrap_options = "striped", "hover", full_width=FALSE)
+
+```
+
+
+### The Poisson Distribution in Use
+
+Consider a concession at T-Mobile Park in Seattle (formerly Safeco Field) that estimates that customers arrive during the fourth inning at a rate of 25 customers per 10 minutes. What is the probability that *more than* 30 customers arrive in that 10 minute interval? We can calculate this as:
+
+```{python, include=FALSE}
+
+x = poisson(25)
+
+Fx = round(x.cdf(30),4)
+
+Fx_comp = round(1 - Fx,4)
+
+print(Fx)
+print(Fx_comp)
+
+```
+
+
+$$Pr\{X > 30\} = 1 - Pr\{X \leq 30\} = 1 - F(30) = 1 = `r py$Fx` = `r py$Fx_comp`$$
+
+Thus the chance that more than 30 customers arrive during the 10 minute interval is approximately `r py$Fx_comp * 100`%.
+
+
+Let's consider another example involving a supermarket. Assume that demand for a relatively slow moving item is believed to follow a Poisson distribution and the average demand is $2.7$ units per week. Recall from *Poisson Distribution Properties* that the mean of the Poisson distribution is equal to the rate of the distribution. Therefore, we can say that demand for the item follows a Poisson distribution with rate $2.7$ units/week.
+
+The inventory manager wants to know how many units she should stock to be 95% sure that she has enough units to satisfy demand (assuming the store receives a replenishment shipment weekly). In other words, the manager wants to know the *mininum number of units that will ensure she can satisfy demand from stock 95% of the time*.  Thus she needs to calculate the *inverse* cumulative probability:
+
+```{python, include=FALSE}
+
+rv = poisson(2.7)
+qx = rv.ppf(0.95)
+
+```
+
+
+$$F^{-1}(0.95) = x:Pr\{X \leq x\} \geq 0.95 = `r py$qx`$$
+
+Thus the manager should ensure that she starts each week with a minimum of `r py$qx` units. Fewer units and there will be more than a 5% chance that she runs out of stock.
+
+
