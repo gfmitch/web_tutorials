@@ -1,0 +1,245 @@
+---
+title: "Persisting Objects"
+author: "Gary Mitchell"
+date: "2026-07-27"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 4
+    fig_caption: TRUE
+    number_sections: TRUE
+    global_numbering: !number_sections
+    pandoc_args: NULL
+    base_format: rmarkdown::html_document
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+suppressMessages(library(reticulate))
+```
+
+This tutorial looks at persisting objects using Python's *pickle* and *shelve* packages:
+
+- *pickle* is used to *serialize* objects so that they may be saved in files, databases, etc.
+- *shelve* provides a *dictionary-like* mechanism for persisting objects.
+
+*Serializing* an object involves converting it to a stream of bytes that can be transmitted or persisted in some way. *Persisting* an object involves storing it in some form so that it survives the termination of the program/session (i.e., saving it for later use).
+
+*shelve* uses *pickle* to serialize objects. pickle does an OK job in serializing, but it does have some limitations (e.g., it struggles with serializing embedded objects). *dill* is a more comprehensive package for serializing objects that addresses many of *pickle*'s limitations.
+
+Note: In most of the coding examples, I have intentionally omitted docstrings, just to keep the code compact. *ALL* of your functions, classes, and methods should provide docstrings.
+
+## Serializing objects with pickle
+
+The primary reason to serialize objects is to either *persist* them (i.e., retain them after the program/session terminates) or transmit them to another machine. Using *pickle* to serialize objects is very simple. You can also use *pickle* to save serialized objects to a file, and restore/reconstruct serialzed objects stored from a file.
+
+To illustrate, let's define the EOQ class we've used in other tutorials:
+
+```{python}
+
+import math
+from numbers import Number
+
+class EOQException(Exception):
+
+    def __init__(self, D, A, v, r):
+        super().__init__()
+        self.D = D
+        self.A = A
+        self.v = v
+        self.r = r
+
+    def __str__(self):
+        msg = f'One or more of the calling arguments was invalid:\n{self.D=}\n{self.A=}\n{self.v=}\n{self.r=}\n{super().__str__()}'
+        return msg
+
+
+class EOQ:
+    """
+    State preserving economic order quantity (EOQ) class. The EOQ is the cost-minimizing order
+    quantity under the following assumptions:
+        - Demand is deterministic, constant, and stationary
+        - Inventory related costs consist of a holding cost per unit (assessed on average inventory) and an
+        - aggregate order placement cost (i.e., a flat fee to place an order regardless of the quantity ordered).
+    """
+
+    def __init__(self, d: int|float, a: int|float, v: int|float, r: float):
+        """
+        Creates an Economic Order Quantity (EOQ) object.
+        :param d: Demand in units (usually annual demand)
+        :type d: float
+        :param a: Aggregate order placement cost.
+        :type a: float
+        :param v: unit acquisition cost (same currency units as order placement cost)
+        :type v: float
+        :param r: unit holding cost percentage rate (time units must match demand time units, e.g. annual)
+        :type r: float
+
+        Raises an EOQException if any of D, A, v, and r are invalid (i.e., non-numeric or
+        non-positive).
+        """
+
+        # validate arguments. d, a, v, and r must all be numeric and positive
+        args = [d, a, v, r]
+
+        # create boolean list of argument validity
+        test = [isinstance(a, Number) and a > 0 for a in args]
+
+        if all(test):
+            # all arguments are valid, so we can calculate the EOQ, so save private attributes
+
+            self._d = d
+            self._a = a
+            self._v = v
+            self._r = r
+
+        else:
+            # At least one calling argument was non-numeric or non-positive, so return None indicating that no
+            # result could be calculated.
+            raise EOQException(d, a, v, r)
+
+
+    @property
+    def d(self):
+        return self._d
+
+    @property
+    def a(self):
+        return self._a
+
+    @property
+    def v(self):
+        return self._v
+
+    @property
+    def r(self):
+        return self._r
+
+    @property
+    def q(self):
+        """
+        Calculates the EOQ for the object's normal state: D, A, v, and r.
+
+        Returns:
+            (float): Economic order quantity
+        """
+
+        return math.sqrt(2 * self.d * self.a / (self.v * self.r))
+
+    @property
+    def trc(self):
+        """
+        Calculates Total Relevant Cost corresponding to the EOQ, i.e., TRC(Q*), for the object.
+
+        Returns:
+            (float): Total relevant cost (TRC) for the object's normal state.
+        """
+
+        return math.sqrt(2 * self.d * self.a * self.v * self.r)
+
+    def trc_q(self, q: int|float=None):
+        """
+        Calculates the total relevant cost (TRC) for quantity q. If no q is specified,
+        returns TRC(Q*).
+        
+        Args:
+            q (int|float):
+
+        Returns:
+            (float): Total relevant cost of q.
+            None: if q is non-numeric or non-positive.
+        """
+        
+        if q is None:
+            return self.trc
+        
+        if isinstance(q, Number) and q > 0:
+            # q is valid, so use the general form of the TRC to calculate for q
+            return q * self.v * self.r / 2 + self.d * self.a / q
+        else:
+            # q is invalid
+            return None
+
+
+```
+
+Now we can construct an EOQ object and use *pickle* to serialize it:
+
+```{python}
+import pickle
+
+eoq_item = EOQ(10000, 500, 12.95, 0.35)
+print(f'{eoq_item.q=}')
+
+# serialize the object using pickle
+serialized_eoq_item = pickle.dumps(eoq_item)
+print(f'serialized object: {serialized_eoq_item}')
+print(f'serialized object type: {type(serialized_eoq_item)}')
+
+```
+
+OK, so the *serialized* object doesn't look like much to us. However, *pickle* understands it and we can use pickle to reconstruct an EOQ object from the byte object (specialized type of string object) we created to contain the serialized object:
+
+```{python}
+
+new_eoq_item = pickle.loads(serialized_eoq_item)
+print(f'{type(new_eoq_item)=}')
+print(f'{new_eoq_item.q=}')
+
+```
+
+*pickle*'s *dump* and *load* methods may be used to serialize objects to/from files (in this tutorial, we used the *dumps* and *loads* methods to serialize to/from byte objects). However, when file portability isn't a requirement, I prefer using *shelve* to persist my objects.
+
+## Persisting objects with shelve (and pickle)
+
+We frequently wish to *persist* (i.e., save to storage) our objects. Given the complexity of object instances (combination of code and attributes), that could be easier said than done. Fortunately, Python provides an easy method for us to do this. In fact, it's almost ridiculously easy...
+
+Let's create and save a couple of eoq_item objects:
+
+```{python}
+import shelve
+
+item1 = EOQ(10000, 500, 12.95, 0.35)
+item2 = EOQ(500, 1000, 1.95, 0.40)
+
+print(f'{item1.q=}')
+print(f'{item2.q=}')
+
+db = shelve.open('save eoqs')
+db['item 1'] = item1
+db['item 2'] = item2
+
+db.close()
+
+```
+
+Done! Notice that when we open the shelve, we obtain a reference to the open shelve which we named *db*. Saving objects in the shelve is like adding values to a dictionary: we specify a name and assign the value. In this case, we'll have to values in our shelve, one named 'eoq_item' and one named 'epq_item'.
+
+Where were our objects saved? Because I did not specify a path as part of the filename, the shelve was created in the current directory, in this case, the project directory. I could specify any place I wish for the shelve by including an absolute or relative path in the filename.
+
+OK, great, so we've saved the objects but how do we use them? Let's see:
+
+```{python}
+# open the shelve
+dbin = shelve.open('save eoqs')
+
+# retrieve the stored objects by name
+item1_restored = dbin['item 1']
+item2_restored = dbin['item 2']
+
+# it's a good idea to close the shelve when we no longer need it open
+dbin.close()
+
+print(f'{item1_restored.q=}')
+print(f'{item2_restored.q=}')
+
+```
+
+Wow! That was easy. We retrieve the values from the shelve just like we would if dbin were a dictionary. The only difference is that we need to open the shelve before we can access the values, and we should close it as soon as we're done retrieving/saving values.
+
+The output clearly shows that we have restored our two EOQ instances. Notice that we didn't even have to tell shelve what types of objects we were retrieving; shelve stores everything it needs to reconstruct the objects with the named value. We can also see that the values for the EOQ items matched those we had in the original objects. Caveat: the type of object you are restoring to must be known in the current session (i.e., tye object type/class must be defined in the session, so you'll need the appropriate imports).
+
+Pretty slick right? So there must be a catch, right? Unfortunately, there is. Shelve uses the local default database to store the serialized objects. The catch is that the default database engine varies from platform to platform (e.g., linux, Windows, etc.) so there's no guarantee that a shelve created on one platform can be opened on another.
+
+That's a problem we could solve using the pickle module, to serialize our objects, and then saving the results ourselves in a platform independent format. For this class, to keep things simple, we'll stick with using shelves.
