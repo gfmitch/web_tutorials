@@ -100,7 +100,7 @@ In *this* case, if we try to calculate any probabilities (cumulative or inverse 
 Why is this? Well, the normal distribution is naturally unbounded. The shaded area in the figure above represents the entire valid range of the truncated normal with bounds [5, 15], but the untruncated normal distribution encompasses the entire area under the probability density function. To find the *correct* probabilities, we must *adjust* the values we calculate for an untruncated normal distribution to account for the boundaries (i.e., to account for the reduced domain).
 
 
-## Calculating cumulative probabilities for any truncated distribution
+## Calculating cumulative probabilities for any truncated continuous distribution
 
 So how do we do adjust for the boundaries? Let's assume the following notation:
 
@@ -142,7 +142,7 @@ As long as we can calculate $F(x)$ for a distribution, we can calculate $F_{a,b}
 
 ### Calculating inverse cumulative probabilities
 
-This will look a bit more involved, but it's the same basic concept applied to calculating the inverse cumulative probability. We start with:
+This will look a bit more involved, but it's the same basic concept applied to calculating the inverse cumulative probability. Assuming we are working with a continuous distribution, we start with:
 
 $$F_{a,b}(x) = \frac{F(x) - F(a)}{F(b)-F(a)}$$
 To find the inverse cumulative probability, we first must isolate $F(x)$. We start by multiply through by the RHS denominator, to eliminate the quotient:
@@ -177,6 +177,31 @@ which simplifies to:
 
 $$x = F^{-1}\big(\alpha\big[F(b)-0\big] + 0\big) = F^{-1}\big(\alpha F(b)\big)$$
 
+### Special considerations for discrete distributions
+
+Recall that for continuous distributions $Pr\{X \leq x\} = Pr\{X < x\}$. This allowed us to ignore the lower bound in the calculations we should above for continuous distributions. However, with discrete distributions, we are no longer able to ignore the lower bound, and must explicitly account for it in our calculations. 
+
+Using "Pr" notation, we show the general calculations for $F(x)$ and $F^{-1}(\alpha)$ for a discrete truncated distribution:
+
+$$F(x) = \frac{Pr\{X\leq x\}-Pr\{X < a\}}{Pr\{X\leq b\}-Pr\{X < a\}}$$
+
+$$x = F^{-1}\big(\alpha\big[Pr\{X\leq b\}-Pr\{X < a\}\big] + Pr\{X < a\}\big)$$
+
+Now let's say we have a random variable $x \sim Poisson(\lambda)$ with bounds $[a, b]$. We know the Poisson is a non-negative integer distribution. That means there is *no probability mass between integer valued outcomes*, i.e. the probability of any $x \in (0,1)=0$; recall that when specifying intervals, rounded parentheses $()$ indicate the corresponding bound is *excluded* while brackets $[]$ indicate the corresponding bound is *includeed*. Calculating $F_{a,b}(x)$ as we did above for the continuous distribution, i.e., using $F_{a,b}(x)=\frac{F(x)-F(a)}{F(b)-F(a)}$, would be incorrect, because $F(a)$ includes the probability mass for $a$. We need to make the appropriate adjustment for our discrete distribution. Since the Poisson is a non-negative integer distribution, we know that $Pr\{a-1 < X < a\} = 0$, and therefore $Pr\{X < a\} = Pr\{X \leq a-1\} = F(a-1)$. Now, with this understanding, we would adjust the general forms for our sample problem (and for any integer distribution) as follows:
+
+$$F_{a,b}(x) = \frac{F(x)-F(a-1)}{F(b)-F(a-1)}$$
+$$x = F_{a,b}^{-1}(\alpha)=F^{-1}\big(\alpha(x)\big[F(b)-F(a-1)\big] + F(a-1)\big).$$
+
+
+### Truncated probability mass and density functions
+
+As you might guess, the forms for the truncated probability mass $m(x)$ and density $f(x)$ functions are, respectively:
+
+$$m_{a,b}(x) = \frac{m(x)}{F(b) - F(a)}$$
+
+$$f_{a,b}(x) = \frac{f(x)}{F(b) - F(a)}$$
+
+
 ## Calculating truncated probabilities using Excel
 
 Let's see how we can use our general methods for calculating truncated cumulative and inverse cumulative probabilities using Excel. We'll start with our motivating example where we want to calculate $Pr\{X\leq 10\}$ for a truncated normal distribution with $\mu=8$, $\sigma = 4$, and boundaries $a = 5$ and $b = 15$.
@@ -205,6 +230,7 @@ $$x = F^{-1}\big(U\big[1-F(10)\big] + F(10)\big)$$
 which corresponds to the following Excel formula
 
 $$=norm.inv\bigl( rand() * (1 - norm.inv(10, 40, 15)) + norm.inv(10, 40, 15) \bigr)$$
+
 
 ### Example shown in Excel
 
