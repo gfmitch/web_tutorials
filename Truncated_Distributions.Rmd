@@ -236,10 +236,13 @@ $$=norm.inv\bigl( rand() * (1 - norm.inv(10, 40, 15)) + norm.inv(10, 40, 15) \bi
 
 For some, seeing the above actually in Excel may help. The figure below shows the parameters of our truncated distribution and the results of our calculations. The *Truncated* column contains results that were correctly calculated using the truncated distribution. The *Untruncated* column contains results that were calculated just using the usual built-in Excel functions without adjusting for the bounds.
 
+
 ![Calculating truncated probabilities in Excel](truncated distribution example Excel snip.jpg)
+<br>
 
 And below you can see the formulas for the spreadsheet shown above:
 
-![Calculating truncated probabilities in Excel with formulas](truncated distribution example Excel formulas snip.jpg)
 
+![Calculating truncated probabilities in Excel with formulas](truncated distribution example Excel formulas snip.jpg)
+<br>
 
