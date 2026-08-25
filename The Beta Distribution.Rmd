@@ -1,0 +1,503 @@
+---
+title: "The Beta Distribution"
+author: "Gary Mitchell"
+date: "August 24, 2026"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+suppressMessages(require(reticulate))
+```
+
+
+The beta distribution is an extremely flexible *bounded* distribution. As such, it has many potential applications in business. For example, the beta distribution is often used to model task work content or durations in project management because it is:
+
+1. bounded above and below
+2. can be used to model almost any desired distribution shape.
+
+The beta distribution is a real-valued distribution with four parameters :
+
+- Shape parameters $\alpha$ and $\beta$
+- Boundary parameters lower bound $a$ and upper bound $b$.
+
+The *boundary* parameters work just like the boundary parameters for a continuous uniform distribution. In other words, $Pr\{X \leq a\} = 0$ and $Pr\{X > b\} = 0$.
+
+To communicate that we have a random variable $X$ that follows a beta distribution with shape $\alpha, \beta$, and bounds $[a, b]$, we say
+
+$$X \sim beta(\alpha, \beta, a, b)$$
+
+### Understanding *Shape*
+
+Understanding the *shape* parameters is a little more challenging. To gain some *intuition* about the beta distribution, you can (loosely) think of $\alpha$ as representing the number of *successes* and $\beta$ as representing the number of *failures* for a set of trials. I say *loosely* because you'll note that the number of trials is *not* a beta distribution parameter.
+
+To further our understanding of the beta distribution, we can observe the following *rules of thumb*:
+
+- $\alpha$
+  - shifts the density function curve right
+  - higher values move the peak toward 1 (more successes)
+- $\beta$
+  - shifts the density function curve left
+  - higher values move the peak toward 0.
+- Equal values of $\alpha$ and $\beta$ lead to a symmetrical distribution
+- When $\alpha = \beta$ the distribution is centered at 0.5
+- When $\alpha$ and $\beta$ increase together, the density function becomes narrower (i.e., decreased dispersion) and taller (i.e., increased density/frequency).
+
+### Some Sample Beta Distributions
+
+The best way I know to gain familiarity with the beta distribution is to look at the density function for various combinations of $\alpha$ and $\beta$. Let's start by looking at different combinations of $\alpha = \beta$:
+
+```{r, echo=FALSE, fig.width=12, fig.height=8}
+
+vals<-c(0.5, 1, 2, 3, 4, 5, 8, 10)
+
+# combos<-expand.grid(vals, vals)
+
+par(mfrow=c(2, 4))
+
+x<-seq(0,1,0.01)
+
+offset<-0
+
+for (v in vals)
+{
+  walpha<-v
+  wbeta<-v
+  plot(x, 
+       dbeta(x, walpha, wbeta),
+       main=bquote(list(alpha == .(walpha), 
+                        beta == .(wbeta))),
+       ylab=expression(f(x)),
+       ylim=c(0,4),
+       type='l')
+}
+
+par(mfrow=c(1,1))
+
+```
+
+As expected, as the values of $\alpha$ and $\beta$ increase, the density functions become narrower and higher (i.e., the variance decreases and the probability near the mean increases). 
+
+Looking at the special case where $\alpha=0.5$, $\beta=0.5$, we see that the density function is bimodal. Let's see what happens for other combinations of $\alpha \leq 1$, $\beta \leq 1$:
+
+```{r, echo=FALSE, fig.width=12, fig.height=12}
+
+vals<-seq(0.1, 1.0, 0.1)
+
+# combos<-expand.grid(vals, vals)
+
+par(mfrow=c(4, 3))
+
+x<-seq(0,1,0.01)
+
+offset<-0
+
+for (v in vals)
+{
+  walpha<-v
+  wbeta<-v
+  plot(x, 
+       dbeta(x, walpha, wbeta),
+       main=bquote(list(alpha == .(walpha), 
+                        beta == .(wbeta))),
+       ylab=expression(f(x)),
+       ylim=c(0,5),
+       type='l')
+}
+
+par(mfrow=c(1,1))
+
+```
+
+It seems that the *rules of thumb* we noted earlier mischaracterize the effect of increasing $\alpha$ and $\beta$ for these *inverted* beta distributions. Here we see that as $\alpha$ and $\beta$ approach 1, the density function approaches the density of a continuous uniform distribution. Moreover, we see that the density for any *all* values of $x$ are decreasing. This contrasts with the density functions we saw with $\alpha = \beta$, $\alpha, \beta > 1$, where we saw the distributions becoming taller and narrower with increase $\alpha$ and $\beta$.
+
+Now let's see what happens as we increase the value of $\beta$ while holding $\alpha$ constant.
+
+```{r, echo=FALSE, fig.width=14, fig.height=14}
+vals<-c(0.5, 1, 2, 3, 4, 5)
+
+combos<-expand.grid(vals, vals)
+
+par(mfrow=c(6, 6))
+
+for (alpha in vals)
+{
+  for (beta in vals)
+  {
+    plot(x, 
+         dbeta(x, alpha, beta),
+         main=bquote(list(alpha == .(alpha), 
+                          beta == .(beta))),
+         ylab=expression(f(x)),
+         ylim=c(0,12),
+         type='l')
+  }
+}
+
+par(mfrow=c(1,1))
+
+```
+
+And for completeness, here we have the density functions varying $\alpha$ within constant $\beta$
+
+
+```{r, echo=FALSE, fig.width=14, fig.height=14}
+vals<-c(0.5, 1, 2, 3, 4, 5)
+
+combos<-expand.grid(vals, vals)
+
+par(mfrow=c(6, 6))
+
+for (beta in vals)
+{
+  for (alpha in vals)
+  {
+    plot(x, 
+         dbeta(x, alpha, beta),
+         main=bquote(list(alpha == .(alpha), 
+                          beta == .(beta))),
+         ylab=expression(f(x)),
+         ylim=c(0,13),
+         type='l')
+  }
+}
+
+par(mfrow=c(1,1))
+
+```
+
+### Beta Distribution Known Properties
+
+For *any* beta distribution with bounds $[a,b]$ and shape $\alpha, \beta$:
+
+$$\mu_x = E[x] = a + (b-a)\frac{\alpha}{\alpha + \beta}$$
+$$\sigma_x^2 = V[x] = (b-a)^2\frac{\alpha \beta }{(\alpha + \beta)^2(\alpha + \beta + 1)}$$
+$$\sigma_x = \sqrt{\sigma_x^2}$$
+
+
+### Beta Probability Density Function
+
+As with all continuous distributions, the beta's *probability density* function *does not represent a point probability*; recall that $Pr\{X = x\} \equiv 0$. The beta distributions's probability denisty function is:
+
+$$f(x) = \frac{y^{\alpha-1}(1-y)^{\beta-1}}{B(y;\alpha,\beta)}$$
+where $y = \frac{x-a}{b-a}$, $B(y;\alpha,\beta) = \int_{0}^{y} t^{\alpha-1}(1-t)^{\beta-1}dt$. Note that $y$ is used to transform the value of $x$ from a beta distribution with bounds $[a, b]$ to a *standard* beta distribution with bounds $[0, 1]$. This simplifies evaluation of beta density functions. 
+
+### Cumulative Probability Function
+
+As with *all* continuous probability distributions, the beta distribution's  cumulative probability is calculated by integrating the density function between the lower bound and $x$:
+
+$$Pr\{X \leq x\} = F(x) = I_y (\alpha, \beta)$$
+where
+
+$$I_y(\alpha, \beta) = \frac{B(y; \alpha, \beta)}{B(\alpha, \beta)}$$
+and
+
+$$B(\alpha,\beta) = \int_0^1 t^{\alpha-1}(1-t)^{\beta-1}dt$$
+
+
+
+### Inverse Cumulative Probability
+
+Conceptually, the inverse cumulative probability function can be represented as:
+
+$$F^{-1}(\alpha) = x:F(x) = \alpha$$
+However, no closed form calculation exists for $F^{-1}(x)$, which must be calculated using numerical methods.
+
+### Mode
+
+Calculating the mode for a beta distribution depends on the values of $\alpha$ and $\beta$.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+
+library(knitr)
+library(kableExtra)
+
+```
+
+```{r, echo=FALSE, eval=FALSE, results='asis', message=FALSE, warning=FALSE}
+library(knitr)
+library(kableExtra)
+
+# Using R's raw string syntax R"(...)" allows single backslashes in R 4.0+
+
+# Standard R dataframe with inline math strings
+df <- data.frame(
+  Metric = c("Mean", "Variance"),
+  Formula = c(r"(\(\bar{x} = \frac{1}{n}\sum x_i\))", r"(\(s^2 = \frac{\sum(x_i - \bar{x})^2}{n-1}\))"),
+  Value = c(10.5, 2.1)
+)
+
+# Render as HTML for web documents
+kbl(df, format = "html", escape = FALSE) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"),
+                full_width = FALSE)
+```
+
+
+```{r, echo=FALSE, warning=FALSE}
+#results='asis', 
+
+conditions<-c(r"($\alpha<1, \beta<1$\)", 
+              r"($\alpha=1, \beta=1$\)",
+              r"($\alpha>1, \beta>1$\)")
+
+mode<-c(r"(Does not exist)",
+        r"(Any $x \in [a, b]$\)",
+        r"($a +(b-a) \frac{\alpha - 1}{\alpha + \beta + 2}$)")
+
+
+# Create sample data with embedded LaTeX math
+df <- data.frame(Condition = conditions,
+                 Mode = mode
+)
+
+# Render the table
+kbl(df, 
+    format = "html", 
+    booktabs=TRUE, 
+    escape = FALSE, 
+    caption = "Beta Distribution Mode") %>%
+  kable_styling(bootstrap_options="striped", 
+                full_width=FALSE)
+
+  # kable_styling(latex_options = "hold_position")
+      
+```
+
+
+## The Beta Distribution in Use
+
+Considering the complexity of the expressions for $f(x)$, $F(x)$, and the lack of a closed form for $F^{-1}(x)$, we would be hard pressed to work with beta distributions if we had to calculate beta probabilities manually! Fortunately, Excel, R, and Python all provide beta distribution support. 
+
+```{r, echo=FALSE, warning=FALSE}
+#results='asis', 
+
+calculation<-c(r"($f(x)$\)", 
+              r"($F(x) = Pr\{X \leq x\}$\)",
+              r"($F^{-1}(prob)$\)")
+
+excel<-c(r"(BETA.DIST($x, \alpha, \beta, 0, a, b$))",
+        r"(BETA.DIST($x, \alpha, \beta, 1, a, b$))",
+        r"(BETA.INV($prob, \alpha, \beta, a, b$))")
+
+rcode<-c(r"(dbeta$(\frac{x-a}{b-a}, \alpha, \beta)$)",
+        r"(pbeta$(\frac{x-a}{b-a}, \alpha, \beta)$)",
+        r"($a + (b - a) \thinspace *$ qbeta($prob, \alpha, \beta$))")
+
+scipy<-c(r"(beta.pdf$(\frac{x-a}{b-a}, \alpha, \beta, a, b - a)$)",
+        r"(beta.cdf$(\frac{x-a}{b-a}, \alpha, \beta, a, b - a)$)",
+        r"($a + (b - a) \thinspace *$ beta.ppf($prob, \alpha, \beta$))")
+
+
+# Create sample data with embedded LaTeX math
+df <- data.frame('To Calculate' = calculation,
+                 Excel = excel,
+                 R = rcode,
+                 Python = scipy
+)
+
+# Render the table
+kbl(df, 
+    format = "html", 
+    booktabs=TRUE, 
+    escape = FALSE, 
+    caption = "Beta Distribution Mode") %>%
+  kable_styling(bootstrap_options="striped", 
+                full_width=FALSE)
+
+  # kable_styling(latex_options = "hold_position")
+      
+```
+
+the sections below highlight the nuances involved in calculating beta probabilities in Excel, R, and SciPy (Python) all have their nuances (i.e., explain the calculations in the table above).
+
+### Beta distribution functions in Excel
+
+Excel's beta distribution functions accept all four beta distribution parameters, $\alpha, \beta, a, b$ exactly as described above. However, Excel provides a single function, BETA.DIST, to calculate both PDF and CDF. BETA.DIST's *third* parameter indicates whether to calculate the PDF (0) or the CDF (1) for the beta distribution.
+
+### Beta distribution functions in R
+
+R provides functions only for a *standard* beta distribution. The R entries in the table above reflect performing explicit transformations to enable us to use R's functions for general beta distributions. 
+
+The following code illustrates using R to calculate various probabilities for a random variable $X \sim beta(2, 1, 10, 15)$.
+
+```{r}
+alpha <- 2
+beta <- 1
+a <- 10
+b <- 15
+x <- 12.5
+prob <- 0.82
+
+fx <- dbeta( (x-a)/(b-a), alpha, beta)
+Fx <- pbeta( (x-a)/(b-a), alpha, beta)
+invFx <-a + (b - a) * qbeta(prob, alpha, beta)
+
+```
+
+The results are:
+
+- $f(x) = `r fx`$
+- $F(x) = `r Fx`$
+- $F^{-1}(x) = `r invFx`$
+
+
+### Beta Distribution functions in Python (SciPy)
+
+SciPy allows us to use its distribution functions in two ways:
+
+- Directly, passing *all* distribution parameters
+- Using frozen distributions (which *remember* the distribution's parameters).
+
+Either way, to access SciPy's beta distribution, we must first import  **scipy.stats.beta**. 
+
+The following code two examples illustrate using SciPy to calculate various probabilities for a random variable $X \sim beta(2, 1, 10, 15)$ (the same as in the R example above). 
+
+#### Using SciPy Probability Functions
+
+SciPy uses a different (and potentially confusing convention) for its beta distribution parameters. These are:
+
+- $a$ - what is conventionally referred to as $\alpha$
+- $b$ - what is conventionally reffered to as $\beta$
+- $loc$ - the lower bound of the distribution (i.e., the conventional $a$)
+- $scale$ - the *range*, of the distribution, i.e., the difference between the upper and lower bounds.
+
+To specify the scale parameter to SciPy, we simply calculate $b - a$ (assuming the *normal* parameter names, not SciPy's). You can see why this is a little confusing...
+
+The Python code below defines variables for each of the beta distribution parameters as we've been discussing them (e.g., $\alpha, \beta, a, b$). It then illustrates using them to call the beta distribution pdf, cdf, and ppf (inverse cumulative probability) functions directly. 
+
+```{python, eval=TRUE, results='asis'}
+from scipy.stats import beta
+
+alpha_parm = 2
+beta_parm = 1
+a = 10
+b = 15
+x = 12.5
+prob = 0.82
+
+# We have to pass all distribution parmeters in every call
+fx = round(beta.pdf(x, alpha_parm, beta_parm, a, b - a), 4)
+Fx = round(beta.cdf(x, alpha_parm, beta_parm, a, b - a),4)
+invFx = round(beta.ppf(prob, alpha_parm, beta_parm, a, b - a), 4)
+
+```
+
+```{r, echo=FALSE}
+
+py_fx = py$fx
+py_Fx = py$Fx
+py_invFx = py$invFx
+
+```
+
+
+The results are:
+
+- $f(x) = `r py_fx`$
+- $F(x) = `r py_Fx`$
+- $F^{-1}(x) = `r py_invFx`$
+
+Note that the probability density calculated by SciPy does not equal the probability density calculated by R. This is because R calculates *unscaled* probability density values whereas SciPy scales the densities that it calculates based on the distributions bounds. We can *manually* scale R's unscaled values to see that we would obtain the same result as SciPy:
+
+$$f_{scaled}(x) = \frac{f(x)}{b - a}$$
+
+In the case of this example, R returned $f(x) = `r fx`$. Thus to scale this result, we would calculate:
+
+$$f_{scaled}(x) = \frac{f(x)}{b - a} = \frac{`r fx`}{`r b` - `r a`} = \frac{`r fx`}{`r b - a`} = `r fx / (b - a)`$$
+which matches our SciPy result!
+
+#### Using SciPy Frozen Distribution
+
+This example instantiates and uses a beta frozen distribution object to calculate the probabilities. When instantiating a frozen beta distribution, we simply pass the expected arguments (see previous example) to the constructor.
+
+```{python, eval=TRUE, results='asis'}
+from scipy.stats import beta
+
+alpha_parm = 2
+beta_parm = 1
+a = 10
+b = 15
+x = 12.5
+prob = 0.82
+
+# We pass the distribution parameters when instantiating the beta distribution object
+dist = beta(alpha_parm, beta_parm, a, b - a)
+
+# Because dist knows its parameters, we omit them from the method calls
+fx_frozen = round(dist.pdf(x), 4)
+Fx_frozen = round(dist.cdf(x),4)
+invFx_frozen = round(dist.ppf(prob), 4)
+
+```
+
+```{r, echo=FALSE}
+
+py_fx_frozen = py$fx_frozen
+py_Fx_frozen = py$Fx_frozen
+py_invFx_frozen = py$invFx_frozen
+
+```
+
+The results are:
+
+- $f(x) = `r py_fx_frozen`$
+- $F(x) = `r py_Fx_frozen`$
+- $F^{-1}(x) = `r py_invFx_frozen`$
+
+Personally, I much prefer using SciPy frozen distributions and almost always do so. The code is cleaner, and it's much easier to pass a single frozen distribution object to a function call, then it is to pass all of the distributions parameters.
+
+## Example Application
+
+Joe currently has expended $60$ hours on a programming task which is believed to have a duration $t$ which follows a beta distribution. Specifically, it is believed that $t \sim beta(4, 4, 20, 65). Should we be concerned that Joe isn't finished with the task?
+
+To answer this question, we first calculate $Pr\{T > 60\} = 1 - Pr\{T \leq 60\}$. Let's calculate this using Python:
+
+```{python}
+alpha_parm = 4
+beta_parm = 4
+a = 20
+b = 65
+t = 60
+
+Fx_comp = round(1 - beta.cdf(t, alpha_parm, beta_parm, a, b - a), 4)
+
+```
+
+```{r, echo=FALSE}
+t <- py$t
+Fx_comp <- py$Fx_comp
+```
+
+So, the probability that the task should require more than 60 hours is
+
+$$\bar{F}(`r t`) = 1 - F(`r t`) = `r Fx_comp`$$
+In other words, there's only a $`r Fx_comp`$ probability that the task should require more than $`r t`$ hours. Therefore, we should *definitely* be concerned!
+
+We can gain some intuition for this result by looking at the probability density function for the task's duration.
+
+```{r, echo=FALSE}
+
+alpha <- py$alpha_parm
+beta <- py$beta_parm
+a <- py$a
+b <- py$b
+
+x <- seq(a, b, 0.5)
+density <- dbeta( (x - a)/(b - a), alpha, beta) / (b - a)
+plot(x, density, type='l',
+     xlab=expression(t),
+     ylab=expression(f[scaled](t)))
+
+```
+
+This density function plot clearly shows that the area under the curve to the right of $`r t`$ is *very* small. Looking at this plot, we have no doubt that Joe should already have completed this task. Now, we don't know why he hasn't, which could be due to any number of reasons, including:
+
+- We estimated the task distribution incorrectly
+- Joe lacked the sufficient experience to complete the task according to expectation (i.e., our fault for assigning him to a task he wasn't prepared for)
+- Joe encountered technical difficulties that were reasonably out of his control
+- Joe has been googing off.
+
+We *still* need to understand *why* Joe is late, and get things back on track, but at least now we are confident that the task is late and can begin to take decisive action.
+
+
