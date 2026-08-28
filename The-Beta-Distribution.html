@@ -832,17 +832,17 @@ beta.ppf(<span class="math inline">\(prob, \alpha, \beta\)</span>)
 </tr>
 </tbody>
 </table>
-<p>the sections below highlight the nuances involved in calculating beta
+<p>The sections below highlight the nuances involved in calculating beta
 probabilities in Excel, R, and SciPy (Python) all have their nuances
 (i.e., explain the calculations in the table above).</p>
 <div id="beta-distribution-functions-in-excel" class="section level3">
 <h3>Beta distribution functions in Excel</h3>
-<p>Excel’s beta distribution functions accept all four beta distribution
-parameters, <span class="math inline">\(\alpha, \beta, a, b\)</span>
-exactly as described above. However, Excel provides a single function,
-BETA.DIST, to calculate both PDF and CDF. BETA.DIST’s <em>third</em>
-parameter indicates whether to calculate the PDF (0) or the CDF (1) for
-the beta distribution.</p>
+<p>Excel’s beta distribution functions accepts all four beta
+distribution parameters, <span class="math inline">\(\alpha, \beta, a,
+b\)</span> exactly as described above. However, Excel provides a single
+function, BETA.DIST, to calculate both PDF and CDF. BETA.DIST’s
+<em>third</em> parameter indicates whether to calculate the PDF (0) or
+the CDF (1) for the beta distribution.</p>
 </div>
 <div id="beta-distribution-functions-in-r" class="section level3">
 <h3>Beta distribution functions in R</h3>
@@ -865,9 +865,9 @@ Fx &lt;- pbeta( (x-a)/(b-a), alpha, beta)
 invFx &lt;-a + (b - a) * qbeta(prob, alpha, beta)</code></pre>
 <p>The results are:</p>
 <ul>
-<li><span class="math inline">\(f(x) = 1\)</span></li>
-<li><span class="math inline">\(F(x) = 0.25\)</span></li>
-<li><span class="math inline">\(F^{-1}(x) = 14.5276926\)</span></li>
+<li><span class="math inline">\(f(12.5) = 1\)</span></li>
+<li><span class="math inline">\(F(12.5) = 0.25\)</span></li>
+<li><span class="math inline">\(F^{-1}(0.82) = 14.5276926\)</span></li>
 </ul>
 </div>
 <div id="beta-distribution-functions-in-python-scipy" class="section level3">
@@ -920,9 +920,9 @@ Fx = round(beta.cdf(x, alpha_parm, beta_parm, a, b - a),4)
 invFx = round(beta.ppf(prob, alpha_parm, beta_parm, a, b - a), 4)</code></pre>
 <p>The results are:</p>
 <ul>
-<li><span class="math inline">\(f(x) = 0.2\)</span></li>
-<li><span class="math inline">\(F(x) = 0.25\)</span></li>
-<li><span class="math inline">\(F^{-1}(x) = 14.5277\)</span></li>
+<li><span class="math inline">\(f(12.5) = 0.2\)</span></li>
+<li><span class="math inline">\(F(12.5) = 0.25\)</span></li>
+<li><span class="math inline">\(F^{-1}(0.82) = 14.5277\)</span></li>
 </ul>
 <p>Note that the probability density calculated by SciPy does not equal
 the probability density calculated by R. This is because R calculates
@@ -962,9 +962,9 @@ Fx_frozen = round(dist.cdf(x),4)
 invFx_frozen = round(dist.ppf(prob), 4)</code></pre>
 <p>The results are:</p>
 <ul>
-<li><span class="math inline">\(f(x) = 0.2\)</span></li>
-<li><span class="math inline">\(F(x) = 0.25\)</span></li>
-<li><span class="math inline">\(F^{-1}(x) = 14.5277\)</span></li>
+<li><span class="math inline">\(f(12.5) = 0.2\)</span></li>
+<li><span class="math inline">\(F(12.5) = 0.25\)</span></li>
+<li><span class="math inline">\(F^{-1}(0.82) = 14.5277\)</span></li>
 </ul>
 <p>Personally, I much prefer using SciPy frozen distributions and almost
 always do so. The code is cleaner, and it’s much easier to pass a single

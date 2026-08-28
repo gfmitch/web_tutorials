@@ -337,9 +337,9 @@ invFx <-a + (b - a) * qbeta(prob, alpha, beta)
 
 The results are:
 
-- $f(x) = `r fx`$
-- $F(x) = `r Fx`$
-- $F^{-1}(x) = `r invFx`$
+- $f(`r x`) = `r fx`$
+- $F(`r x`) = `r Fx`$
+- $F^{-1}(`r prob`) = `r invFx`$
 
 
 ### Beta Distribution functions in Python (SciPy)
@@ -394,9 +394,9 @@ py_invFx = py$invFx
 
 The results are:
 
-- $f(x) = `r py_fx`$
-- $F(x) = `r py_Fx`$
-- $F^{-1}(x) = `r py_invFx`$
+- $f(`r x`) = `r py_fx`$
+- $F(`r x`) = `r py_Fx`$
+- $F^{-1}(`r prob`) = `r py_invFx`$
 
 Note that the probability density calculated by SciPy does not equal the probability density calculated by R. This is because R calculates *unscaled* probability density values whereas SciPy scales the densities that it calculates based on the distributions bounds. We can *manually* scale R's unscaled values to see that we would obtain the same result as SciPy:
 
@@ -432,7 +432,8 @@ invFx_frozen = round(dist.ppf(prob), 4)
 ```
 
 ```{r, echo=FALSE}
-
+x<-py$x
+prob<-py$prob
 py_fx_frozen = py$fx_frozen
 py_Fx_frozen = py$Fx_frozen
 py_invFx_frozen = py$invFx_frozen
@@ -441,9 +442,9 @@ py_invFx_frozen = py$invFx_frozen
 
 The results are:
 
-- $f(x) = `r py_fx_frozen`$
-- $F(x) = `r py_Fx_frozen`$
-- $F^{-1}(x) = `r py_invFx_frozen`$
+- $f(`r x`) = `r py_fx_frozen`$
+- $F(`r x`) = `r py_Fx_frozen`$
+- $F^{-1}(`r prob`) = `r py_invFx_frozen`$
 
 Personally, I much prefer using SciPy frozen distributions and almost always do so. The code is cleaner, and it's much easier to pass a single frozen distribution object to a function call, then it is to pass all of the distributions parameters.
 
