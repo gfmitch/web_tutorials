@@ -1,0 +1,544 @@
+---
+title: "The Weibull Distribution"
+author: "Gary Mitchell"
+date: "August 25, 2026"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+suppressMessages(require(reticulate))
+suppressMessages(require(kableExtra))
+```
+
+
+The Weibull distribution can be thought of as a *family* of related distributions. As we shall see, the *exponential* distribution is just a special case of the Weibull distribution.
+
+The Weibull distribution is a flexible, non-negative (i.e., bounded below), continuous distribution. It has many potential applications in business, especially those involving time between events and time to failure. 
+
+The Weibull distribution is a real-valued distribution with two parameters. The standard parameterization of the Weibull distribution utilizes $\lambda$ as a scale parameter. Unfortunately, this differs from the role of $\lambda$ in the Poisson and exponential distributions. To (hopefully) reduce confusion around these distributions, we will define the Weibull distribution using the following parameterization:
+
+- Rate parameter $\lambda = \frac{1}{\beta}$
+- Shape parameter $k$
+
+where $\beta$ represents the scale parameter in the standard Weibull parameterization.
+
+
+The *scale* parameter is related to the rate parameter of Poisson and exponential distributions as follows:
+
+To communicate that we have a random variable $X$ that follows a Weibull distribution with shape $k$, and rate $\lambda$, we say
+
+$$X \sim Weibull(k, \lambda)$$
+
+### Understanding *Shape*
+
+Understanding the *shape* parameter, $k$, is a little easier than understanding the beta distribution's shape parameters. Still, to gain some *intuition* about the Weibull distribution, you can (loosely) think of $k$ as determining how the failure rate changes over time.
+
+To further our understanding of the Weibull distribution, we can observe the following *rules of thumb*:
+
+- $k < 1$
+  - Items fail fast initially
+  - Failure risk drops for items that survive (i.e., do not fail early)
+- $k = 1$
+  - Special case where the Weibull distribution simplifies to an exponential distribution
+- $1 < k < 3.5$
+  - The risk of failure grows as time passes (e.g., item wears out)
+  - Useful for modeling fatigue and mechanical degradation over time
+- $k \approx 3.5$ or higher
+  - Approaches a symmetrical shape similar to a normal distribution
+  - Useful for modleing highly predictable failure: items rarely fail early, performing reliably for a lengthy period, then the entire population begins to fail with very high probability at the same time.
+  
+
+### Some Sample Weibull Distributions
+
+The best way I know to gain familiarity with the beta distribution is to look at the density function for various combinations of $\alpha$ and $\beta$. Let's start by looking at different values of $k$ with $\lambda = 1$:
+
+```{r, echo=FALSE, fig.width=12, fig.height=8}
+
+vals<-c(0.5, 1, 2, 3, 5, 10)
+colors<-c('red', 'blue', 'green', 'orange', 'purple', 'violet')
+lambda<-1
+
+# combos<-expand.grid(vals, vals)
+
+x<-seq(0,4,0.01)
+
+plot_labels <- sapply(vals, function(i) bquote(k == .(i)))
+
+plot(x, 
+     dweibull(x, vals[1], lambda),
+     main=bquote(list(k == .(vals[1]), 
+                      lambda == .(lambda))),
+     ylab=expression(f(x)),
+     ylim=c(0,5),
+     type='l',
+     col=colors[1])
+
+
+for (i in 2:length(vals))
+{
+  lines(x, 
+       dweibull(x, vals[i], lambda),
+       type='l',
+       col=colors[i])
+}
+
+legend("topright",
+       legend=plot_labels,
+       col=colors,
+       lty=1,
+       title='Weibull Shape Parameter')
+
+par(mfrow=c(1,1))
+
+```
+
+As expected, as the values of $\alpha$ and $\beta$ increase, the density functions become narrower and higher (i.e., the variance decreases and the probability near the mean increases). 
+
+Looking at the special case where $\alpha=0.5$, $\beta=0.5$, we see that the density function is bimodal. Let's see what happens for other combinations of $\alpha \leq 1$, $\beta \leq 1$:
+
+```{r, echo=FALSE, fig.width=12, fig.height=12}
+
+vals<-seq(0.1, 1.0, 0.1)
+
+# combos<-expand.grid(vals, vals)
+
+par(mfrow=c(4, 3))
+
+x<-seq(0,1,0.01)
+
+offset<-0
+
+for (v in vals)
+{
+  walpha<-v
+  wbeta<-v
+  plot(x, 
+       dbeta(x, walpha, wbeta),
+       main=bquote(list(alpha == .(walpha), 
+                        beta == .(wbeta))),
+       ylab=expression(f(x)),
+       ylim=c(0,5),
+       type='l')
+}
+
+par(mfrow=c(1,1))
+
+```
+
+It seems that the *rules of thumb* we noted earlier mischaracterize the effect of increasing $\alpha$ and $\beta$ for these *inverted* beta distributions. Here we see that as $\alpha$ and $\beta$ approach 1, the density function approaches the density of a continuous uniform distribution. Moreover, we see that the density for any *all* values of $x$ are decreasing. This contrasts with the density functions we saw with $\alpha = \beta$, $\alpha, \beta > 1$, where we saw the distributions becoming taller and narrower with increase $\alpha$ and $\beta$.
+
+Now let's see what happens as we increase the value of $\beta$ while holding $\alpha$ constant.
+
+```{r, echo=FALSE, fig.width=14, fig.height=14}
+vals<-c(0.5, 1, 2, 3, 4, 5)
+
+combos<-expand.grid(vals, vals)
+
+par(mfrow=c(6, 6))
+
+for (alpha in vals)
+{
+  for (beta in vals)
+  {
+    plot(x, 
+         dbeta(x, alpha, beta),
+         main=bquote(list(alpha == .(alpha), 
+                          beta == .(beta))),
+         ylab=expression(f(x)),
+         ylim=c(0,12),
+         type='l')
+  }
+}
+
+par(mfrow=c(1,1))
+
+```
+
+And for completeness, here we have the density functions varying $\alpha$ within constant $\beta$
+
+
+```{r, echo=FALSE, fig.width=14, fig.height=14}
+vals<-c(0.5, 1, 2, 3, 4, 5)
+
+combos<-expand.grid(vals, vals)
+
+par(mfrow=c(6, 6))
+
+for (beta in vals)
+{
+  for (alpha in vals)
+  {
+    plot(x, 
+         dbeta(x, alpha, beta),
+         main=bquote(list(alpha == .(alpha), 
+                          beta == .(beta))),
+         ylab=expression(f(x)),
+         ylim=c(0,13),
+         type='l')
+  }
+}
+
+par(mfrow=c(1,1))
+
+```
+
+### Weibull Distribution Known Properties
+
+For *any* standard Weibull distribution:
+
+$$\mu_x = E[x] = \frac{1}{\lambda}\Gamma\biggl(1+\frac{1}{k}\biggr)$$
+where the Gamma function, $\Gamma(n)=\int_0^\infty t^{n-1}e^{-t}dt$ extends the factorial function to continuous numbers. The variance of the standard Weibull distribution is given by:
+
+$$\sigma_x^2 = V[x] = \Biggr[\Gamma\biggl(1+\frac{2}{k}\biggr)-\biggl(\Gamma\left(1+\frac{1}{k}\right)\biggr)^2\Biggr]$$
+
+And as always, $$\sigma_x = \sqrt{\sigma_x^2}$$
+
+
+### Standard Weibull Probability Density Function
+
+As with all continuous distributions, the standard Weibull's *probability density* function *does not represent a point probability*; recall that $Pr\{X = x\} \equiv 0$. The beta distributions's probability denisty function is:
+
+$$
+  f(x) =
+  \begin{cases}
+    \lambda k(\lambda x)^{k-1}e^{-(\lambda x)^k},&x \geq  0 \\
+    0&x < 0 
+  \end{cases}
+$$
+Note: for the special case where $k=1$, the PDF simplifies to
+
+$$
+  f(x) =
+  \begin{cases}
+    \lambda e^{-\lambda x},&x \geq  0 \\
+    0&x < 0 
+  \end{cases}
+$$
+In other words, the Weibull distribution with $k=1$ simplifies to an exponential distribution.
+
+Remember, this form of the PDF is written such that the use of $\lambda$ is consistent witht the exponential distribution, i.e., $\lambda$ is the *rate* of the distribution. An alternative formulation of the Weibull distribution uses $\alpha = \frac{1}{\lambda}$:
+
+$$
+  f(x) =
+  \begin{cases}
+    \frac{k}{\alpha}(\frac{x}{\alpha})^{k-1}e^{-(\frac{x}{\alpha})^k},&x \geq  0, \alpha > 0 \\
+    0&x < 0 
+  \end{cases}
+$$
+In this formulation, $\alpha$ can be interpreted as the average time between failures (or arrivals). I've presented this form so that you won't be thrown off if you see the Weibull distribution stated this way in reference material you may come across. However, for this class, we will utilize the first formulation stated in terms of $\lambda$.
+
+
+### Cumulative Probability Function
+
+As with *all* continuous probability distributions, the beta distribution's  cumulative probability is calculated by integrating the density function between the lower bound and $x$:
+
+$$
+Pr\{X \leq x\} = F(x) = 
+  \begin{cases}
+    1-e^{-(\lambda x)^k}, & x\geq 0\\
+    0, & x<0
+    \end{cases}
+$$
+
+
+### Inverse Cumulative Probability
+
+Conceptually, the inverse cumulative probability function for a Weibull distribution is:
+
+$$F^{-1}(p) = x:F(x) \geq p = \frac{(-ln(1-p))^\frac{1}{k}}{\lambda}$$
+
+### Mode
+
+The mode for the standard Weibull distribution can be expressed completely in terms of $\lambda$ and $k$:
+
+$$
+\mathbf{M_o}(X) =
+  \begin{cases}
+      \lambda \bigl( \frac{k-1}{k} \bigr)^{\frac{1}{k}}, & k > 1\\
+      0, & x<0
+      \end{cases}
+$$
+
+where $\mathbf{M_o}(X)$ is a common convention to denote the mode of $X$.
+
+### Median
+
+The median of the standard Weibull distribution is similarly expressed completely in terms of $\lambda$ and $k$:
+
+$$\tilde{x} = \mathbf{M_d}(X) = \lambda \thinspace ln(2)^{\frac{1}{k}}$$
+where $\tilde{X}$ and $\mathbf{M_d(X)}$ are both conventions for the median of $X$
+
+### The General Weibull Distribution
+
+The general Weibull distribution is a *shifted* distribution. While we can certainly redefine the density function and all of the summary metrics, it is easiest to just define the general Weibull distribution in terms of the shift:
+
+$$f_a(x)=f(x-a)$$
+$$F_a(x)=F(x-a)$$
+
+$$F_a^{-1}(p) = a + F^{-1}(p)$$
+$$\mu_{x_a}=E_a[x] = a + E[x]=a +\mu_x$$
+
+where we use the *sub-subscript* $a$ as a notational convention indicating the *the shifted distribution for* $x$, e.g., $\mu_{x_a}$ is the mean of the shifted distribution for $x$.
+
+Because there is no variation in the shift,
+
+$$\sigma_{x_a}^2 = \sigma_x^2$$
+
+$$\mathbf{M_{o_a}(x)} = a + \mathbf{M_o(X)}$$
+
+and finally
+
+$$\mathbf{M_{d_a}(X)} = a + \mathbf{M_d(X)}$$
+
+## The Weibull Distribution in Use
+
+Although the expressions for $f(x)$, $F(x)$, and  $F^{-1}(p)$ are manageable in Excel, R, and Python, It's nice that we don't have to (at least for $f(x)$ and $F(x)$; Excel does not provide an inverse cumulative Weibull probability function. 
+
+```{r, echo=FALSE, warning=FALSE}
+#results='asis', 
+
+calculation<-c(r"($f(x)$\)", 
+              r"($F(x) = Pr\{X \leq x\}$\)",
+              r"($F^{-1}(prob)$\)")
+
+excel<-c(r"(WEIBULL.DIST($x, k, \alpha, 0$))",
+        r"(WEIBULL.DIST($x, k, \alpha, 1$))",
+        r"($(-ln(1-p))\text{^}(1/k) / \lambda$)")
+
+rcode<-c(r"($dweibull(x, k, \alpha)$)",
+        r"($pweibull(x, k, \alpha)$)",
+        r"($qweibull(p, k, \alpha)$)")
+
+scipy<-c(r"($weibull\_min.pdf(x, k, a, \alpha)$)",
+        r"($weibull\_min.cdf(x, k, a, \alpha)$)",
+        r"($weibull\_min.ppf(p, k, a, \alpha)$)")
+
+
+# Create sample data with embedded LaTeX math
+df <- data.frame('To Calculate' = calculation,
+                 Excel = excel,
+                 R = rcode,
+                 Python = scipy
+)
+
+# Render the table
+kbl(df, 
+    format = "html", 
+    booktabs=TRUE, 
+    escape = FALSE, 
+    caption = "Beta Distribution Mode") %>%
+  kable_styling(bootstrap_options="striped", 
+                full_width=FALSE)
+
+  # kable_styling(latex_options = "hold_position")
+      
+```
+
+where $\alpha = \frac{1}{\lambda}$, and $a$ is the shift.
+
+
+the sections below highlight the nuances involved in calculating beta probabilities in Excel, R, and SciPy (Python) all have their nuances (i.e., explain the calculations in the table above).
+
+### Weibull distribution functions in Excel
+
+Excel's Weibull distribution function accepts only the shape and scale parameters (i.e., it does not accept the shift for a general Weibull distribution). However, Excel provides a single function, WEIBULL.DIST, to calculate both PDF and CDF. WEIBULL.DIST's *fourth* parameter indicates whether to calculate the PDF (0) or the CDF (1) for the beta distribution.
+
+### Weibull distribution functions in R
+
+R provides functions only for a *standard* beta distribution (i.e., like Excel, it does not directly support the shift for a General Weibull Distribution).  
+
+The following code illustrates using R to calculate various probabilities for a random variable $X \sim Weibull(2, 1/3)$.
+
+```{r, echo=FALSE}
+b<-1
+a<-1
+```
+
+```{r}
+k<-2
+lambda<-1/3
+alpha <- 1/lambda
+
+x<-5
+
+prob <- 0.82
+
+fx <- round(dweibull( x, k, alpha), 4)
+Fx <- round(pweibull( x, k, alpha), 4)
+invFx <-round(qweibull(prob, k, alpha), 2)
+
+```
+
+The results are:
+
+- $f(`r x`) = `r fx`$
+- $F(`r x`x) = `r Fx`$
+- $F^{-1}(`r prob`) = `r invFx`$
+
+And, to further illustrate the relationship between the exponential and Weibull distributions (as well as transforming \lambda for the call to R's functions), look closely at the following code and resulting graphs.
+
+```{r, fig.width=12, fig.height=6}
+
+x<-seq(0,10,0.1)
+
+par(mfrow=c(1,2))
+k<-1
+lambda<-1/3
+
+# PLot the weibull first
+plot(x, dweibull(x, k, 1/lambda), type='l', main='Weibull', ylab='f(x)')
+
+# Plot the exponential
+plot(x, dexp(x, lambda), type='l', main='Exponential', ylab='f(x)')
+
+
+par(mfrow=c(1,1))
+
+
+```
+
+
+### Weibull Distribution functions in Python (SciPy)
+
+SciPy allows us to use its distribution functions in two ways:
+
+- Directly, passing *all* distribution parameters
+- Using frozen distributions (which *remember* the distribution's parameters).
+
+Either way, to access SciPy's Weibull distribution, we must first import  **scipy.stats.weibull_min**. 
+
+The following code two examples illustrate using SciPy to calculate various probabilities for a random variable $X \sim weibull(2, 1/3)$ (the same as in the R example above). 
+
+#### Using SciPy Probability Functions
+
+SciPy uses a different (and potentially confusing convention) for its beta distribution parameters. These are:
+
+- $c$ - what is conventionally referred to as $k$
+- $loc$ - the lower bound of the distribution (i.e., the conventional $a$)
+- $scale$ - what is conventionally referred to as $\frac{1}{\lambda}$.
+
+The Python code below defines variables for each of the Weibull distribution parameters as we've been discussing them (e.g., $k, \lambda). It then illustrates using them to call the Weibull distribution pdf, cdf, and ppf (inverse cumulative probability) functions directly. 
+
+```{python, eval=TRUE, results='asis'}
+from scipy.stats import weibull_min
+
+k = 2
+
+# lambda is intentionally misspelled below to avoid conflict with Python's
+# reserved work lambda for creating lambda expressions
+lamda = 1/3
+
+x = 5
+prob = 0.82
+
+# We have to pass all distribution parmeters in every call
+fx = round(weibull_min.pdf(x, k, scale=1/lamda), 4)
+Fx = round(weibull_min.cdf(x, k, scale=1/lamda),4)
+invFx = round(weibull_min.ppf(prob, k, scale=1/lamda), 2)
+
+```
+
+```{r, echo=FALSE}
+
+py_fx = py$fx
+py_Fx = py$Fx
+py_invFx = py$invFx
+
+```
+
+
+The results are:
+
+- $f(x) = `r py_fx`$
+- $F(x) = `r py_Fx`$
+- $F^{-1}(x) = `r py_invFx`$
+
+
+#### Using SciPy Frozen Distribution
+
+This example instantiates and uses a weibull_min frozen distribution object to calculate the probabilities. When instantiating a frozen Weibull distribution, we simply pass the expected arguments (see previous example) to the constructor.
+
+```{python, eval=TRUE, results='asis'}
+from scipy.stats import weibull_min
+
+k = 2
+lamda = 1/3
+
+x = 5
+prob = 0.82
+
+# We pass the distribution parameters when instantiating the beta distribution object
+dist = weibull_min(k, scale=1/lamda)
+
+# Because dist knows its parameters, we omit them from the method calls
+fx_frozen = round(dist.pdf(x), 4)
+Fx_frozen = round(dist.cdf(x),4)
+invFx_frozen = round(dist.ppf(prob), 2)
+
+```
+
+```{r, echo=FALSE}
+
+py_fx_frozen = py$fx_frozen
+py_Fx_frozen = py$Fx_frozen
+py_invFx_frozen = py$invFx_frozen
+
+```
+
+The results are:
+
+- $f(x) = `r py_fx_frozen`$
+- $F(x) = `r py_Fx_frozen`$
+- $F^{-1}(x) = `r py_invFx_frozen`$
+
+Personally, I much prefer using SciPy frozen distributions and almost always do so. The code is cleaner, and it's much easier to pass a single frozen distribution object to a function call, then it is to pass all of the distributions parameters.
+
+## Example Application
+
+Assume your company manufactures a product whose wear-out failures increase as a function of time, and wants to know the probability a unit fails within 12 months (with average time to failure of 36 months). Additionally, the company wants to know the expected one-year liability (i.e., the expected warranty cost) for the units shipped to date.
+
+Assuming the time to failure follows a Weibull distribution with $k = 2$ to reflect the increasing failure rate, and given the average time to a failure of 36 months (i.e., $\lambda = 1/36$), then we model time to failure as:
+
+$$T \sim Weibull(2, 1/36)$$
+
+To answer the company's first question, we calculate $Pr\{T <= 12\}$ using the Weibull cumulative distribution function
+
+
+```{python}
+k = 2
+lamda = 1/36
+t = 12
+
+Ft = round(weibull_min.cdf(t, k, scale=1/lamda), 4)
+
+
+```
+
+```{r, echo=FALSE}
+
+t<-py$t
+Ft <- py$Ft
+
+liability<-10000 * 50 * Ft
+```
+
+So, the probability that a unit will fail within 12 months is:
+
+$$F(`r py$t`) = `r Ft`$$
+
+In other words, we can expect `r 100*py$Ft`% of the units to fail within the first 12 months.
+
+Now assume that each warranty claim has an *expected cost* of $\$50$ and we have shipped $10,000$ during the first month of production. We can now calculate the *expected warranty liability* as follows:
+
+$$
+\begin{align}
+  E[liability] & = units\ shipped \times cost\ per\ unit \times Pr\{T \leq `r t`\} \\
+  & = 10,0000 \times \$ 50 \times `r Ft` \\
+  & = \$`r scales::comma(liability)`
+\end{align}  
+$$
+
+
+
+
