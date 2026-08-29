@@ -32,7 +32,7 @@ $$X \sim Weibull(k, \lambda)$$
 
 ### Understanding *Shape*
 
-Understanding the *shape* parameter, $k$, is a little easier than understanding the beta distribution's shape parameters. Still, to gain some *intuition* about the Weibull distribution, you can (loosely) think of $k$ as determining how the failure rate changes over time.
+Understanding the *shape* parameter, $k$, is a little easier than understanding the Weibull distribution's shape parameters. Still, to gain some *intuition* about the Weibull distribution, you can (loosely) think of $k$ as determining how the failure rate changes over time.
 
 To further our understanding of the Weibull distribution, we can observe the following *rules of thumb*:
 
@@ -51,7 +51,7 @@ To further our understanding of the Weibull distribution, we can observe the fol
 
 ### Some Sample Weibull Distributions
 
-The best way I know to gain familiarity with the beta distribution is to look at the density function for various combinations of $\alpha$ and $\beta$. Let's start by looking at different values of $k$ with $\lambda = 1$:
+The best way I know to gain familiarity with the Weibull distribution is to look at the density function for various combinations of $\alpha$ and $\beta$. Let's start by looking at different values of $k$ with $\lambda = 1$:
 
 ```{r, echo=FALSE, fig.width=12, fig.height=8}
 
@@ -108,7 +108,7 @@ And as always, $$\sigma_x = \sqrt{\sigma_x^2}$$
 
 ### Standard Weibull Probability Density Function
 
-As with all continuous distributions, the standard Weibull's *probability density* function *does not represent a point probability*; recall that $Pr\{X = x\} \equiv 0$. The beta distributions's probability denisty function is:
+As with all continuous distributions, the standard Weibull's *probability density* function *does not represent a point probability*; recall that $Pr\{X = x\} \equiv 0$. The Weibull distributions's probability densitty function is:
 
 $$
   f(x) =
@@ -142,7 +142,7 @@ In this formulation, $\alpha$ can be interpreted as the average time between fai
 
 ### Cumulative Probability Function
 
-As with *all* continuous probability distributions, the beta distribution's  cumulative probability is calculated by integrating the density function between the lower bound and $x$:
+As with *all* continuous probability distributions, the Weibull distribution's  cumulative probability is calculated by integrating the density function between the lower bound and $x$:
 
 $$
 Pr\{X \leq x\} = F(x) = 
@@ -238,7 +238,7 @@ kbl(df,
     format = "html", 
     booktabs=TRUE, 
     escape = FALSE, 
-    caption = "Beta Distribution Mode") %>%
+    caption = "Weibull Distribution Mode") %>%
   kable_styling(bootstrap_options="striped", 
                 full_width=FALSE)
 
@@ -249,15 +249,15 @@ kbl(df,
 where $\alpha = \frac{1}{\lambda}$, and $a$ is the shift.
 
 
-the sections below highlight the nuances involved in calculating beta probabilities in Excel, R, and SciPy (Python) all have their nuances (i.e., explain the calculations in the table above).
+the sections below highlight the nuances involved in calculating Weibull probabilities in Excel, R, and SciPy (Python) all have their nuances (i.e., explain the calculations in the table above).
 
 ### Weibull distribution functions in Excel
 
-Excel's Weibull distribution function accepts only the shape and scale parameters (i.e., it does not accept the shift for a general Weibull distribution). However, Excel provides a single function, WEIBULL.DIST, to calculate both PDF and CDF. WEIBULL.DIST's *fourth* parameter indicates whether to calculate the PDF (0) or the CDF (1) for the beta distribution.
+Excel's Weibull distribution function accepts only the shape and scale parameters (i.e., it does not accept the shift for a general Weibull distribution). However, Excel provides a single function, WEIBULL.DIST, to calculate both PDF and CDF. WEIBULL.DIST's *fourth* parameter indicates whether to calculate the PDF (0) or the CDF (1) for the Weibull distribution.
 
 ### Weibull distribution functions in R
 
-R provides functions only for a *standard* beta distribution (i.e., like Excel, it does not directly support the shift for a General Weibull Distribution).  
+R provides functions only for a *standard* Weibull distribution (i.e., like Excel, it does not directly support the shift for a General Weibull Distribution).  
 
 The following code illustrates using R to calculate various probabilities for a random variable $X \sim Weibull(2, 1/3)$.
 
@@ -323,7 +323,7 @@ The following code two examples illustrate using SciPy to calculate various prob
 
 #### Using SciPy Probability Functions
 
-SciPy uses a different (and potentially confusing convention) for its beta distribution parameters. These are:
+SciPy uses a different (and potentially confusing convention) for its Weibull distribution parameters. These are:
 
 - $c$ - what is conventionally referred to as $k$
 - $loc$ - the lower bound of the distribution (i.e., the conventional $a$)
@@ -379,7 +379,7 @@ lamda = 1/3
 x = 5
 prob = 0.82
 
-# We pass the distribution parameters when instantiating the beta distribution object
+# We pass the distribution parameters when instantiating the Weibull distribution object
 dist = weibull_min(k, scale=1/lamda)
 
 # Because dist knows its parameters, we omit them from the method calls
