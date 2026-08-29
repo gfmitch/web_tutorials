@@ -67,8 +67,6 @@ plot_labels <- sapply(vals, function(i) bquote(k == .(i)))
 
 plot(x, 
      dweibull(x, vals[1], lambda),
-     main=bquote(list(k == .(vals[1]), 
-                      lambda == .(lambda))),
      ylab=expression(f(x)),
      ylim=c(0,5),
      type='l',
@@ -249,7 +247,7 @@ kbl(df,
 where $\alpha = \frac{1}{\lambda}$, and $a$ is the shift.
 
 
-the sections below highlight the nuances involved in calculating Weibull probabilities in Excel, R, and SciPy (Python) all have their nuances (i.e., explain the calculations in the table above).
+The sections below highlight the nuances involved in calculating Weibull probabilities in Excel, R, and SciPy (Python) all have their nuances (i.e., explain the calculations in the table above).
 
 ### Weibull distribution functions in Excel
 
@@ -284,7 +282,7 @@ invFx <-round(qweibull(prob, k, alpha), 2)
 The results are:
 
 - $f(`r x`) = `r fx`$
-- $F(`r x`x) = `r Fx`$
+- $F(`r x`) = `r Fx`$
 - $F^{-1}(`r prob`) = `r invFx`$
 
 And, to further illustrate the relationship between the exponential and Weibull distributions (as well as transforming \lambda for the call to R's functions), look closely at the following code and resulting graphs.
