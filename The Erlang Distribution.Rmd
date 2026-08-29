@@ -1,0 +1,414 @@
+---
+title: "The Erlang Distribution"
+author: "Gary Mitchell"
+date: "August 25, 2026"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+suppressMessages(require(reticulate))
+suppressMessages(require(kableExtra))
+```
+
+
+The Erlang distribution is a continuous distribution that models the time between $k$ (i.e., a specified number of) independent events in a Poisson process. For example, the number time between $5$ Poisson arrivals would follow an Erlang distribution with $k = 5$. As we shall see, the *exponential* distribution is a special case of the Erlang distribution.
+
+The Erlang distribution is a non-negative (i.e., bounded below), continuous distribution. It has many potential applications in business, especially those involving time between events and time to failure. 
+
+The Erlang distribution is a real-valued distribution with two parameters:
+
+- $k$ - the shape parameter; a positive integer represent the number of stages or events
+- $\lambda$ - the rate for each Poisson event ($\lambda > 0$).
+
+As with the Poisson and exponential distributions, the average time between events is given by
+
+$$\mu_t = \frac{1}{\lambda}$$
+
+To communicate that we have a random variable $X$ that follows a Erlang distribution with shape $k$, and rate $\lambda$, we say
+
+
+$$X \sim Erlang(k, \lambda)$$
+
+### Understanding *Shape*
+
+Understanding the *shape* parameter, $k$, is easier than understanding the shape parameters for the beta and Weibull distributions. For the Erlang distribution, the shape unambiguosly specifies the number of Poisson events we are modeling (e.g., $k=3$ indicates we are modeling the time between $3$ Poisson events). 
+
+### Some Sample Erlang Distributions
+
+The best way I know to gain familiarity with the Erlang distribution is to look at the density function for different values of $k$. Let's start by looking at different  values of $k$ with $\lambda = 1$:
+
+```{r, echo=FALSE, fig.width=12, fig.height=8}
+
+vals<-c(1, 2, 3, 5, 10, 20)
+colors<-c('red', 'blue', 'green', 'orange', 'purple', 'violet')
+lambda<-1
+
+# combos<-expand.grid(vals, vals)
+
+x<-seq(0,4,0.01)
+
+plot_labels <- sapply(vals, function(i) bquote(k == .(i)))
+
+plot(x, 
+     dgamma(x, vals[1], lambda),
+     ylab=expression(f(x)),
+     ylim=c(0,1.1),
+     type='l',
+     col=colors[1])
+
+
+for (i in 2:length(vals))
+{
+  lines(x, 
+        dgamma(x, vals[i], lambda),
+        type='l',
+        col=colors[i])
+}
+
+legend("topright",
+       legend=plot_labels,
+       col=colors,
+       lty=1,
+       title='Erlang Shape Parameter')
+
+par(mfrow=c(1,1))
+
+```
+
+As expected, the density function for $k = 1$ looks like an exponential distribution (because it is...). 
+
+
+### Erlang Distribution Known Properties
+
+For *any* Erlang distribution:
+
+$$\mu_x = E[x] = \frac{k}{\lambda}$$
+The variance of the Erlang distribution is given by:
+
+$$\sigma_x^2 = V[x] = \frac{k}{\lambda^2}$$
+
+And as always, $$\sigma_x = \sqrt{\sigma_x^2}$$
+
+
+### Standard Erlang Probability Density Function
+
+As with all continuous distributions, the standard Erlang's *probability density* function *does not represent a point probability*; recall that $Pr\{X = x\} \equiv 0$. The beta distributions's probability denisty function is:
+
+$$f(x) = \frac{\lambda^k x^{k-1} e^{-\lambda x}}{(k-1)!}$$
+Note: for the special case where $k=1$, the PDF simplifies to
+
+$$f(x) = \frac{\lambda^1 x^{0} e^{-\lambda x}}{(0)!}=\lambda e^{-\lambda x}$$
+which is the PDF for the exponential distribution, proving the exponential distribution is a special case of the Erlang distribution when $k=1$.
+
+
+### Cumulative Probability Function
+
+As with *all* continuous probability distributions, the Erlang distribution's  cumulative probability is calculated by integrating the density function between the lower bound and $x$:
+
+$$Pr\{X \leq x\} = F(x) = 1-\sum_{n=0}^{k-1}\frac{1}{n!}e^{-\lambda x}(\lambda x)^n$$
+
+
+### Inverse Cumulative Probability
+
+Just as for the Poisson distribution, there is no closed form for calculating the inverse cumulative probability, which must be found numerically, as the solution to:
+
+$$F^{-1}(p) = x:Pr\{X \leq x\} \geq p = x:F(x) \geq p $$
+
+### Mode
+
+The mode for the standard Erlang distribution can be expressed completely in terms of $\lambda$ and $k$:
+
+$$\mathbf{M_o} = \frac{1}{\lambda}(k-1)$$
+
+where $\mathbf{M_o}(X)$ is a common convention to denote the mode of $X$.
+
+### Median
+
+There is no simple closed form for the median of an Erlang distribution.
+
+### The General Erlang Distribution
+
+The general Erlang distribution is a *shifted* distribution. While we can certainly redefine the density function and all of the summary metrics, it is easiest to just define the general Erlang distribution in terms of the shift:
+
+$$f_a(x)=f(x-a)$$
+$$F_a(x)=F(x-a)$$
+
+$$F_a^{-1}(p) = a + F^{-1}(p)$$
+$$\mu_{x_a}=E_a[x] = a + E[x]=a +\mu_x$$
+
+where we use the *sub-subscript* $a$ as a notational convention indicating the *the shifted distribution for* $x$, e.g., $\mu_{x_a}$ is the mean of the shifted distribution for $x$.
+
+Because there is no variation in the shift,
+
+$$\sigma_{x_a}^2 = \sigma_x^2$$
+
+and finally, the mode is given by:
+
+$$\mathbf{M_{o_a}(x)} = a + \mathbf{M_o(X)}$$
+
+
+## The Erlang Distribution in Use
+
+Excel, R, and SciPy all provide functions for calculating $f(x)$, $F(x)$, and  $F^{-1}(p)$ for Erlang distributions. However, in the cases of both Excel and R, there are no *explicit* Erlang distribution functions. Instead, we use functions for calculating *gamma* distribution probabilities, because the Erlang is a special case of the *gamma* distribution for integer $k$. SciPy offers explicit Erlang distribution functions (and frozen distributions).
+
+```{r, echo=FALSE, warning=FALSE}
+#results='asis', 
+
+calculation<-c(r"($f(x)$\)", 
+              r"($F(x) = Pr\{X \leq x\}$\)",
+              r"($F^{-1}(p)$\)")
+
+excel<-c(r"(GAMMA.DIST($x, k, \lambda, 0$))",
+        r"(GAMMA.DIST($x, k, \lambda, 1$))",
+        r"(GAMMA.INV($prob, k, \lambda$))")
+
+rcode<-c(r"($dgamma(x, k, \lambda)$)",
+        r"($pgamma(x, k, \lambda)$)",
+        r"($qgamma(p, k, \lambda)$)")
+
+scipy<-c(r"($erlang.pdf(x, k, a, \lambda)$)",
+        r"($erlang.cdf(x, k, a, \lambda)$)",
+        r"($erlang.ppf(p, k, a, \lambda)$)")
+
+
+# Create sample data with embedded LaTeX math
+df <- data.frame('To Calculate' = calculation,
+                 Excel = excel,
+                 R = rcode,
+                 Python = scipy
+)
+
+# Render the table
+kbl(df, 
+    format = "html", 
+    booktabs=TRUE, 
+    escape = FALSE, 
+    caption = "Erlang Distribution Mode") %>%
+  kable_styling(bootstrap_options="striped", 
+                full_width=FALSE)
+
+  # kable_styling(latex_options = "hold_position")
+      
+```
+
+where $\alpha = \frac{1}{\lambda}$, and $a$ is the shift. Note that SciPy's erlang distribution functions explicitly allow for a shift (so that they can calculate for general Erlang distributions). Also of note, SciPy's functions follow an atypical parameter naming convention:
+
+- a - the shape parameter $k$
+- loc - the shift, $a$
+- scale - the rate $\lambda$.
+
+Note that the shift parameter in the SciPy functions comes before $\lambda$. Consequently, if you want to calculate Erlang probabilities for standard Erlange distributions, you should make your call as in the following example:
+
+```{python, eval=FALSE}
+
+Fx = erlang(x, k, scale=lamda)
+
+```
+
+Specifying $\lambda1$ as a named parameter allows you to omit the shift parameter *loc*. Alterantively, you *could* specify:
+
+```{python, eval=FALSE}
+
+Fx = erlang(x, k, 0, lamda)
+
+```
+
+
+The sections below highlight the nuances involved in calculating Erlang probabilities in Excel, R, and SciPy (Python) all have their nuances (i.e., explain the calculations in the table above).
+
+### Erlang distribution functions in Excel
+
+Excel's gamma distribution function accepts only the shape and scale parameters, $k$ and $\lambda$ (i.e., it does not accept the shift for a general gamma/Erlang distribution). However, Excel provides a single function, GAMMA.DIST, to calculate both PDF and CDF. GAMMA.DIST's *fourth* parameter indicates whether to calculate the PDF (0) or the CDF (1) for the gamma distribution.
+
+### Erlang distribution functions in R
+
+R provides functions only for a *standard* gamma distribution (i.e., like Excel, it does not directly support the shift for a General gamma distribution).  
+
+The following code illustrates using R to calculate various probabilities for a random variable $X \sim Erlang(2, 1/3)$.
+
+```{r, echo=FALSE}
+b<-1
+a<-1
+```
+
+```{r}
+k<-2
+lambda<-1/3
+
+x<-5
+
+prob <- 0.82
+
+fx <- round(dgamma( x, k, lambda), 4)
+Fx <- round(pgamma( x, k, lambda), 4)
+invFx <-round(qgamma(prob, k, lambda), 2)
+
+```
+
+The results are:
+
+- $f(`r x`) = `r fx`$
+- $F(`r x`x) = `r Fx`$
+- $F^{-1}(`r prob`) = `r invFx`$
+
+And, to further illustrate the relationship between the exponential and Erlang distributions look carefully at the following code and resulting graphs.
+
+```{r, fig.width=12, fig.height=6}
+
+x<-seq(0,10,0.1)
+
+par(mfrow=c(1,2))
+k<-1
+lambda<-1/3
+
+# PLot the Erlang first
+plot(x, dgamma(x, k, lambda), type='l', main='Erlang', ylab='f(x)')
+
+# Plot the exponential
+plot(x, dexp(x, lambda), type='l', main='Exponential', ylab='f(x)')
+
+
+par(mfrow=c(1,1))
+
+
+```
+
+
+### Erlang Distribution functions in Python (SciPy)
+
+SciPy allows us to use its distribution functions in two ways:
+
+- Directly, passing *all* distribution parameters
+- Using frozen distributions (which *remember* the distribution's parameters).
+
+Either way, to access SciPy's Erlang distribution, we must first import  **scipy.stats.erlang**. 
+
+The following code two examples illustrate using SciPy to calculate various probabilities for a random variable $X \sim Erlang(2, 1/3)$ (the same as in the R example above). 
+
+#### Using SciPy Probability Functions
+
+SciPy uses a different (and potentially confusing convention) for its Erlang distribution parameters. These are:
+
+- $c$ - what is conventionally referred to as $k$
+- $loc$ - the lower bound of the distribution (i.e., the conventional $a$)
+- $scale$ - what is conventionally referred to as $\frac{1}{\lambda}$.
+
+The Python code below defines variables for each of the Erlang distribution parameters as we've been discussing them (e.g., $k, \lambda). It then illustrates using them to call the Erlang distribution pdf, cdf, and ppf (inverse cumulative probability) functions directly. 
+
+```{python, eval=TRUE, results='asis'}
+from scipy.stats import erlang
+
+k = 2
+
+# lambda is intentionally misspelled below to avoid conflict with Python's
+# reserved work lambda for creating lambda expressions
+lamda = 1/3
+
+x = 5
+prob = 0.82
+
+# We have to pass all distribution parmeters in every call
+fx = round(erlang.pdf(x, k, scale=1/lamda), 4)
+Fx = round(erlang.cdf(x, k, scale=1/lamda),4)
+invFx = round(erlang.ppf(prob, k, scale=1/lamda), 2)
+
+```
+
+```{r, echo=FALSE}
+
+py_fx = py$fx
+py_Fx = py$Fx
+py_invFx = py$invFx
+
+```
+
+
+The results are:
+
+- $f(x) = `r py_fx`$
+- $F(x) = `r py_Fx`$
+- $F^{-1}(x) = `r py_invFx`$
+
+
+
+#### Using SciPy Frozen Distribution
+
+This example instantiates and uses a Erlang frozen distribution object to calculate the probabilities. When instantiating a frozen Erlang distribution, we simply pass the expected arguments (see previous example) to the constructor.
+
+```{python, eval=TRUE, results='asis'}
+from scipy.stats import erlang
+
+k = 2
+lamda = 1/3
+
+x = 5
+prob = 0.82
+
+# We pass the distribution parameters when instantiating the Erlang distribution object
+dist = erlang(k, scale=1/lamda)
+
+# Because dist knows its parameters, we omit them from the method calls
+fx_frozen = round(dist.pdf(x), 4)
+Fx_frozen = round(dist.cdf(x),4)
+invFx_frozen = round(dist.ppf(prob), 2)
+
+```
+
+```{r, echo=FALSE}
+
+py_fx_frozen = py$fx_frozen
+py_Fx_frozen = py$Fx_frozen
+py_invFx_frozen = py$invFx_frozen
+
+```
+
+The results are:
+
+- $f(x) = `r py_fx_frozen`$
+- $F(x) = `r py_Fx_frozen`$
+- $F^{-1}(x) = `r py_invFx_frozen`$
+
+Personally, I much prefer using SciPy frozen distributions and almost always do so. The code is cleaner, and it's much easier to pass a single frozen distribution object to a function call, then it is to pass all of the distributions parameters.
+
+## Example Application
+
+Assume you manage a call center, where agents resolve single issues at the rate $\lambda=0.2$ (i.e., on average, it takes $5$ minutes to resolve an issue). Part of your job requires you to observe how agents handle individual support calls. Part of this includes observing the agent's interaction with the customer. More recently, the task has also been expanded to include evaluating the likelihood that an agent could have resolved the issue more quickly.
+
+```{r, echo=FALSE}
+t <- 26
+```
+
+The current call you are observing involved $3$ issues, and was concluded in $`r t`$ minutes. Now, to evaluate the agent's performance, you calculate the probability that the call would require more than $`r t`$ minutes.
+
+$$Pr\{T >= `r t`\} = 1 - Pr\{T < `r t`\} = 1 - F(`r t`)$$
+```{python}
+
+# there are 3 events (i.e., each issue is an evant)
+k = 3
+
+# issues are resolved at rate 0.2. lambda is intentionally misspelled to
+# avoid conflict with the lambda keyword
+lamda = 0.2
+
+t = 26
+
+Fx = round(erlang.cdf(t, k, scale=1/lamda), 4)
+Fx_comp = 1 - Fx
+
+```
+
+```{r, echo=FALSE}
+Fx <- py$Fx
+Fx_comp <- py$Fx_comp
+t <- py$t
+
+```
+
+We determined that $Pr\{T > `r t`\} = `r Fx_comp`$. In other words, there is only a $`r 100 * Fx_comp`$% chance that a 3 issue call would take longer than `r t` minutes. That's not a great outcome. We don't know *why* the call took so long, but with approximately $`r Fx * 100`$% of 3 issue calls taking less time, we know that we should investigate this call further to determine whether:
+
+- the agent requires more training
+- there was something specific about the 3 issues in this call that warrants the longer resolution time.
+
+
+
