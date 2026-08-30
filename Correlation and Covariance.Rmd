@@ -1,0 +1,91 @@
+---
+title: "Correlation and Covariance"
+author: "Gary Mitchell"
+date: "2026-08-29"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+suppressMessages(require(kableExtra))
+suppressMessages(require(reticulate))
+```
+
+In your Decision Modeling and Statistics courses, you learned about the correlation between two data series. This *sample* correlation provides a measure of the degree to which the two series vary relative to each other.
+
+>A positive correlation indicates the degree to which one variable is above its mean while the other is also above its mean. 
+
+> A negative correlation indicates the degree to which one variable is above its mean while the other is below its mean.
+
+The covariance of data series $X$ with values $x_i$ and series $Y$ with values $y_i$ is calculated as an expected value. To refresh your memory:
+
+$$cov[X,Y] = \frac{1}{n}\sum_{i=0}^n (x_i - E[X])(y_i - E[Y])$$
+
+The correlation is just a standardized version of the covariance:
+
+$$cor[X,Y] = \frac{cov[X,Y]}{S[X] \cdot S[Y]}$$
+Where $S[X] = \sqrt{V[X]}$ is the standard deviation of $X$.
+
+
+## The correlation of two discrete distributions
+
+Two jointly distributed random variables can be correlated just like two sample variables. For the sample variance, the $\frac{1}{n}$ term represents the probability associated with each observation. Because the observations represent sample data, each observation occurs with equal probability.
+
+For two discrete distributions, the covariance of two random variables is calculated using:
+
+$$cov[X,Y] = \sum_{i=0}^n Pr\{X = x_i, Y = y_i\}(x_i - E[X])(y_i - E[Y])$$
+
+where 
+
+$$E[X] = \sum_{i=0}^n  \sum_{j=0}^n x_i Pr\{X=x_i, Y=y_j\}$$ 
+
+Alternatively, we can calculate the *marginal probabilities* for $X$, and then use those to calculate $E[X]$:
+
+$$Pr\{X = x_i\} = \sum_{j=0}^n Pr\{X = x_i, Y = yj\}$$
+then
+
+$$E[X] = \sum_{i=0}^n x_i Pr\{X = x_i\}$$
+which is equivalent to
+
+$$E[X] = \sum_{i=0}^n \biggl(x_i \sum_{j=0}^n Pr\{X=x_i, Y=y_j\}\biggr)$$
+
+We'll need the standard deviations as well. For $V[X]$ we have
+
+$$V[X] = \sum_{i=0}^n \biggl((x_i - E[X])^2 \sum_{j=0}^n Pr\{X=x_i, Y=y_j\}\biggr)$$
+and for $V[Y]$
+
+$$V[Y] = \sum_{j=0}^n \biggl((y_i - E[Y])^2 \sum_{i=0}^n Pr\{X=x_i, Y=y_j\}\biggr)$$
+
+Finally, we have
+
+$$cor[X,Y]=\frac{cov[X,Y]}{\sqrt{V[X]} \sqrt{V[Y]}} =\frac{cov[X,Y]}{S[X] S[Y]}$$
+
+## The correlation of two continuous distributions
+
+Basically, everything is the same when calculating the correlation between two continuously joint distributions, except that we use integration and the joint probability density function $f_{x,y}(x,y)$ in place of summation with the probability mass function.
+
+$$cov[X,Y] = \int_{-\infty}^\infty \int_{-\infty}^\infty(x - E[X])(y - E[Y])f_{x,y}(x,y)dx dy$$
+
+where 
+
+$$E[X] = \int_{-\infty}^\infty  \int_{-\infty}^\infty x f_{x,y}(x,y)dx dy$$ 
+
+Or alternatively, first calculating the marginal probabilities:
+
+$$f_x(x) = \int_{-\infty}^\infty f_{x,y}(x,y)dy$$
+then
+
+$$E[X] = \int_{-\infty}^\infty x f_x(x)dx$$
+
+For $V[X]$ we have
+
+$$V[X] = \int_{-\infty}^\infty \int_{-\infty}^\infty \biggl((x - E[X])^2 \sum_{j=0}^n f_{x,y}(x,y)\biggr)dx dy$$
+and for $V[Y]$
+
+$$V[Y] = \int_{-\infty}^\infty \int_{-\infty}^\infty \biggl((y - E[Y])^2 \sum_{j=0}^n f_{x,y}(x,y)\biggr)dy dx$$
+
+Finally, we have
+
+$$cor[X,Y]=\frac{cov[X,Y]}{\sqrt{V[X]} \sqrt{V[Y]}} =\frac{cov[X,Y]}{S[X] S[Y]}$$
+
+
