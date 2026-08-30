@@ -1,0 +1,307 @@
+---
+title: "Empirical Distributions"
+author: "Gary Mitchell"
+date: "2026-08-29"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+suppressMessages(require(kableExtra))
+suppressMessages(require(reticulate))
+```
+
+For most of us, our first exposure to probability comes in the form of simple examples of frequency-based distributions like the roll of a six-sided die. We then progress to examples involving colored balls drawn from vases or urns. And then we make it to the big time. We get introduced to the normal distribution, and for some inexplicable reason, we begin to think the whole world is normally distributed.
+
+I've given some thought to *why* this is the case. After all, we first learn about discrete uniform distributions (the roll of the six-sided die), and either binomial or geometric distributions, depending on how the experiment involving drawing colored balls from urns was described. Although, most often, the person teaching us about probability through those two examples doesn't actually introduce us to the underlying distribution. Instead, they stop after introducing the concepts of probability and conditional probability.
+
+Then we take our first statistics course, the one where we learn about the normal distribution. If your first stats course was like mine, the normal distribution was the *only* distribution you learned about. In fact, I took **three** stats courses (Statistics for Biomedical Science, Statistics for Psychology & Social Sciences, and Business Statistics) which all focused on the normal distribution (one *did* introduce the Student-T distribution, but made it sound like a special case of the Normal distribution for small samples).
+
+So, we emerge from this early education confident that we understand probability. We are so confident that we tend to make the following, potentially very serious, mistakes:
+
+- Automatically assume that a random variable follows a normal distribution
+- Use normal distribution calculations even when we're told the random variable follows some other distribution
+- Use the specified distribution to calculate $Pr\{X \leq x\}$ but revert to the normal distribution to calculate $x: Pr\{X \leq x\} \geq \alpha$ (i.e., the inverse cumulative probabilty).
+
+I think the last one is my *favorite* mistake. A good example is when we introduce the Poisson distribution. We provide the probability mass and cumulative distribution functions, which are straightforward (so students have no problem using them to calculate point and cumulative probabilities). Then we ask for an inverse cumulative probability and many students automatically default to Excels NORM.INV.
+
+This persistent behavior shows that we are teaching probability in a way that doesn't lead to students understanding probabiltydistributions.
+
+## What is a probability distribution
+
+In its simplest form, a probability distribution is simply a table of outcomes and their associated probabilities. For example, the following is a probability distribution:
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+
+temp<-sample(2:10, 7, replace=TRUE)
+empp<-round(temp / sum(temp), 4)
+empp[length(empp)]<-empp[length(empp)] + (1 - sum(empp))
+
+empx<-sort(sample(5:100, length(empp), replace=FALSE))
+
+i<-1:length(empx)
+
+empdf<-data.frame(i, empx, empp)
+colnames(empdf)<-c("i", "x", "$Pr\\{X = x\\}$")
+
+old_warn <- getOption("warn")
+options(warn=-1)
+
+require(kableExtra)
+
+options(warn=old_warn)
+
+empdf %>%
+  kable("html", escape=F) %>%
+  kable_styling(bootstrap_options=c('striped', 'hover'), full_width = FALSE)
+
+
+```
+
+The *standard* distributions we use (e.g., Poisson, normal, binomial) simply provide an alternative method for finding the probability associated with an outcome. The point here is that we don't need a *formula* to calculate probabilities.
+
+So how does this relate to *Empirical* distributions?
+
+## What is an empirical distribution?
+
+An empirical distribution is simply a set of representative data. Well, it's a *little* more than that. To use an empirical distribution, we *order* a set of representative data in increasing sequence on the values for the random variable. If the number of distinct values is small, we can summarize the data, using frequency counts to calculate probabiltiies for each outcome (i.e., we construct a probability table like the example shown above). If the number of distinct possibilities is large, we use the ordered data directly.
+
+## Constructing a Probability Table
+
+The best way to explain this is to illustrate using an example. Happy Harry's Hamburgers is a fast food location selling three kinds of sandwiches: hamburgers, cheeseburgers, and Harry's Deluxe burgers. Harry has saved the last 2,000 orders in a CSV file for the purpose of improving operations planning and reducing customer waiting times.
+
+```{python, echo=FALSE}
+import numpy as np
+import pandas as pd
+
+rng = np.random.default_rng()
+
+items = np.array(['Hamburger', 'Cheeseburger', "Harry's Deluxe Burger"])
+prop = np.array([0.13, 0.31, 0.56])
+
+# construct lower and upper bounds for the distribution
+ub = prop.cumsum()
+lb = np.roll(ub, 1)
+lb[0] = 0
+
+dist_tab = pd.DataFrame({'lb': lb, 'ub': ub})
+# print(dist_tab)
+
+# generate the orders
+x = rng.random(size=2000)
+
+# convert RNs to sandwiches
+idx = np.array([np.where((i >= lb) & (i < ub)) for i in x]).reshape(len(x))
+
+df_orders = pd.DataFrame({'x': x, 'idx': idx, 'Order': items[idx]})
+
+df_orders['Order #'] = df_orders.index + 1
+df_orders_sub = df_orders.loc[:19, ['Order #', 'Order']]
+
+df_orders_out = df_orders.drop(columns=['x', 'idx']).loc[:,['Order #', 'Order']]
+df_orders_out.to_csv('happy_harrys_orders.csv')
+
+
+```
+
+Here's a sample of the data for the first 20 orders. We'll start by reading in Harry's order data from the CSV file:
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+py$df_orders_sub %>%
+  kable("html", escape=F) %>%
+  kable_styling(bootstrap_options=c('striped', 'hover'), full_width = FALSE)
+
+```
+
+Let's use the Happy Harry's data to construct a probability distribution table. The first step is to calculate the point probabilities for each of the outcomes:
+
+```{python}
+import numpy as np
+import pandas as pd
+
+orders_df = pd.read_csv('happy_harrys_orders.csv').drop(columns=['Unnamed: 0'])
+
+print(orders_df)
+
+```
+
+If we're using Pandas (and we *are* because we used it to read the CSV file), we can do this easily as follows:
+
+```{python}
+
+# Assemble counts by order type
+dist = orders_df.groupby('Order').count()
+
+# add probability to DataFrame
+dist['prob'] = dist['Order #']/dist['Order #'].sum()
+
+# change column names
+dist.rename(columns={'Order #': 'Frequency'}, inplace=True)
+
+print(dist)
+
+
+```
+
+And that's all there is to it. To find the probability of any of the outcomes, we simply read the corresponding value from the table.
+
+### Generating random numbers
+
+Generating random numbers from the distribution requires a *little* more work:
+
+- Calculate the cumulative probabilities (even though they don't quite make sense); in this context, 
+
+$$Pr\{X \leq Cheeseburger\} = Pr\{X = Hamburger\} + Pr\{X = Cheeseburger\}$$  
+
+```{python}
+ub = dist['prob'].cumsum()
+lb = np.roll(ub, 1)
+lb[0] = 0
+
+dist = dist.assign(**{'lb': lb, 'ub': ub})
+print(dist)
+
+```
+
+Now, to calculate the inverse probability for $\alpha$, we choose the *order* for which:
+
+$$order: \alpha \geq lb \text{ and } \alpha < ub$$
+
+To illustrate in Python, let's assume we need to calculate $F^{-1}(0.42)$:
+
+```{python}
+
+alpha = 0.42
+
+invFx = str(dist.index[np.where((alpha >= lb) & (alpha < ub))])
+print(invFx)
+
+
+```
+
+Note that in the code above, we retrieved the ordered item from the dist DataFrame's index. That's because Pandas sets the column specified in the .groupby as the index in the aggregated DataFrame. If we want Order to be a column in the dist DataFrame, we can use the following:
+
+```{python}
+dist.reset_index(inplace=True)
+print(dist)
+
+
+```
+
+And now a slight revision to the code to calculate $F^{-1}(0.42)$:
+
+```{python}
+
+alpha = 0.42
+
+# The reshape is required below, because where returns a 2D array (n rows, 1 column)
+# and indexing operations require 1D arrays
+idx = np.array(np.where((alpha >= lb) & (alpha < ub))).reshape(-1)
+
+
+print(dist['Order'][idx])
+
+
+```
+
+## Using the Sample Data Directly
+
+When the number of discrete outcomes is very large, or when we want to approximate a continuous distribution from the data, we use a different approach where we treat the data itself as the distribution.
+
+### Calculating Cumulative Probabilities
+
+To calculate a cumulative probability $F(t)$ using this approach, we simply count the number of outcomes less than or equal to $t$ and divide by $n$, the number of outcomes in our sample data.
+
+The following example illustrates.
+
+Assume we have task duration data for a medium sized analytics coding task in a CSV file.
+
+```{python, echo=FALSE}
+
+a = 23
+b = 87
+
+tasks_t = np.round(a + (b - a) * rng.random(size=200), 1)
+
+pd.DataFrame({'t': tasks_t}).to_csv("medium_task_durations.csv")
+
+```
+
+```{python}
+
+tasks_t = pd.read_csv("medium_task_durations.csv")
+print(tasks_t)
+
+```
+
+The first step is to order the values in ascending sequence.
+
+```{python}
+
+t_dist = tasks_t.sort_values(by='t')
+print(t_dist)
+
+```
+
+Now, to calculate a cumulative probability, we count the relevant outcomes and divide by the sample size. For example, to calculate $Pr{T \leq 55}$ we use the following:
+
+```{python}
+t = 55
+
+Ft = np.sum(t_dist['t'] <= t) / len(t_dist)
+print(Ft)
+```
+
+### Inverse Cumulative Probabilities
+
+Calculating the inverse cumulative probability is just as straightforward. In the case, we search for the smallest outcome equal to or greater than the threshold.
+
+For example, to calculate $F^{-1}(0.95) for our task duration distribution, we would use the following:
+
+```{python}
+p = 0.95
+invFt = np.percentile(t_dist['t'], p * 100)
+print(invFt)
+
+```
+
+## What's the catch?
+
+OK, that seemed too easy. There must be a catch, right?
+
+Of course there is. Recall that a probability distribution is defined as *the set of all possible outcomes and their corresponding probabilities*. And that's the catch. We don't have the set of all possible outcomes, at least we can't be sure that we do. In the case of the task duration distribution example, we have only 200 outcomes. It's easy to see there may be many urepresented possible outcomes with a small sample, resulting in inaccurate cumulative and inverse cumulative probabilities.
+
+When our empirical distribution is based on a small sample, we also have a high likelihood of understating the distribution variance. With a small sample, where do we expect the samples we have to cluster? The obvious answer is around the area of maxium density for the distribution. Consider a normal distribution, for example. We would expect that most of the sample values we have collect will be relatively closer to the mean, than the outcomes that we have not yet observed; values further from the mean occur with lower frequence and therefore are more likely to be excluded from the data we have collected.
+
+Now consider the Happy Harry's example. We have only 3 possible outcomes. Assume we had only 200 instead of 2,000 samples. To illustrate, we'll use the first 200 samples from our dataset.
+
+```{python}
+# Assemble counts by order type
+dist200 = orders_df.head(200).groupby('Order').count()
+
+# add probability to DataFrame
+dist200['prob'] = dist200['Order #']/dist200['Order #'].sum()
+
+# change column names
+dist200.rename(columns={'Order #': 'Frequency'}, inplace=True)
+
+print(dist200)
+
+
+```
+
+The following table shows the probabilities for the two distributions side-by-side:
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+comparison = py$dist[, c('Order','prob')]
+colnames(comparison) <- c('Order', '2,000 Samples')
+comparison['200 samples']=py$dist200['prob']
+
+comparison %>%
+  kable("html", escape=F, caption='Order Type Probabilities') %>%
+  kable_styling(bootstrap_options=c('striped', 'hover'), full_width = FALSE)
+
+```
+
+As you can see, the values are different (can can be *quite* different for small samples). Therefore, while using empirical distributions is easy, and always an option, we must be very careful that the data we use is sufficiently representative of the population to yield a reasonably accurate set of probabilities.
