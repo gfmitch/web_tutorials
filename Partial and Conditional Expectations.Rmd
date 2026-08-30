@@ -1,0 +1,133 @@
+---
+title: "Partial & Conditional Expectations"
+author: "Gary Mitchell"
+date: "2026-08-29"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+suppressMessages(require(kableExtra))
+suppressMessages(require(reticulate))
+```
+
+You're all familiar with expected values. You leanred about them in Decision Modeling.
+
+For discrete distributions:
+
+$$E[x] = \sum_{i=1}^n x \cdot m(x) $$
+where $m(x)$ is the probability mass function, i.e., $m(x) = Pr\{X = x\}$.
+
+The equivalent calculation for continuous distributions is:
+
+$$E[x] = \int_{-\infty}^\infty x \cdot f(x)dx$$
+Technical these are *complete* expectations, because we calculated the expected value over the entire distribution.
+
+```{r, echo=FALSE}
+rev <- sort(round(runif(20, -10, 20),2))
+
+cprob <- round(punif(rev, -10, 20), 4)
+prob <- numeric(length(rev))
+
+prob[2:length(rev)] <- cprob[2:length(rev)] - cprob[1:(length(rev)-1)]
+prob[1] <- cprob[1]
+
+# scale prob to sum to 1
+prob <- round(prob / sum(prob), 4)
+if (sum(prob) != 1)
+{
+  prob[length(prob)] <- prob[length(prob)] + (1 - sum(prob))
+}
+
+rev_df <- data.frame(Revenue=rev, Probability=prob)
+lidx<-(rev < 0)
+
+cond_loss_df <- data.frame(Revenue=rev[lidx],
+                           'prob'=prob[lidx],
+                           'cond_prob'=prob[lidx]/sum(prob[lidx]))
+
+
+```
+
+
+For example, assume that we have a distribution for our company's annual profit:
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+latex_cols <- c(r"($\pi_i$)", r"($Pr\{\pi_i\}$)")
+
+rev_df %>%
+  kable("html", escape=F, caption='Annual profit Distribution (millions)', col.names=latex_cols) %>%
+  kable_styling(bootstrap_options=c('striped', 'hover'), full_width = FALSE)
+
+Erev <- round(rev %*% prob, 4)
+lidx <- rev < 0
+
+Eloss <- rev[lidx] %*% prob[lidx]
+
+ElossGivenLoss<-cond_loss_df[['Revenue']] %*% cond_loss_df[['cond_prob']]
+
+
+```
+
+Using the expected value calculation for discrete distributions, we have:
+
+$$E[profit] = \sum_{i=1}^n \pi_i \cdot Pr\{\pi_i\}= `r Erev`$$
+
+## Partial Expectations
+
+The $\$`r Erev`$ includes those outcomes where we earn a loss. In other words, if we repeated the experiement over and over and over... sometimes making money, sometimes losing money, *on average* we would earn a $\$`r Erev`$ profit.
+
+However, we know there's a loss probability of $Pr\{Profit \leq 0\} = `r sum(prob[rev < 0])`$. That's a pretty significant probability of a loss. What is our expected loss?
+
+Letting $\pi_i$ represent profit outcome $i$, we calculate
+
+$$E[Loss] = \sum_{\pi_i < 0}^n Pr\{\pi_i\} \pi_i$$
+
+In other words, we calculate the expectation *using only loss outcomes*. For our example, we use the first $`r sum(rev < 0)`$ outcomes, and obtain the *Partial Expectation*:
+
+$$E[Loss] = `r Eloss`$$
+
+But what *is* a partial expectation. It is simply an expected value calculated using only a portion of the distribution. But wait, if we only use a portion of the distribution, then the probabilities we used would not sum to 1, right?
+
+Yes, since a partial expectation is computed using only a subset of the probabilities, it represents only *part* of the distribution, hence the term *partial*. The problem is, partial expectations can be hard to interpret. In this case, the $E[Loss]$ is the expected loss where we assumed that a profit meant a 0 loss.
+
+## Conditional Expectation
+
+Conditional expectations are expected values calculated using conditional probabilities. Sticking with our profit example, we want to calculate the expected loss *given a loss*:
+
+$$E[Loss | Loss] = \sum_{\pi_i < 0} Pr\{Profit = \pi_i|\pi_i < 0\} \pi_i$$
+
+By using the conditional probabilities, we ensure that the probabilities used will some to 1. That makes this expected value a *complete* expected value, but more important, it is a *conditional* expected value having been calculated with conditional probabilities.
+
+Note that each of the conditional probabilities is calculated as follows:
+
+$$Pr\{\pi_i | \pi < 0\} = \frac{Pr\{\pi_i\}}{F(0)}$$
+
+where $F(0)$ is the probability of a loss, i.e., 
+
+$$F(0) = \sum_{\pi_i < 0} Pr\{\pi_i\}$$
+
+Now, to calculate the conditional expectation we use
+
+$$E[Loss | Loss] = \sum_{\pi_i < 0} \frac{Pr\{\pi_i\}}{F(0)} \pi_i$$
+
+The table below shows the conditional probabilities associated with the loss outcomes.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+
+latex_cols <- c(r"($\pi_i$)", r"($Pr\{\pi_i\}$)", r"($Pr\{\pi_i | \pi_i < 0\}$)")
+
+cond_loss_df %>%
+  kable("html", escape=F, caption='Conditional Loss Distribution (millions)', col.names=latex_cols) %>%
+  kable_styling(bootstrap_options=c('striped', 'hover'), full_width = FALSE)
+
+
+```
+
+Using the conditional probabilities, we obtain:
+
+$$E[Loss | Loss] = `r scales::dollar(ElossGivenLoss)`$$
+
+Note the magnitude of the conditional expectation is considerably larger than that of the partial expectation. That's because the conditional expectation is calculated only uses losses, where the losses represent the complete distribution (as a result of the conditional probabilities).
+
+So how do we interpret $E[Loss | Loss]$? It is the expected loss if we know there is going to be a loss (i.e., *given* a loss).
