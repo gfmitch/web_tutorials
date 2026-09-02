@@ -9,6 +9,8 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 suppressMessages(require(reticulate))
 suppressMessages(require(kableExtra))
+
+# use_condaenv(condaenv='base')
 ```
 
 
@@ -21,9 +23,14 @@ The Erlang distribution is a real-valued distribution with two parameters:
 - $k$ - the shape parameter; a positive integer represent the number of stages or events
 - $\lambda$ - the rate for each Poisson event ($\lambda > 0$).
 
-As with the Poisson and exponential distributions, the average time between events is given by
+As with the Poisson and exponential distributions, the average time between events is given by a function of $\lambda$
 
-$$\mu_t = \frac{1}{\lambda}$$
+$$\mu_t = \frac{k}{\lambda}$$
+and the standard deviation is given by:
+
+$$\sigma_t^2 = \frac{k}{\lambda^2}$$
+
+$$\sigma_t = \frac{\sqrt{k}}{\lambda}$$
 
 To communicate that we have a random variable $X$ that follows a Erlang distribution with shape $k$, and rate $\lambda$, we say
 
