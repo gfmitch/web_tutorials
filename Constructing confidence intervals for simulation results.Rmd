@@ -1,0 +1,111 @@
+---
+title: "Constructing Confidence Intervals for Simulation Results"
+author: "Gary Mitchell"
+date: "2026-09-08"
+output: html_document
+---
+
+```{r setup, include=FALSE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+require(reticulate)
+require(kableExtra)
+
+```
+
+The appropriate method for calculating confidence intervals for simulated results depends on the nature of the system being simulated. Two factors impact the process for constructing confidence intervals:
+
+- Whether or not you need to allow for a *warm-up* period before your simulated system achieves *steady state* operation
+- Whether your simulated system operates continuously or on a cycle.
+
+## The warm-up period
+
+For example, a feasible queuing system must achieve a steady state at some point. However, before it achieves a steady state, there is a *warm-up period* during which the system's state is not representative. For example, when a Starbucks opens, the queue is empty (i.e., nobody in the system). It takes some amount of being open before the queuing system has achieved its steady state.
+
+To address this, we typically *throw away* some observations at the beginning of a simulation; we need to discard enough observations so that the remaining observations reflect steady state for the system, but we don't want to throw away so many that we are incurring lots of calculation overhead for nothing. There is no exact number of *warm-up* observations to discard that applies to every simulation. In each case, you must to determine how many observations to discard. If the simulation runs quickly, then you have the luxury of simply simulating a lot of trials so that you can absorb the loss of a significant number of warm-up trials. If the simulation runs slowly, then you'll want to choose the number of discards more carefully, to avoid unnecessarily long run times.
+
+*For both continuously operating and cycle systems, you must discard the warm-up trials before constructing confidence intervals.*
+
+## Continuously operating systems
+
+Queuing systems (at least queuing system models) are often presented based on the implicit assumption that the system is continuously operating. Some examples of valid continuously operating systems:
+
+- A 24-hour grocery store
+- Amazon.com's web site
+- A hospital emergency room.
+
+All three of these examples operate continuously. In general, continuously operating systems require warm-up periods (and therefore discarding warm-up trials).
+
+## Cycle systems
+
+A cycle system is one where a defined *cycle* is repeated on a regular basis. For example, a grocery store that opens from 6am until 11pm daily, operates on a daily cycle. In cycle systems, the system starts each cycle with a defined state. For example, the grocery store opening at 6am starts every day with 0 customers in the system.
+
+Cycle systems may never achieve true *steady state* operation. For example, the length/duration of the cycle may be too short for the system to achieve steady state. In general, cycle system simulations generally do not require discarding warm-up trials. In fact, discarding warm-up trials for a cycle system simulation may lead to misleading results.
+
+## Constructing confidence intervals
+
+So, the first step in constructucting the confidence interval for a simulation is to discard warm-up trials, if necessary.
+
+Next, we have to determine whether or not we will need to use the *batch means* method. For cycle systems, our simulation almost always involves simulating many *cycles* for the system, and constructing the confidence intervals is straight forward. 
+
+For example, in project management, we would simulate the schedule for a project many times. Simulating the project from beginning to end would constitute a single cycle. We would simulate many cycles for the project (e.g., 10,000 trials) and the resulting simulated cycles would comprise our simulation results. In this case, each cycle is independent of the others, simplifying our work to construct a confidence interval. 
+
+Given some metric $m$ for which we want to construct the confidence interval, where $m_i$ is the value of the metric for the $i^{th}$ trial or cycle, we calculate a confidence interval as follows:
+
+- Find the mean and standard error for the metric
+- Find the critical value for the confidence interval
+- Calculate the confidence interval using the mean, standard error, and critical value
+
+Finding the mean and standard error is straightforward:
+
+$$\bar{m} = \frac{1}{n} \sum_{i=1}^n m_i$$
+
+$$s_d = \sqrt{\frac{1}{n} \sum_{i=1}^n (m_i - \bar{m})^2}$$
+
+Then the standard error is constructed using:
+
+$$s_e = \frac{s_d}{\sqrt{n}}$$
+
+where $n$ is the number of cycles/trials simulated.
+
+Finding the critical value depends on $n$:
+
+- For $n < 30$, use Student's t distribution
+- for $n \geq 30$, use the normal distribution
+
+For cycle system simulations, $n >> 30$ is almost always true, so we generally use the normal distribution. To find the $\alpha$ (e.g., 95%) confidence interval, we would use the following:
+
+$$k = F^{-1}\Bigg(1 - \bigg(\frac{1-\alpha}{2}\bigg)\Bigg)$$
+
+then the confidence interval is:
+
+$$\bar{m} - k\cdot s_e \leq \mu \leq \bar{m} + k\cdot s_e$$
+
+For $n < 30$, we would find the critical value as follows:
+
+$$k = F^{-1}\Bigg(1 - \bigg(\frac{1-\alpha}{2}\bigg), \ n-1\Bigg)$$
+
+where $F^{-1}(p, d)$ is the inverse cumulative probability for Student's t distribution with $d$ degrees of freedom.
+
+## Using batch means for continuously operating systems
+
+The approach to calculating the confidence interval shown above can be a bit more problematic with continuously operating systems. Let's say we wanted to simulate traffic at Amazon.com. To use the approach described above, we would have to:
+
+- Run multiple *cycles* where each cycle reflects the queue's *steady state* operation over some time interval
+- For each cycle, discard the *warm-up* trials
+- Calculate the desired metric for each cycle
+- Construct the confidence interval for the metric as shown above.
+
+In this case, we'd be simulating and discarding a substantial number of trials. For each *cycle*, we'd have to discard enough trials to be confident that the remaining trial data represented steady state operation. 
+
+The alternative is to use the batch means approach:
+
+- Generate n trials for a single steady state simulation
+- Discard the $w$ warm-up trials (the remaining trials represent steady state operation)
+- Divide the remaining trials into $k$ batches of size $m=\frac{n-w}{k}$
+- For each batch, calculate the *batch mean* of the metric $x$:
+
+$$\bar{x}_i = \frac{1}{m} \sum_{i=1}^{m} x_i$$
+
+
+
+ 
