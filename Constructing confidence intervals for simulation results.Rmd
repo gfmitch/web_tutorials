@@ -95,17 +95,389 @@ The approach to calculating the confidence interval shown above can be a bit mor
 - Calculate the desired metric for each cycle
 - Construct the confidence interval for the metric as shown above.
 
-In this case, we'd be simulating and discarding a substantial number of trials. For each *cycle*, we'd have to discard enough trials to be confident that the remaining trial data represented steady state operation. 
+In this case, we'd be simulating and discarding a substantial number of trials. For each *cycle*, we'd have to discard enough trials to be confident that the remaining trial data represented steady state operation. leading to a large number of discarded trials. 
 
 The alternative is to use the batch means approach:
 
-- Generate n trials for a single steady state simulation
-- Discard the $w$ warm-up trials (the remaining trials represent steady state operation)
-- Divide the remaining trials into $k$ batches of size $m=\frac{n-w}{k}$
-- For each batch, calculate the *batch mean* of the metric $x$:
+1. Generate n trials for a single steady state simulation
+1. Discard the $w$ warm-up trials (the remaining trials represent steady state operation)
+1. Divide the remaining trials into $k$ batches of size $m=\frac{n-w}{k}$
+1. For each batch $i$, calculate the *batch mean* $\bar{x}_i$ of the metric $x$
+1. Using the batch means, calculate the *mean of the batch means* $\bar{\bar{x}}$ and the standard deviation of the means, $\sigma_{\bar{x}}$
+1. Construct the confidence interval using $\bar{\bar{x}}$ and $\sigma_{\bar{x}}$
 
-$$\bar{x}_i = \frac{1}{m} \sum_{i=1}^{m} x_i$$
+### Calculate the batch means
 
+$$\bar{x}_i = \frac{1}{k} \sum_{j=1}^{m} x_j$$
+
+### Calculate the means of the batch means
+
+
+$$\bar{\bar{x}} = \frac{1}{k} \sum_{i=1}^{k} \bar{x}_i$$
+
+### Calculate the batch standard deviations
+
+$$\sigma_{\bar{x}}=\sqrt{\frac{1}{k} \sum_{i=1}^{k} (\bar{x}_i-\bar{\bar{x}})^2}$$
+
+### Construct the confidence interval
+
+Now, we use the mean and standard deviation of the batch, $\bar{\bar{x}}$ and $\sigma_{\bar{x}}$ to calculate the confidence interval:
+
+$$\bar{\bar{x}} - k \cdot \sigma_{\bar{x}}\  \leq \ \bar{\bar{x}} \ \leq \ \bar{\bar{x}} + k \cdot \sigma_{\bar{x}}$$
+
+where $k$ is the critical value chosen as described above.
+
+### Python sample code
+
+The Python code below defines a function for analyzing trial data presented in a DataFrame.
+
+```{python echo=FALSE}
+
+import numpy as np
+import pandas as pd
+import time
+import math
+
+from scipy.stats import norm
+from scipy.stats import poisson
+from scipy.stats import expon
+import scipy.stats as stats
+
+def sim(arr_dist, svc_time_dist, trials: int=10000, random_state=None):
+    if random_state is None:
+        # use system lock if no specific seed specified
+        random_state = time.time()
+
+    # create a random number generator instance and set random seed
+    rng = np.random.default_rng(random_state)
+
+    # initial next arrival and service completion clocks
+    next_arr = arr_dist.rvs(1, rng)[0]
+    next_svc_comp = math.inf
+
+    # customers in system, sim time (i.e., time since start of sim), and StateTime (i.e., time in state)
+    n = np.zeros(trials + 1)
+    sim_time = np.zeros(trials + 1)
+    state_time = np.zeros(trials + 1)
+
+    # initialize debugging vectors to capture next arrival and svc completion times at beginning of
+    # event
+    arr_time_beg = np.zeros(trials + 1)
+    arr_time_end = np.zeros(trials + 1)
+    svc_time_beg = np.zeros(trials + 1)
+    svc_time_end = np.zeros(trials + 1)
+
+    # initialize the starting state
+    sim_time[0] = 0.0
+    n[0] = 0
+
+    for i in range(1, trials + 1):
+        # save debug information
+        arr_time_beg[i] = next_arr
+        svc_time_beg[i] = next_svc_comp
+
+        if next_arr < next_svc_comp:
+            # The next arrival is scheduled BEFORE the next service completion
+
+            # increase the customers in the system
+            n[i] = n[i-1] + 1
+
+            # update the simulation clock (i.e., running time)
+            sim_time[i] = next_arr
+
+            # calculate the time for the next arrival
+            next_arr = sim_time[i] + arr_dist.rvs(1, rng)[0]
+
+            if math.isinf(next_svc_comp):
+                # The system was empty, so we need to calculate the next system time.
+                # inf is used to ensure that the next event must be an arrival if the
+                # system is empty
+                next_svc_comp = sim_time[i] + svc_time_dist.rvs(1, rng)[0]
+        else:
+            # The next service completion is scheduled before the next arrival
+            # reduce the number of customers in the system
+            n[i] = n[i-1] - 1
+
+            # update the system clock to reflect the current sim time
+            sim_time[i] = next_svc_comp
+
+            # Update the next svc completion time based on the state.
+            if n[i] > 0:
+                # The queue is not empty, so calculate the next service completion starting
+                # from the current sim time
+                next_svc_comp = sim_time[i] + svc_time_dist.rvs(1, rng)[0]
+            else:
+                # The queue is empty, so ensure that the next event is an arrival by setting
+                # next_svc_comp to infinity.
+                next_svc_comp = math.inf
+
+        # calculate time spent in state
+        state_time[i-1] = sim_time[i] - sim_time[i-1]
+        arr_time_end[i] = next_arr
+        svc_time_end[i] = next_svc_comp
+
+    # calculate final StateTime
+    if next_arr < next_svc_comp:
+        # the next event would be an arrival, so use next arrival time to determine the time spent
+        # in the state following the last event
+        state_time[i] = next_arr - sim_time[i]
+    else:
+        # the next event would be a service completion, so use next svc completion time to determine
+        # the time spent in the state following the last event
+        state_time[i] = next_svc_comp - sim_time[i]
+
+    # construct and return results data
+    df = pd.DataFrame({'Time': sim_time, 
+                       'ArrTimeBeg': arr_time_beg, 
+                       'SvcTimeBeg': svc_time_beg, 
+                       'n': n, 
+                       'StateTime': state_time,
+                       'ArrTimeEnd': arr_time_end,
+                       'SvcTimeEnd': svc_time_end})
+
+    return df
+  
+```
+
+```{python, echo=FALSE}
+
+arr_dist = expon(scale=1/20)
+svc_time_dist = expon(scale=1/25)
+k = 31
+
+rslts = sim(arr_dist, svc_time_dist, trials=20000 + k * 10000, random_state=100)
+
+```
+
+
+```{python }
+def analyze_sim(rslts: pd.DataFrame, warmup_n: int=0, k: int=30, alpha=0.95) -> dict:
+
+    # drop warmup period observations - drop the initial state + the specified warmup_n states
+    steady_state = rslts.iloc[(warmup_n + 1):, ]
+
+    # reshape trial data so that each row represents one batch
+    n = steady_state['n'].to_numpy().reshape(k,-1)
+    t = steady_state['StateTime'].to_numpy().reshape(k,-1)
+
+    # calculate the number of customers waiting from the number of customers in system
+    # this is already batched. This is the basis for Lq
+    n_wait = (n - 1).clip(min=0)
+
+    # now calculate the weighted average mean of each batch
+    mean_n_i = np.sum(n * t, axis=1) / t.sum(axis=1)
+    mean_n_wait_i = np.sum(n_wait * t, axis=1) / t.sum(axis=1)
+
+    # now we have the batch means, let's calculate means and standard deviations of the means
+    mean_n = mean_n_i.mean()
+    sd_n = mean_n_i.std()
+    sem_n = sd_n / math.sqrt(k)
+
+    mean_n_wait = mean_n_wait_i.mean()
+    sd_n_wait = mean_n_wait_i.std()
+    sem_n_wait = sd_n_wait / math.sqrt(k)
+
+    #find the critical value
+    dof = k - 1
+    if k > 30:
+        # use student t distribution for small sample size
+        k = norm.ppf(1 - (1 - alpha) / 2)
+    else:
+        # use normal distribution for larger sample sizes
+        k = stats.t.ppf(1 - (1 - alpha) / 2, df=k)
+
+    # calculate batch and overall metrics for L and Lq
+    analysis = {'batch': 
+                    {'E[L]': mean_n,
+                     f'L {alpha:.1%} confid': (mean_n - k * sem_n, mean_n + k * sem_n),
+                     'E[Lq]': mean_n_wait,
+                     f'Lq {alpha:.1%} confid': (mean_n_wait - k * sem_n, mean_n_wait + k * sem_n)
+                },
+                'Overall': {'E[L]': steady_state['n'].dot(steady_state['StateTime']
+                                                          / steady_state['StateTime'].sum()),
+                            'E[Lq]': (steady_state['n'] - 1).clip(lower=0).dot(steady_state['StateTime']
+                                                          / steady_state['StateTime'].sum())
+                            }
+                }
+
+    return analysis
+
+```
+
+
+Here's a sample of the DataFrame from a $10,000$ trial simulation. When $n = 0$, i.e., the queue is empty, the nexet service time is set to $\infty$ to ensure that an arrival is the next event.
+
+```{r, echo=FALSE}
+
+r_rslts <- reticulate::py_to_r(py$rslts)
+r_rslts[r_rslts == Inf] <- '$\\infty$'
+
+
+#Render the table
+
+kbl(r_rslts[1:10,],
+    format = "html",
+    booktabs=TRUE,
+    escape = FALSE,
+    caption = "Sample Trials") %>%
+  kable_styling(bootstrap_options="striped",
+                full_width=FALSE)
+
+
+# head(r_rslts)
+
+```
+
+Now, let's run the analysis:
+
+```{python}
+
+analysis = analyze_sim(rslts, warmup_n=20000, k=k)
+for k,v in analysis.items():
+  print(k)
+  
+  for a,b in v.items():
+    print(f'{a}: {b}')
+    
+    
+```
+
+Here are the *pretty* confidence intervals.
+
+```{python, echo=FALSE}
+
+batch = analysis['batch']
+overall = analysis['Overall']
+
+el = batch['E[L]']
+elq = batch['E[Lq]']
+ellb = batch['L 95.0% confid'][0]
+elub = batch['L 95.0% confid'][1]
+elqlb = batch['Lq 95.0% confid'][0]
+elqub = batch['Lq 95.0% confid'][1]
+
+```
+
+$$E[L]: `r round(py$ellb, 2)` \leq `r round(py$el, 2)` \leq `r round(py$elub, 2)`$$
+
+$$E[L_q]: `r round(py$elqlb, 2)` \leq `r round(py$elq, 2)` \leq `r round(py$elqub, 2)`$$
+
+Note that the theoretically exact values are:
+
+$$E[L] = 4.0$$
+$$E[L_q] = 3.2$$
+
+## Generating the simulated trials
+
+While this tutorial is about constructing confidence intervals, you might be interested in the code that generates the trials:
+
+```{python, eval=FALSE}
+import numpy as np
+import pandas as pd
+import time
+import math
+
+from scipy.stats import norm
+from scipy.stats import poisson
+from scipy.stats import expon
+import scipy.stats as stats
+
+def sim(arr_dist, svc_time_dist, trials: int=10000, random_state=None):
+    if random_state is None:
+        # use system lock if no specific seed specified
+        random_state = time.time()
+
+    # create a random number generator instance and set random seed
+    rng = np.random.default_rng(random_state)
+
+    # initial next arrival and service completion clocks
+    next_arr = arr_dist.rvs(1, rng)[0]
+    next_svc_comp = math.inf
+
+    # customers in system, sim time (i.e., time since start of sim), and state time (i.e., time in state)
+    n = np.zeros(trials + 1)
+    sim_time = np.zeros(trials + 1)
+    state_time = np.zeros(trials + 1)
+
+    # initialize debugging vectors to capture next arrival and svc completion times at beginning of
+    # event
+    arr_time_beg = np.zeros(trials + 1)
+    arr_time_end = np.zeros(trials + 1)
+    svc_time_beg = np.zeros(trials + 1)
+    svc_time_end = np.zeros(trials + 1)
+
+    # initialize the starting state
+    sim_time[0] = 0.0
+    n[0] = 0
+
+    for i in range(1, trials + 1):
+        # save debug information
+        arr_time_beg[i] = next_arr
+        svc_time_beg[i] = next_svc_comp
+
+        if next_arr < next_svc_comp:
+            # The next arrival is scheduled BEFORE the next service completion
+
+            # increase the customers in the system
+            n[i] = n[i-1] + 1
+
+            # update the simulation clock (i.e., running time)
+            sim_time[i] = next_arr
+
+            # calculate the time for the next arrival
+            next_arr = sim_time[i] + arr_dist.rvs(1, rng)[0]
+
+            if math.isinf(next_svc_comp):
+                # The system was empty, so we need to calculate the next system time.
+                # inf is used to ensure that the next event must be an arrival if the
+                # system is empty
+                next_svc_comp = sim_time[i] + svc_time_dist.rvs(1, rng)[0]
+        else:
+            # The next service completion is scheduled before the next arrival
+            # reduce the number of customers in the system
+            n[i] = n[i-1] - 1
+
+            # update the system clock to reflect the current sim time
+            sim_time[i] = next_svc_comp
+
+            # Update the next svc completion time based on the state.
+            if n[i] > 0:
+                # The queue is not empty, so calculate the next service completion starting
+                # from the current sim time
+                next_svc_comp = sim_time[i] + svc_time_dist.rvs(1, rng)[0]
+            else:
+                # The queue is empty, so ensure that the next event is an arrival by setting
+                # next_svc_comp to infinity.
+                next_svc_comp = math.inf
+
+        # calculate time spent in state
+        state_time[i-1] = sim_time[i] - sim_time[i-1]
+        arr_time_end[i] = next_arr
+        svc_time_end[i] = next_svc_comp
+
+    # calculate final state time
+    if next_arr < next_svc_comp:
+        # the next event would be an arrival, so use next arrival time to determine the time spent
+        # in the state following the last event
+        state_time[i] = next_arr - sim_time[i]
+    else:
+        # the next event would be a service completion, so use next svc completion time to determine
+        # the time spent in the state following the last event
+        state_time[i] = next_svc_comp - sim_time[i]
+
+    # construct and return results data
+    df = pd.DataFrame({'Time': sim_time,
+                       'ArrTimeBeg': arr_time_beg,
+                       'SvcTimeBeg': svc_time_beg,
+                       'n': n,
+                       'StateTime': state_time,
+                       'ArrTimeEnd': arr_time_end,
+                       'SvcTimeEnd': svc_time_end})
+
+    return df
+
+
+```
 
 
  
