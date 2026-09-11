@@ -1,0 +1,458 @@
+---
+title: "Constructing a Probability Distribution via Simulation"
+author: "Gary Mitchell"
+date: "September 11, 2026"
+output: html_document
+---
+
+```{r setup, include=FALSE, message=TRUE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+require(reticulate)
+require(kableExtra)
+
+```
+
+Some probabilities can be so complex to calculate directly that it is much easier to construct a probability distribution using simulation. How is this possible? *Because every trial in a simulation occurs with equal probability*. Why does this make finding the probabilities easier? Because every trial occurs with equal probability, using the simulated data to calculate probabilities and inverse probabilities is just like calculating probabilities from frequencies!
+
+## Lead Time Demand
+
+A common application in supply chain management (SCM) is calculating safety stock. The typical textbook calculation of safety stock is:
+
+$$ss = k \sigma_L$$
+where $k$ is the *safety factor* and $\sigma_L$ is the standard deviation of demand during the lead time. $k$ can be calculated in various ways depending on item characteristics, cost considerations, etc. This calculation assumes that lead time is constant and known and demand is uncertain. The problem is that *lead time is not constant and known* in practice. Therefore, to be accurate, safety stock needs to be calculated using a standard deviation of both demand and lead time.
+
+There is a relatively straightforward way to calculate this combined standard deviation when both demand and lead time are normally distributed. However, unless lead times are very long, they are usually not normally distributed.
+
+If you are interested in supply chain and/or inventory management, you can learn more in our Introduction to Supply Chain Management (BUS 546) and Advanced Inventory Theory and Practice (BUS 547) courses.
+
+## Simulation to the Rescue
+
+So how can we resolve this problem? First, we need to recognize what the safety stock represents. If we assume that we are using a Type I service criteria, then we find $k$ using a *target service level*, $tsl$, which specifies the target probability of satisfying all demand from stock. In this case, *safety stock* calculation, as shown above, is equivalent to:
+
+$$ss = F_{ltd}^{-1}(tsl) - \mu_{ltd}$$
+
+where $F_{ltd}^{-1}(p)$ represents the inverse cumulative probability of lead time demand (i.e. the combined distribution of lead time and demand) and $\mu_{ltd}$ is the average lead time demand. To calculate both of these terms, we need the lead time demand distribution.
+
+Assume that:
+
++  Weekly demand is normally distributed with mean 5,000 and standard deviation 500
++  Lead time follows a shifted exponential distribution with minimum 2 days and and an average of 4 days (i.e. a minimum constant portion of 2 days and exponentially distributed variable portion with and average of 2 days).
+
+We can use the two distributions to *generate the lead time demand distribution*:
+
++  Generate random lead times
++  Generate random demands over the random lead times.
+
+To do this in Python, we first generate the random lead times according to a shifted exponential distribution. Here we generate 10,000 such lead times:
+
+
+```{python}
+import math
+from scipy.stats import expon
+from scipy.stats import norm
+from scipy.stats import uniform
+import matplotlib.pyplot as plt
+import numpy as np
+
+# initialize seed values
+lseed = 100
+dseed = 110
+
+# create a random number generator for lead times
+lrng = np.random.default_rng(seed=lseed)
+
+n = 10000
+minLt = 2
+meanLt = 4
+
+# construct the exponential distribution object
+# SciPy's exponential distribution accomdates the shift. The parameters are
+# loc - i.e., the shift, so minLt in our case
+# scale - The "mean" of the random portion. NOTE: this is not lambda.
+
+lt_dist = expon(loc=minLt, scale=meanLt - minLt)
+
+# generate n random lead times
+lt = lt_dist.rvs(size=n, random_state=lrng)
+
+# look at the first lts
+print(lt[:10])
+
+# the mean lead time should be approximately 4
+print(lt.mean())
+
+```
+
+```{python, echo=FALSE}
+
+py_lt_mean = lt.mean()
+
+```
+
+Here we see that the mean of the generated lead times, `r py$py_lt_mean` is reasonably close to the specified mean of 4. The simulated mean will converge to the theoretical mean as the number of simulated lead times is increased.
+
+Next, we calculate a random demand for each lead time. However, the given demand distribution is weekly, and we really need a daily demand distribution. For this, we will calculate the mean $(\mu_d)$ and standard deviation $(\sigma_d)$ of daily demand:
+
+$$\mu_d = \frac{\mu}{7}$$
+$$\sigma_d = \sigma\sqrt{\frac{1}{7}}$$
+The form of the daily standard deviation is related to the algebra of variances. We cannot use a simple linear transformation as we did for the mean because standard deviations do not scale linearly. However, variances *do* scale linearly, so:
+
+$$\sigma^2_d = \frac{1}{7} \sigma^2 \Longrightarrow \sqrt{\sigma^2_d} = \sqrt{\frac{1}{7} \sigma^2} \Longrightarrow \sigma_d = \sigma\sqrt{\frac{1}{7}}$$
+Here's the Python code to generate the *lead time demands*:
+
+```{python, echo=TRUE}
+
+mu_7 = 5000
+sigma_7 = 500
+
+# calculate the daily demand mean and standard deviation
+mu_d = mu_7 / 7
+sigma_d = sigma_7 * math.sqrt(1/7)
+
+# create a randon number generator for demands
+drng = np.random.default_rng(seed=dseed)
+
+# create the normal distribution
+
+dmd_dist = norm(mu_d, sigma_d)
+
+# generate the lead time demands (random average daily demand * random lead time)
+ltd = (dmd_dist.rvs(n, random_state=drng) * lt).round()
+
+# let's look at the lead time demands
+fig, ax = plt.subplots()
+ax.hist(ltd)
+ax.set_xlabel('Lead Time Demand')
+ax.set_ylabel('Frequency')
+ax.set_title('LT Demand Distribution')
+
+
+```
+
+Note that the resulting lead time demands do not appear to be normally distributed, even though the demand distribution is normal. This is the impact of the variable lead times on the lead time demand. Clearly, if we were to assume that lead time demand is normally distributed (as do most commercial supply chain management software packages), we would be making a serious mistake every time we calculated a safety stock value!
+
+Note also, that the histogram seems to reflect that we generated some negative lead time demand values. Let's look at the negative demands.
+
+```{python}
+
+print(f'Number of lead time distribution values < 0: {(ltd < 0).sum()}')
+print(f'Negative demand values: {ltd[ltd < 0]}')
+```
+
+
+Since  demand must be non-negative (demand predictions are not considered to be net of returns), we must regenerate our lead time demands using a truncated normal distribution (we'll truncate the distribution at 0).
+
+```{python, echo=TRUE}
+
+mu_7 = 5000
+sigma_7 = 500
+
+# calculate the daily demand mean and standard deviation
+mu_d = mu_7 / 7
+sigma_d = sigma_7 * math.sqrt(1/7)
+
+# create a randon number generator for demands
+drng = np.random.default_rng(seed=dseed)
+
+# create the normal distribution for demand
+dmd_dist = norm(mu_d, sigma_d)
+
+# Calculate F(a) and generate U for use with the truncated distribution calcs
+Fa = dmd_dist.cdf(0)
+U = uniform.rvs(size=n, random_state=drng)
+
+
+# generate the lead time demands (random average daily demand * random lead time)
+# See Truncated Distributions Tutorial for more information.
+
+ltd = (dmd_dist.ppf(U * (1 - Fa) + Fa) * lt).round()
+
+# let's look at the lead time demands
+fig, ax = plt.subplots()
+ax.hist(ltd)
+ax.set_xlabel('Lead Time Demand')
+ax.set_ylabel('Frequency')
+ax.set_title('LT Demand Distribution')
+
+
+print(f'Number of lead time distribution values < 0: {(ltd < 0).sum()}')
+print(f'Negative demand values: {ltd[ltd < 0]}')
+
+```
+
+Now, we have generated non-negative demand values. The lead time demand (LTD) values we calculated now represent a lead time demand distribution. We can use them to calculate anything we need for our inventory policy.
+
+## Calculating Safety Stock from our LTD distribution
+
+Our safety stock calculation now involves calculating the difference between two terms. The second term, $\mu_{ltd}$ is easily calculated from our lead time demand distribution. Because *every trial in a simulation occurs with equal probability* we can calculate the mean lead time demand using a simple arithmetic mean:
+
+```{python}
+
+mu_ltd = ltd.mean()
+
+```
+
+$$\mu_{ltd} = `r py$mu_ltd`$$
+
+Now we need to calculate the inverse cumulative probability of lead time demand for a specified target service level, say 95%. To do so, we *could*:
+
++  Order the data from smallest to largest
++  Find the value such that 95% of all lead time demands are $\leq$ the value
+
+However, we can use the NumPy's percentile function efficiently calculate the inverse cumulative probability for the desired percentile (i.e. our target service level of 95%)
+
+```{python}
+ltd_95 = np.percentile(ltd, 95)
+```
+
+and determine that
+
+$$F^{-1}(0.95) = `r py["ltd_95"]`$$
+
+
+Now we can calculate our safety stock:
+
+$$ss = F^{-1}(0.95) - \mu_{ltd}$$
+
+```{python}
+ss = ltd_95 - mu_ltd
+
+```
+
+
+$$ss = F^{-1}(0.95) - \mu_{ltd} = `r py["ltd_95"]` - `r py["mu_ltd"]` = `r py["ss"]`$$
+
+
+That's it! What would have been extremely messy otherwise (involving double integrals, etc.), is easily and quickly accomplished using simulation!
+
+## A More Challenging Example
+
+Let's consider finding the average number of customers waiting and in system for an M/M/1 queue. During the simulation we must track the number of customers in the system at every state. At the end of the simulation, we calculate $L_q$, average number of customers waiting, $L$ average number of customers in the system (i.e. waiting and in service), $W_q$, average wait time, and $W$, average time in system.
+
+The following code (ported from a previously developed simulation in R) simulates the queue:
+
+```{python}
+import numpy as np
+import pandas as pd
+import time
+import math
+
+from scipy.stats import norm
+from scipy.stats import poisson
+from scipy.stats import expon
+import scipy.stats as stats
+
+pd.set_option('display.max_columns', None)
+
+
+# set random seed
+rng = np.random.default_rng(200)
+
+
+# nevents = number of events (either arrivals or service completions we will simulate)
+nevents = 10000
+warmup = 2000
+
+# set up the arrivals distribution, average of 20 per hour or 20/60 per minute
+arr_rate = 20/60
+arr_dist = expon(scale=1/arr_rate)
+
+# set up service time distribution, average of 25 per hour or 25/60 per minute
+svc_rate = 25/60
+svc_time_dist = expon(scale=1/svc_rate)
+
+# simtime is the running simulation clock
+simtime = 0
+last_simtime = 0
+
+# allocate vectors for recording events
+n = np.zeros(nevents)
+state_time = np.zeros(nevents)
+event = list()
+customer = list()
+custcurr = -1
+custlast = -1
+lastcomplete = -1
+largeNumber = 10**15
+
+# current number of customers in system
+ncurr = 0
+
+# server_available of TRUE indicates that the server is ready for a new customer
+server_available = True
+
+# the first event HAS to be an arrival, so we generate the random arrival time, but
+# set the next service completion time to VERY large number. This guarantees that
+# the first event is an arrival
+
+nextArrival = arr_dist.rvs(random_state=rng)
+nextServiceCompletion = largeNumber
+
+for i in range(nevents):
+    last_simtime = simtime
+
+    # generate exponential inter-arrival (rate 20 cust/hr) and service times (rate 25 cust/hr)
+    # dividing the rate by 60 to deal with times in minutes rather than f4ractions of hours
+
+    # iatime<-rexp(1, 20/60)
+    # svctime<-rexp(1, 25/60)
+
+    n[i] = ncurr
+
+    # determine next event type
+    if nextArrival < nextServiceCompletion:
+        # if time to next arrival is shorter than time to next service completion
+        # then event is an arrival
+
+        simtime = nextArrival
+        event_type = "Arrival"
+
+        # now we need to generate the time of the "next" arrival
+        nextArrival = nextArrival + arr_dist.rvs(random_state=rng)
+    else:
+        # If the event isn't an arrival, then it's a service completion
+        simtime = nextServiceCompletion
+        event_type = "Service Completion"
+
+    if (event_type == "Arrival"):
+        # Process arrival
+        ncurr = ncurr + 1
+
+        # create the customer
+        custlast = custlast + 1
+        customer.append({'custno': custlast,
+                         'arrival_time': simtime,})
+    else:
+        # service completed so we must update # cust in system
+        ncurr = ncurr - 1
+
+        # need to update customer's record with completion time
+        customer[custcurr]['complete_service_time'] = simtime
+        lastcomplete = custcurr
+
+        # now, mark the server as available
+        server_available = True
+
+        # FINALLY, since there's no customer in service, at least at this
+        # instant, set the nextServiceCompletion to a very large number
+        nextServiceCompletion = largeNumber
+
+    # now, need to see if a customer needs to enter service
+
+    if server_available and ncurr > 0:
+        # there's a customer waiting and the server is available
+        # update customer's enter service time
+        custcurr = custcurr + 1
+        customer[custcurr]['enter_service_time'] = simtime
+
+        # customer is entering service, determine completion time
+        nextServiceCompletion = simtime + svc_time_dist.rvs(random_state=rng)
+        server_available = False
+
+    # create/save the event - udate the event log and the state log
+    event.append({'type': event_type,
+                  'time': simtime,
+                  'n': ncurr})
+
+    state_time[i] = simtime - last_simtime
+
+
+    #customer < -customer[1:lastcomplete]
+
+# create dataframe with customer details and drop warmup trials
+sim_details = pd.DataFrame(customer).iloc[warmup:]
+sim_details['svc_time'] = sim_details['complete_service_time'] - sim_details['enter_service_time']
+sim_details['wait_time'] = sim_details['enter_service_time'] - sim_details['arrival_time']
+sim_details['system_time'] = sim_details['complete_service_time'] - sim_details['arrival_time']
+
+# drop rows for customers that have not completed service
+sim_details.dropna(inplace=True)
+
+# create dataframe with state details
+state_details = pd.DataFrame({'n': n, 'state_time': state_time})
+
+Wq = sim_details['wait_time'].mean()
+W = sim_details['system_time'].mean()
+L = (n.dot(state_time) / state_time.sum()).mean()
+Lq = (np.maximum(0, n - 1).dot(state_details['state_time']) / state_time.sum()).mean()
+
+
+```
+
+Here's a sample of the customer details:
+
+```{r, echo=FALSE}
+r_rslts <- reticulate::py_to_r(py$sim_details)
+
+#Render the table
+
+kbl(r_rslts[1:10,],
+    format = "html",
+    booktabs=TRUE,
+    escape = FALSE,
+    caption = "Customer Details") %>%
+  kable_styling(bootstrap_options="striped",
+                full_width=FALSE)
+```
+
+
+Here's a sample of the state details:
+
+```{r, echo=FALSE}
+r_rslts <- reticulate::py_to_r(py$state_details)
+
+#Render the table
+
+kbl(r_rslts[1:10,],
+    format = "html",
+    booktabs=TRUE,
+    escape = FALSE,
+    caption = "State Details") %>%
+  kable_styling(bootstrap_options="striped",
+                full_width=FALSE)
+```
+
+
+And here are the queue metrics calculated from the simulation:
+
+$$L = `r py['L']`$$
+$$L_q = `r py['Lq']`$$
+$$W = `r py['W']`$$
+$$W_q = `r py['Wq']`$$
+
+### Using rv_histogram to construct a probability distribution
+
+Now let's say that we want to be able to calculate the probability that more than 5 customers are waiting. SciPy provides a *nifty* class we can use to construct a distribution from our trial data. Here's an example of using rv_histogram for customer waiting time.
+
+```{python}
+from scipy.stats import rv_histogram
+
+# construct the distribution
+hist = np.histogram(sim_details['wait_time'], bins=100)
+wq_dist = rv_histogram(hist, density=False)
+
+# Find the probability of waiting fewer than 3 minutes
+Fwq = wq_dist.cdf(3)
+print(Fwq)
+
+```
+
+If we denote the CDF of our waiting time distribution as $F_{W_q}(x)$, then:
+
+$$F_{W_q}(x) = `r py['Fwq']`$$
+
+Similarly, we can find the 95% confidence value, $F_{W_q}^{-1}(0.95)$:
+
+```{python}
+wq_95 = wq_dist.ppf(.95)
+print(wq_95)
+```
+
+So,
+
+$$F_{W_q}^{-1}(0.95) \approx `r round(py['wq_95'],2)`$$
+
+
+## Summary
+
+Constructing probability distributions from simulation results is straightforward and requires very little work (beyond the work to construct the simulation itself). In many cases, this is the only practical technique for constructing a probability distribution, especially when multiple random variables are involved (as in the case of the lead time demand distribution) or when the probabilities are the result of complex system behavior (as in the probabilities associated with our M/M/1 queue).
