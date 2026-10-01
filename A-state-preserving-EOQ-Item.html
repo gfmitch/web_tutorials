@@ -620,7 +620,7 @@ whenever a model parameter value is changed</li>
 
 item = EOQItem(10000, 500, 12.95, 0.35)
 print(item)</code></pre>
-<pre><code>## &lt;class &#39;EOQItem.EOQItem&#39;&gt; at 2908336531344: 
+<pre><code>## &lt;class &#39;EOQItem.EOQItem&#39;&gt; at 1777909868800: 
 ##  d=10000, 
 ##  a=500, 
 ##  v=12.95, 
@@ -710,7 +710,7 @@ print will show that the internal private attribute now exists:</p>
 start, we’ll change the value of annual demand:</p>
 <pre class="python"><code>item.d = 500
 print(item)</code></pre>
-<pre><code>## &lt;class &#39;EOQItem.EOQItem&#39;&gt; at 2908336531344: 
+<pre><code>## &lt;class &#39;EOQItem.EOQItem&#39;&gt; at 1777909868800: 
 ##  d=500, 
 ##  a=500, 
 ##  v=12.95, 
@@ -755,7 +755,7 @@ items.append(EOQItem(47, 125, 2.95, 0.35))
 
 for item in items:
   print(f&#39;{item}\n&#39;)</code></pre>
-<pre><code>## &lt;class &#39;EOQItem.EOQItem&#39;&gt; at 2908336694480: 
+<pre><code>## &lt;class &#39;EOQItem.EOQItem&#39;&gt; at 1777911942352: 
 ##  d=10000, 
 ##  a=500, 
 ##  v=12.95, 
@@ -764,7 +764,7 @@ for item in items:
 ##  oo=0, 
 ##  recalc_needed=True
 ## 
-## &lt;class &#39;EOQItem.EOQItem&#39;&gt; at 2908565582096: 
+## &lt;class &#39;EOQItem.EOQItem&#39;&gt; at 1777911942672: 
 ##  d=500, 
 ##  a=500, 
 ##  v=617.98, 
@@ -773,7 +773,7 @@ for item in items:
 ##  oo=0, 
 ##  recalc_needed=True
 ## 
-## &lt;class &#39;EOQItem.EOQItem&#39;&gt; at 2908336535120: 
+## &lt;class &#39;EOQItem.EOQItem&#39;&gt; at 1777911417600: 
 ##  d=1000, 
 ##  a=2500, 
 ##  v=1500.0, 
@@ -782,7 +782,7 @@ for item in items:
 ##  oo=0, 
 ##  recalc_needed=True
 ## 
-## &lt;class &#39;EOQItem.EOQItem&#39;&gt; at 2908330015888: 
+## &lt;class &#39;EOQItem.EOQItem&#39;&gt; at 1777911421856: 
 ##  d=1000, 
 ##  a=2500, 
 ##  v=125.95, 
@@ -791,7 +791,7 @@ for item in items:
 ##  oo=0, 
 ##  recalc_needed=True
 ## 
-## &lt;class &#39;EOQItem.EOQItem&#39;&gt; at 2908336482128: 
+## &lt;class &#39;EOQItem.EOQItem&#39;&gt; at 1777910773904: 
 ##  d=47, 
 ##  a=125, 
 ##  v=2.95, 
@@ -807,7 +807,7 @@ total cost):</p>
   item.increase_oh(round(item.eoq()))
   print(f&#39;{item}\n&#39;)</code></pre>
 <pre><code>## 1485
-## &lt;class &#39;EOQItem.EOQItem&#39;&gt; at 2908336694480: 
+## &lt;class &#39;EOQItem.EOQItem&#39;&gt; at 1777911942352: 
 ##  d=10000, 
 ##  a=500, 
 ##  v=12.95, 
@@ -817,7 +817,7 @@ total cost):</p>
 ##  recalc_needed=False
 ## 
 ## 57
-## &lt;class &#39;EOQItem.EOQItem&#39;&gt; at 2908565582096: 
+## &lt;class &#39;EOQItem.EOQItem&#39;&gt; at 1777911942672: 
 ##  d=500, 
 ##  a=500, 
 ##  v=617.98, 
@@ -827,7 +827,7 @@ total cost):</p>
 ##  recalc_needed=False
 ## 
 ## 98
-## &lt;class &#39;EOQItem.EOQItem&#39;&gt; at 2908336535120: 
+## &lt;class &#39;EOQItem.EOQItem&#39;&gt; at 1777911417600: 
 ##  d=1000, 
 ##  a=2500, 
 ##  v=1500.0, 
@@ -837,7 +837,7 @@ total cost):</p>
 ##  recalc_needed=False
 ## 
 ## 435
-## &lt;class &#39;EOQItem.EOQItem&#39;&gt; at 2908330015888: 
+## &lt;class &#39;EOQItem.EOQItem&#39;&gt; at 1777911421856: 
 ##  d=1000, 
 ##  a=2500, 
 ##  v=125.95, 
@@ -847,7 +847,7 @@ total cost):</p>
 ##  recalc_needed=False
 ## 
 ## 107
-## &lt;class &#39;EOQItem.EOQItem&#39;&gt; at 2908336482128: 
+## &lt;class &#39;EOQItem.EOQItem&#39;&gt; at 1777910773904: 
 ##  d=47, 
 ##  a=125, 
 ##  v=2.95, 
