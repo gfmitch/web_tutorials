@@ -77,11 +77,11 @@ The primary difference from one algorithm to the next is how the step size, $\ma
 
 ## Step size calculation in ADAM
 
-Recall the calculation of $\mathbf{x}_{n+1} from the gradient descent tutorial:
+Recall the calculation of $\mathbf{x}_{n+1}$ from the gradient descent tutorial:
 
 This definition directly yields the idea of using first differences to approximate the derivative; the numerator is the difference of the function evaluated at two points. If we let $\Delta x = 1$, then we have:
 
-$$x_{n+1} = f(x_n) - \eta \nabla f(x_n)$$
+$$x_{n+1} = f(\mathbf{x}_n) - \eta \nabla f(\mathbf{x}_n)$$
 
 From this we see that the gradient descent step size is $- \eta \nabla f(x_n)$. Clearly, the step size is a linear function of the gradient. The learning rate, $\eta$, is fixed over all iterations.
 
@@ -112,7 +112,7 @@ To understand ADAM, we need to look further at $\hat{m}_t$ and $\hat{v}_t$.
 
 $\hat{m}_t$ is the bias-adjusted first moment estimate. We start by calculating the first moment (mean) estimate:
 
-$$m_t = \beta_1 m_{t-1} + (1-\beta_1) \nabla f{\mathbf({x}_n)}$$
+$$m_t = \beta_1 m_{t-1} + (1-\beta_1) \nabla f({\mathbf{x}_n)}$$
 
 where $\beta_1$ is the exponential smoothing factor (i.e., decay rate) for the gradient moving average. Because $m_0$ is initialized to 0, it tends to be biased toward zero, especially in the initial iterations. To compensate, we calculate $\hat{m}_t$:
 

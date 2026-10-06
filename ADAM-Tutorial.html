@@ -660,13 +660,13 @@ size, <span class="math inline">\(\mathbf{s}_{n+1}\)</span> is
 determined.</p>
 <div id="step-size-calculation-in-adam" class="section level2">
 <h2>Step size calculation in ADAM</h2>
-<p>Recall the calculation of $_{n+1} from the gradient descent
-tutorial:</p>
+<p>Recall the calculation of <span class="math inline">\(\mathbf{x}_{n+1}\)</span> from the gradient
+descent tutorial:</p>
 <p>This definition directly yields the idea of using first differences
 to approximate the derivative; the numerator is the difference of the
 function evaluated at two points. If we let <span class="math inline">\(\Delta x = 1\)</span>, then we have:</p>
-<p><span class="math display">\[x_{n+1} = f(x_n) - \eta \nabla
-f(x_n)\]</span></p>
+<p><span class="math display">\[x_{n+1} = f(\mathbf{x}_n) - \eta \nabla
+f(\mathbf{x}_n)\]</span></p>
 <p>From this we see that the gradient descent step size is <span class="math inline">\(- \eta \nabla f(x_n)\)</span>. Clearly, the step
 size is a linear function of the gradient. The learning rate, <span class="math inline">\(\eta\)</span>, is fixed over all iterations.</p>
 <div id="adaptive-step-sizes-with-adam" class="section level3">
@@ -699,7 +699,7 @@ algorithm where the step size is given by:</p>
 first moment estimate. We start by calculating the first moment (mean)
 estimate:</p>
 <p><span class="math display">\[m_t = \beta_1 m_{t-1} + (1-\beta_1)
-\nabla f{\mathbf({x}_n)}\]</span></p>
+\nabla f({\mathbf{x}_n)}\]</span></p>
 <p>where <span class="math inline">\(\beta_1\)</span> is the exponential
 smoothing factor (i.e., decay rate) for the gradient moving average.
 Because <span class="math inline">\(m_0\)</span> is initialized to 0, it
