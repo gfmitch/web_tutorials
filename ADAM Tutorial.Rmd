@@ -1,0 +1,186 @@
+---
+title: "Adaptive Moment Optimization (ADAM)"
+author: "Gary Mitchell"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    extra_dependences:
+    - algorithm
+    - algpseudocode
+  pdf_document: default
+---
+
+```{r setup, include=FALSE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+require(kableExtra)
+require(reticulate)
+suppressMessages(require(numform))
+# require(tinytex)
+# tlmgr_install(c("algorithm", "algpseudocode"))
+```
+
+In a previous tutorials we've learned about a couple of numerical optimization methods:
+
+- Newton's Method (Newton-Raphson)
+- Gradient Descent.
+
+We also learned there were some real challenges with using these methods:
+
+- Newton's method is challenging to use with higher-dimension functions
+- Gradient descent is difficult to use, due to the impacts of the initial guess and the learning rate.
+
+ADAM, (Ada)ptive (M)oment estimation, has become a popular, oft-used alternative to simple gradient descent. Make no mistake, there are many other potential methods that can be used:
+
+- Quasi-Newton Methods (e.g., BFGS) - approximate the inverse Hessian instead of calculating it directly
+- Conjugate Gradient method - uses orthogonal search directions rather than steepest descent (like gradient descent)
+- Simulated Annealing - a stochastic method that avoids getting stuck in local minima by making probabilistic jumps
+- Genetic Algorithms - uses random adaptations to evaluate candidate solutions in a broad solution space
+- Gradient Descent with Backtracking Line Search (GDBLS) - gradient descent with adaptive step size.
+
+Essentially *all* numerical optimization methods utilize the same basic algorithm:
+
+\begin{array}{ll}
+\hspace{-2cm} \textbf{Algorithm 1} & \text{Generic Numerical Optimization} \\
+\hline
+1: & \text{Initialize variables:} \\
+2: & \quad n \leftarrow 0 \\
+3: & \quad \mathbf{x}_n \leftarrow \text{initial guess} \\
+4: & \quad \theta_{n} \leftarrow M \\
+5: & \textbf{while } n \leq n_{max} \textbf{ do} \\
+6: & \quad \textbf{calculate} \   \mathbf{s}_{n+1} \\
+7: & \quad \mathbf{x}_{n+1} \leftarrow \mathbf{x}_n + \mathbf{s}_{n+1} \\
+8: & \quad \theta_{n+1} \leftarrow f({\mathbf{x}_{n+1}})\\
+
+9: & \quad \textbf{if} \  \lvert \theta_{n+1} - \theta_{n} \rvert \leq \epsilon 
+\textbf{ or } \lvert \lvert \mathbf{x}_{n+1} - \mathbf{x}_{n} \rvert \rvert \leq \epsilon \\
+10:  & \quad \quad \textbf{return } \mathbf{x}_{n+1} \\
+11: & \quad \theta_{n} \leftarrow \theta_{n+1} \\
+12: & \quad \mathbf{x}_n \leftarrow \mathbf{x}_{n+1} \\
+13: & \quad n \leftarrow n + 1 \\
+14: & \textbf{end while} \\
+15: & \textbf{return } NaN \\
+\hline
+\end{array}
+
+where:
+
+- $M$ is a very large number
+- $n_{max}$ is the maximum number of iterations
+- $\mathbf{s}_{n+1}$ is the step size for the next step
+- $\theta_{n+1}$ and $\theta_n$ are the objective function values evaluated at $\mathbf{x}_{n+1}$ and $\mathbf{x}_n$ respectively
+- $\mathbf{x}_{n+1}$ and $\mathbf{x}_{n}$ are decision variable vectors in steps $n+1$ and $n$ respectively
+- $\lvert \lvert \mathbf{x} \rvert \rvert$ is the $l^2$-norm of $\mathbf{x}$
+- $NaN$, not a number, is returned to indicate the algorithm failed to converge in $n_{max}$ iterations.
+
+The primary difference from one algorithm to the next is how the step size, $\mathbf{s}_{n+1}$ is determined.
+
+
+## Step size calculation in ADAM
+
+Recall the calculation of $\mathbf{x}_{n+1} from the gradient descent tutorial:
+
+This definition directly yields the idea of using first differences to approximate the derivative; the numerator is the difference of the function evaluated at two points. If we let $\Delta x = 1$, then we have:
+
+$$x_{n+1} = f(x_n) - \eta \nabla f(x_n)$$
+
+From this we see that the gradient descent step size is $- \eta \nabla f(x_n)$. Clearly, the step size is a linear function of the gradient. The learning rate, $\eta$, is fixed over all iterations.
+
+### Adaptive step sizes with ADAM
+
+ADAM combines two optimization techiques, *Momentum* and *RMSProp*, with the goal of achieving faster convergence and more stable training (i.e., reduced likelihood of divergence):
+
+- Momentum employs moving averages of past gradients
+- RMSProp uses moving averages of squared gradients to prevent the learning rate from decreasing too quickly.
+
+In ADAM, the step calculation is:
+
+$$\mathbf{x}_{n+1} = \mathbf{x}_n - \frac{\hat{m}_t}{\sqrt{\hat{v}_t}+\epsilon}\alpha$$
+
+where:
+
+- \alpha is the learning rate (often defaulting to 0.001)
+- \epsilon is a small constant (e.g. $10^{-8}$) used to avoid division by 0.
+
+Clearly this follows the pattern for our general optimization algorithm where the step size is given by:
+
+$$- \frac{\hat{m}_t}{\sqrt{\hat{v}_t}+\epsilon}\alpha$$
+
+To understand ADAM, we need to look further at $\hat{m}_t$ and $\hat{v}_t$.
+
+
+#### First moment estimate
+
+$\hat{m}_t$ is the bias-adjusted first moment estimate. We start by calculating the first moment (mean) estimate:
+
+$$m_t = \beta_1 m_{t-1} + (1-\beta_1) \nabla f{\mathbf({x}_n)}$$
+
+where $\beta_1$ is the exponential smoothing factor (i.e., decay rate) for the gradient moving average. Because $m_0$ is initialized to 0, it tends to be biased toward zero, especially in the initial iterations. To compensate, we calculate $\hat{m}_t$:
+
+$$\hat{m}_t = \frac{m_t}{1-\beta_1}$$
+
+#### Second moment estimate
+
+$\hat{v}_t$ is the bias-adjusted second moment estimate. We start by calculating the second moment (variance) estimate:
+
+$$v_t = \beta_2 v_{t-1} + (1-\beta_2) \nabla^2 f(\mathbf{x}_n)$$
+
+where $\nabla^2 f(\mathbf{x}_n) = \bigl(\nabla f(\mathbf{x}_n)\bigr)^2$ is the *squared gradient*, and $\beta_2$ is the exponential smoothing factor (i.e., decay rate) for the squared gradient moving average. Like $m_0$, $v_0$ is initialized to 0, we calculate the bias-adjusted $\hat{v}_t$:
+
+$$\hat{v}_t = \frac{v_t}{1-\beta_2}$$
+
+Using both $\hat{m}_t$ and $\hat{v}_t$ we then calculate the step size:
+
+$$- \frac{\hat{m}_t}{\sqrt{\hat{v}_t}+\epsilon}\alpha$$
+
+#### Adaptive learning rates for every decision variable
+
+One important consideration for ADAM is that $\hat{m}_t$ and $\hat{v}_t$ are both vectors, representing the moving averages of the partial derivatives and squared partial derivatives for all decision variables. Thus, when we calculate the step size, we're actually calculating step sizes for every decision variable. *In other words, ADAM calculates adaptive step sizes for each decision variable independently of the others*.
+
+## ADAM Performance
+
+ADAM is frequently recommenced as the optimizer when fitting large neural network models because it represents a good trade-off between stability and performance. To provide some intuition into ADAM's performance, I used ADAM and gradient descent to find the cost minimizing order quantity for an EOQ problem, i.e.:
+
+$$\mathop{\mathrm{arg\min}}\limits_{Q}\  TRC(Q) = \frac{Q v r}{2} + \frac{D A}{Q}$$
+In the example, I used:
+
+- $D = 10,000$
+- $A = \$500$
+- $v = \$12.95$
+- $r = 0.35$
+
+The *theoretically exact* value of $Q^*$ is given (to six decimal places) by:
+
+```{r, echo=FALSE}
+D <- 10000
+A <- 500
+v <- 12.95
+r <- 0.35
+
+Qstar <- sqrt(2 * D * A / (v * r))
+
+iterations <- c(NA,8782, 18697)
+method <- c('Theoretical', 'ADAM', 'GD')
+qstar <- c(1485.357843, 1485.39039602, 1485.39059085)
+trc <- c(6732.384422, 6732.3844232, 6732.3844232)
+tab <- data.frame(Method=method, Iterations=iterations, '$Q^*$'=qstar, '$TRC(Q^*)$'=trc)
+colnames(tab) <- c('Method', 'Iterations', '$Q^*$', '$TRC(Q^*)$')
+```
+
+
+$$Q^* = \sqrt{\frac{2DA}{vr}} = \sqrt{\frac{2(10000)(500)}{12.95(0.35)}} = `r format(Qstar, big.mark=",", digits=10)`$$
+
+and the *theoretically exact optimal value* is:
+
+$$TRC(Q^*) = \sqrt{2DAvr} = `r format(sqrt(2 * D * A * v * r), big.mark=",", digits=10)`$$
+
+For both algorithms, I used a learning rate of $0.2$ and an initial guess equal to a one month time supply, i.e., $Q_{initial} = \frac{D}{12} = `r format(100000 / 12, big.mark=",", digits=10)`$. For ADAM, I used $\beta_1 = 0.9$ and $\beta_2 = 0.999$. In all cases, $\epsilon = 10^{-8}$.
+
+The following table allows for easy comparison:
+
+```{r, echo=FALSE}
+tab %>%
+  kable(caption = 'Comparing ADAM and Gradient Descent to Theoretical', row.names=FALSE) %>%
+    kable_styling(bootstrap_options=c("striped", "hover", "condensed", "responsive"), full_width=FALSE)
+```
+
+As you can see, ADAM converged to the optimal solution in significantly fewer iterations. 
