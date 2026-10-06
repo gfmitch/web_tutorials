@@ -1,0 +1,330 @@
+---
+title: "Gradient Descent"
+author: "Gary Mitchell"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+require(kableExtra)
+require(reticulate)
+suppressMessages(require(numform))
+```
+
+Gradient Descent is a numerical method for a minimum or maximum of a function. If the function is strictly convex or strictly concave, gradient descent will find the globally optimal solution. If it is nont strictly convex/concave, it may find a local optimum, or even diverge.  
+The method is pretty straightforward. We proceed iteratively from one step to the next, starting with a current guess $x_n$:
+
+$$x_{n+1} = x_n - \eta  f'(x_n)$$
+where $\eta$ is the learning rate and $f'(x_n)$ is the first derivative of $f(x)$, the function we are optimizing, evaluated at $x_n$.
+
+In gradient descent, the choice of the learning rate is crucial:
+
+- Too large, and the algorithm is likely to diverge
+- Too small, and it will take *forever* (i.e., many iterations) to converge
+
+## Example: Finding a Global Minimum
+
+For example, we can use gradient descent to find the minimum of the strictly convex function shown below.
+
+```{r, echo=FALSE}
+curve(x^2 +2*x - 5, -5, 3, col='purple',
+      main=expression(x^2 + 2*x -5),
+      ylab=expression(f(x)))
+abline(h=0)
+
+```
+
+First, we find $f'(x)$:
+
+$$f'(x) = \frac{df(x)}{dx} = \frac{d}{dx}(x^2 + 2x - 5) = 2x + 2$$
+
+Let's start at $x_0$ = 6, just to give us room to observe a few iterations:
+
+```{python}
+import numpy as np
+import pandas as pd
+import math
+
+def gradient_descent(f, grad, initial_guess, eta=0.01, iter_limit=500, epsilon=0.00001):
+  
+  x = np.full(iter_limit + 1, np.nan)
+  fx = np.full(iter_limit + 1, np.nan)
+  fpx = np.full(iter_limit + 1, np.nan)
+  step = np.full(iter_limit + 1, np.nan)
+  x[0] = initial_guess
+  
+  for i in range(0, len(x) - 1):
+    fx[i] = f(x[i])
+    fpx[i] = grad(x[i])
+    step[i] = eta * fpx[i]
+    x[i+1] = x[i] - step[i]
+    
+    if math.isclose(f(x[i+1]), 0, abs_tol=epsilon) or \
+       math.isclose(x[i+1] - x[i], 0, abs_tol=epsilon):
+      n = np.arange(i+2)
+      df = pd.DataFrame({'n': n,
+                         '$x_n$': x[:i+2],
+                         '$f(x)$': fx[:i+2],
+                         "$f'(x)$": fpx[:i+2],
+                         'Step Size': step[:i+2]})
+      return(df)
+  
+  return math.nan
+
+```
+
+In the *gradient_descent* function, we use a for loop to ensure algorithm termination; if the loop terminates without converging to a solution, the function returns *math.nan*. The code leaves out some usual error checking (i.e., checking for a zero derivative to avoid zero divide errors) in the interest of emphasizing the *functional* code for the algorithm.
+
+We'll use 6 as our initial guess.
+
+```{python}
+
+initial_guess = 6
+
+
+def f(x):
+  return x**2 + 2 * x - 5
+
+def grad(x):
+  return 2 * x + 2
+
+df = gradient_descent(f, grad, initial_guess)
+  
+
+```
+
+As it turns out, finding the optimal solution to 4 decimal places required `r dim(py$df)[1]-1` iterations when Newton's Method found it in 1 iteration.
+
+```{r, echo=FALSE}
+suppressMessages(require(kableExtra))
+
+caption = 'Example 1.'
+n <- dim(py$df)[1]
+
+py$df[c(1:5,(n-5):n),] %>%
+  kable(caption = caption, row.names=FALSE, align='c') %>%
+    kable_styling(bootstrap_options=c("striped", "hover", "condensed", "responsive"), full_width=FALSE)
+
+```
+
+Let's try increasing the learning rate.
+
+```{python}
+
+initial_guess = 6
+
+df = gradient_descent(f, grad, initial_guess, eta=0.1)
+  
+
+```
+
+That's quite a bit better, with convergence happening in `r dim(py$df)[1]-1` iterations.
+
+
+```{r, echo=FALSE}
+suppressMessages(require(kableExtra))
+
+caption = 'Example 2.'
+n <- dim(py$df)[1]
+
+py$df[c(1:5,(n-5):n),] %>%
+  kable(caption = caption, row.names=FALSE, align='c') %>%
+    kable_styling(bootstrap_options=c("striped", "hover", "condensed", "responsive"), full_width=FALSE)
+
+```
+
+What happens if we increase it even further?
+
+
+```{python}
+
+initial_guess = -6
+
+df = gradient_descent(f, grad, initial_guess, eta=1.0)
+  
+
+```
+
+Looking at the table below, we see that the algorithm fails to converge when the learning rate was too high.
+
+```{r, echo=FALSE}
+suppressMessages(require(kableExtra))
+
+caption = 'Example 3.'
+
+py$df %>%
+  kable(caption = caption, row.names=FALSE, align='c') %>%
+    kable_styling(bootstrap_options=c("striped", "hover", "condensed", "responsive"), full_width=FALSE)
+
+```
+
+# The Problem with Gradient Descent
+
+As you can see, gradient descent is entirely dependent on:
+
+- the initial guess
+- the learning rate.
+
+Finding the right combination of these two crucial parameters can be a challenge. For this reason, simple gradient descent (as we've discussed here) is rarely used in practice anymore.
+
+## Another Example
+
+Let's apply gradient descent to finding the optimal order quantity for an EOQ problem (i.e., minimize the total relevant cost, $TRC(Q)$):
+
+$$TRC(Q) = \frac{Q v r}{2} + \frac{D A}{Q}$$
+
+where: 
+  $D =$ annual demand
+  $A =$ aggregate order placement cost
+  $v =$ unit acquisition cost
+  $r =$ unit holding cost percentage rate.
+  
+The figure below illustrates $TRC(Q)$:
+
+```{r, echo=FALSE}
+D<-10000
+A<-500
+v<-12.95
+r<-0.35
+
+curve(x * v * r / 2 + D * A / x, 1000, 3000,
+      ylab=expression(TRC(Q)),
+      xlab=expression(Q),
+      col='forestgreen')
+
+```
+
+```{python, echo=FALSE}
+
+D = 10000
+A = 500
+v = 12.95
+r = 0.35
+
+initial_guess = D / 52
+
+
+def f(Q):
+  return Q * v * r / 2 + D * A / Q
+
+def grad(Q):
+  return v * r / 2 - D * A / Q**2
+
+df = gradient_descent(f, grad, initial_guess, eta=0.1, iter_limit=100000)
+  
+
+```
+
+```{r, echo=FALSE}
+suppressMessages(require(kableExtra))
+
+caption = 'Example 4.'
+n <- dim(py$df)[1]
+
+py$df[c(1:5,(n-5):n),] %>%
+  kable(caption = caption, row.names=FALSE, align='c') %>%
+    kable_styling(bootstrap_options=c("striped", "hover", "condensed", "responsive"), full_width=FALSE)
+
+```
+
+OK, so we converged in `r format(dim(py$df)[1] - 1, big.mark=",")` iterations with an initial guess of $Q_0 = `r py['initial_guess']`$, and a learning rate of $0.10$; with $\eta=0.01$ the algorithm failed to converge in 100,000 iterations! But `r format(dim(py$df)[1] - 1, big.mark=",")` iterations' hardly seems efficient. What happens if we change the initial guess to 1,000?
+
+```{python, echo=FALSE}
+
+D = 10000
+A = 500
+v = 12.95
+r = 0.35
+
+initial_guess = 1000
+
+df = gradient_descent(f, grad, initial_guess, eta=0.1, iter_limit=100000)
+  
+
+```
+
+
+```{r, echo=FALSE}
+suppressMessages(require(kableExtra))
+
+caption = 'Example 5.'
+n <- dim(py$df)[1]
+
+py$df[c(1:5,(n-5):n),] %>%
+  kable(caption = caption, row.names=FALSE, align='c') %>%
+    kable_styling(bootstrap_options=c("striped", "hover", "condensed", "responsive"), full_width=FALSE)
+
+```
+
+It *still* requires nearly 30,000 iterations to converge. Let's try a larger learning rate:
+
+```{python, echo=FALSE}
+
+D = 10000
+A = 500
+v = 12.95
+r = 0.35
+
+initial_guess = 1000
+
+df = gradient_descent(f, grad, initial_guess, eta=1.0, iter_limit=100000)
+  
+
+```
+
+```{r, echo=FALSE}
+suppressMessages(require(kableExtra))
+
+caption = 'Example 6.'
+n <- dim(py$df)[1]
+
+py$df[c(1:5,(n-5):n),] %>%
+  kable(caption = caption, row.names=FALSE, align='c') %>%
+    kable_styling(bootstrap_options=c("striped", "hover", "condensed", "responsive"), full_width=FALSE)
+
+```
+
+It's getting better. One more time with $\eta=5.0$:
+
+```{python, echo=FALSE}
+
+D = 10000
+A = 500
+v = 12.95
+r = 0.35
+
+initial_guess = 1000
+
+df = gradient_descent(f, grad, initial_guess, eta=5.0, iter_limit=100000)
+  
+
+```
+
+```{r, echo=FALSE}
+suppressMessages(require(kableExtra))
+
+caption = 'Example 7.'
+n <- dim(py$df)[1]
+
+py$df[c(1:5,(n-5):n),] %>%
+  kable(caption = caption, row.names=FALSE, align='c') %>%
+    kable_styling(bootstrap_options=c("striped", "hover", "condensed", "responsive"), full_width=FALSE)
+
+```
+
+OK, that's more like it. We converged in only `r format(dim(py$df)[1] - 1, big.mark=",")` iterations.
+
+Just out of curiosity, since we know the exact optimal form for the EOQ model, let's compare:
+
+$$Q^*_{exact} = `r round(sqrt(2 * D * A / (v * r)),3)`$$
+```{python, echo=FALSE}
+
+qstar = df.iloc[-1]['$x_n$']
+
+```
+
+
+$$Q^*_{GD} = `r round(py['qstar'],3)`$$
+
+This example illustrates the challenges associated with using gradient descent, and the sample problem involves only a single decision variable. An additional issue with gradient descent is that it uses a single learning rate for all decision variables.
