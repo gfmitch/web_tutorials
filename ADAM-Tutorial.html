@@ -681,7 +681,7 @@ learning rate from decreasing too quickly.</li>
 </ul>
 <p>In ADAM, the step calculation is:</p>
 <p><span class="math display">\[\mathbf{x}_{n+1} = \mathbf{x}_n -
-\frac{\hat{m}_t}{\sqrt{\hat{v}_t}+\epsilon}\alpha\]</span></p>
+\frac{\hat{m}_n}{\sqrt{\hat{v}_n}+\epsilon}\alpha\]</span></p>
 <p>where:</p>
 <ul>
 <li>is the learning rate (often defaulting to 0.001)</li>
@@ -691,46 +691,46 @@ learning rate from decreasing too quickly.</li>
 <p>Clearly this follows the pattern for our general optimization
 algorithm where the step size is given by:</p>
 <p><span class="math display">\[-
-\frac{\hat{m}_t}{\sqrt{\hat{v}_t}+\epsilon}\alpha\]</span></p>
-<p>To understand ADAM, we need to look further at <span class="math inline">\(\hat{m}_t\)</span> and <span class="math inline">\(\hat{v}_t\)</span>.</p>
+\frac{\hat{m}_n}{\sqrt{\hat{v}_n}+\epsilon}\alpha\]</span></p>
+<p>To understand ADAM, we need to look further at <span class="math inline">\(\hat{m}_n\)</span> and <span class="math inline">\(\hat{v}_n\)</span>.</p>
 <div id="first-moment-estimate" class="section level4">
 <h4>First moment estimate</h4>
-<p><span class="math inline">\(\hat{m}_t\)</span> is the bias-adjusted
+<p><span class="math inline">\(\hat{m}_n\)</span> is the bias-adjusted
 first moment estimate. We start by calculating the first moment (mean)
 estimate:</p>
-<p><span class="math display">\[m_t = \beta_1 m_{t-1} + (1-\beta_1)
+<p><span class="math display">\[m_n = \beta_1 m_{n-1} + (1-\beta_1)
 \nabla f({\mathbf{x}_n)}\]</span></p>
 <p>where <span class="math inline">\(\beta_1\)</span> is the exponential
 smoothing factor (i.e., decay rate) for the gradient moving average.
 Because <span class="math inline">\(m_0\)</span> is initialized to 0, it
 tends to be biased toward zero, especially in the initial iterations. To
-compensate, we calculate <span class="math inline">\(\hat{m}_t\)</span>:</p>
-<p><span class="math display">\[\hat{m}_t =
-\frac{m_t}{1-\beta_1}\]</span></p>
+compensate, we calculate <span class="math inline">\(\hat{m}_m\)</span>:</p>
+<p><span class="math display">\[\hat{m}_n =
+\frac{m_n}{1-\beta^n_1}\]</span> where <span class="math inline">\(n\)</span> is the iteration number.</p>
 </div>
 <div id="second-moment-estimate" class="section level4">
 <h4>Second moment estimate</h4>
-<p><span class="math inline">\(\hat{v}_t\)</span> is the bias-adjusted
+<p><span class="math inline">\(\hat{v}_n\)</span> is the bias-adjusted
 second moment estimate. We start by calculating the second moment
 (variance) estimate:</p>
-<p><span class="math display">\[v_t = \beta_2 v_{t-1} + (1-\beta_2)
+<p><span class="math display">\[v_n = \beta_2 v_{n-1} + (1-\beta_2)
 \nabla^2 f(\mathbf{x}_n)\]</span></p>
 <p>where <span class="math inline">\(\nabla^2 f(\mathbf{x}_n) =
 \bigl(\nabla f(\mathbf{x}_n)\bigr)^2\)</span> is the <em>squared
 gradient</em>, and <span class="math inline">\(\beta_2\)</span> is the
 exponential smoothing factor (i.e., decay rate) for the squared gradient
 moving average. Like <span class="math inline">\(m_0\)</span>, <span class="math inline">\(v_0\)</span> is initialized to 0, we calculate the
-bias-adjusted <span class="math inline">\(\hat{v}_t\)</span>:</p>
-<p><span class="math display">\[\hat{v}_t =
-\frac{v_t}{1-\beta_2}\]</span></p>
-<p>Using both <span class="math inline">\(\hat{m}_t\)</span> and <span class="math inline">\(\hat{v}_t\)</span> we then calculate the step
+bias-adjusted <span class="math inline">\(\hat{v}_n\)</span>:</p>
+<p><span class="math display">\[\hat{v}_n =
+\frac{v_n}{1-\beta^n_2}\]</span></p>
+<p>Using both <span class="math inline">\(\hat{m}_n\)</span> and <span class="math inline">\(\hat{v}_n\)</span> we then calculate the step
 size:</p>
 <p><span class="math display">\[-
-\frac{\hat{m}_t}{\sqrt{\hat{v}_t}+\epsilon}\alpha\]</span></p>
+\frac{\hat{m}_n}{\sqrt{\hat{v}_n}+\epsilon}\alpha\]</span></p>
 </div>
 <div id="adaptive-learning-rates-for-every-decision-variable" class="section level4">
 <h4>Adaptive learning rates for every decision variable</h4>
-<p>One important consideration for ADAM is that <span class="math inline">\(\hat{m}_t\)</span> and <span class="math inline">\(\hat{v}_t\)</span> are both vectors, representing
+<p>One important consideration for ADAM is that <span class="math inline">\(\hat{m}_n\)</span> and <span class="math inline">\(\hat{v}_n\)</span> are both vectors, representing
 the moving averages of the partial derivatives and squared partial
 derivatives for all decision variables. Thus, when we calculate the step
 size, we’re actually calculating step sizes for every decision variable.

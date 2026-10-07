@@ -94,7 +94,7 @@ ADAM combines two optimization techiques, *Momentum* and *RMSProp*, with the goa
 
 In ADAM, the step calculation is:
 
-$$\mathbf{x}_{n+1} = \mathbf{x}_n - \frac{\hat{m}_t}{\sqrt{\hat{v}_t}+\epsilon}\alpha$$
+$$\mathbf{x}_{n+1} = \mathbf{x}_n - \frac{\hat{m}_n}{\sqrt{\hat{v}_n}+\epsilon}\alpha$$
 
 where:
 
@@ -103,38 +103,39 @@ where:
 
 Clearly this follows the pattern for our general optimization algorithm where the step size is given by:
 
-$$- \frac{\hat{m}_t}{\sqrt{\hat{v}_t}+\epsilon}\alpha$$
+$$- \frac{\hat{m}_n}{\sqrt{\hat{v}_n}+\epsilon}\alpha$$
 
-To understand ADAM, we need to look further at $\hat{m}_t$ and $\hat{v}_t$.
+To understand ADAM, we need to look further at $\hat{m}_n$ and $\hat{v}_n$.
 
 
 #### First moment estimate
 
-$\hat{m}_t$ is the bias-adjusted first moment estimate. We start by calculating the first moment (mean) estimate:
+$\hat{m}_n$ is the bias-adjusted first moment estimate. We start by calculating the first moment (mean) estimate:
 
-$$m_t = \beta_1 m_{t-1} + (1-\beta_1) \nabla f({\mathbf{x}_n)}$$
+$$m_n = \beta_1 m_{n-1} + (1-\beta_1) \nabla f({\mathbf{x}_n)}$$
 
-where $\beta_1$ is the exponential smoothing factor (i.e., decay rate) for the gradient moving average. Because $m_0$ is initialized to 0, it tends to be biased toward zero, especially in the initial iterations. To compensate, we calculate $\hat{m}_t$:
+where $\beta_1$ is the exponential smoothing factor (i.e., decay rate) for the gradient moving average. Because $m_0$ is initialized to 0, it tends to be biased toward zero, especially in the initial iterations. To compensate, we calculate $\hat{m}_m$:
 
-$$\hat{m}_t = \frac{m_t}{1-\beta_1}$$
+$$\hat{m}_n = \frac{m_n}{1-\beta^n_1}$$
+where $n$ is the iteration number.
 
 #### Second moment estimate
 
-$\hat{v}_t$ is the bias-adjusted second moment estimate. We start by calculating the second moment (variance) estimate:
+$\hat{v}_n$ is the bias-adjusted second moment estimate. We start by calculating the second moment (variance) estimate:
 
-$$v_t = \beta_2 v_{t-1} + (1-\beta_2) \nabla^2 f(\mathbf{x}_n)$$
+$$v_n = \beta_2 v_{n-1} + (1-\beta_2) \nabla^2 f(\mathbf{x}_n)$$
 
-where $\nabla^2 f(\mathbf{x}_n) = \bigl(\nabla f(\mathbf{x}_n)\bigr)^2$ is the *squared gradient*, and $\beta_2$ is the exponential smoothing factor (i.e., decay rate) for the squared gradient moving average. Like $m_0$, $v_0$ is initialized to 0, we calculate the bias-adjusted $\hat{v}_t$:
+where $\nabla^2 f(\mathbf{x}_n) = \bigl(\nabla f(\mathbf{x}_n)\bigr)^2$ is the *squared gradient*, and $\beta_2$ is the exponential smoothing factor (i.e., decay rate) for the squared gradient moving average. Like $m_0$, $v_0$ is initialized to 0, we calculate the bias-adjusted $\hat{v}_n$:
 
-$$\hat{v}_t = \frac{v_t}{1-\beta_2}$$
+$$\hat{v}_n = \frac{v_n}{1-\beta^n_2}$$
 
-Using both $\hat{m}_t$ and $\hat{v}_t$ we then calculate the step size:
+Using both $\hat{m}_n$ and $\hat{v}_n$ we then calculate the step size:
 
-$$- \frac{\hat{m}_t}{\sqrt{\hat{v}_t}+\epsilon}\alpha$$
+$$- \frac{\hat{m}_n}{\sqrt{\hat{v}_n}+\epsilon}\alpha$$
 
 #### Adaptive learning rates for every decision variable
 
-One important consideration for ADAM is that $\hat{m}_t$ and $\hat{v}_t$ are both vectors, representing the moving averages of the partial derivatives and squared partial derivatives for all decision variables. Thus, when we calculate the step size, we're actually calculating step sizes for every decision variable. *In other words, ADAM calculates adaptive step sizes for each decision variable independently of the others*.
+One important consideration for ADAM is that $\hat{m}_n$ and $\hat{v}_n$ are both vectors, representing the moving averages of the partial derivatives and squared partial derivatives for all decision variables. Thus, when we calculate the step size, we're actually calculating step sizes for every decision variable. *In other words, ADAM calculates adaptive step sizes for each decision variable independently of the others*.
 
 ## ADAM Performance
 
