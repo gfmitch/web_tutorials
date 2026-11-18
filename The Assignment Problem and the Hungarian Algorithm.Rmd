@@ -19,14 +19,14 @@ suppressMessages(require(numform))
 # tlmgr_install(c("algorithm", "algpseudocode"))
 ```
 
-The *assignment* appears in many common business situations. For example, given a set of $n$ resources $i \in \{A, B, \dots \}$ and $n$ tasks $j \in \{1, 2, \dots \}, we wish to assign resources to tasks (one to each) in such a way as to minimize our total costs to complete all tasks. In other words, we wish to
+The *assignment* appears in many common business situations. For example, given a set of $n$ resources $i \in \{A, B, \dots \}$ and $n$ tasks $j \in \{1, 2, \dots \}$, we wish to assign resources to tasks (one to each) in such a way as to minimize our total costs to complete all tasks. In other words, we wish to
 
 $$min \sum_i \sum_j c_{ij}x_{ij}$$
 
 $$s.t. \sum_j x_{ij} = 1 \quad \forall i = 1, 2, \dots, n$$
 
 $$\sum_i x_{ij} = 1 \quad \forall j = 1, 2, \dots, n$$
-$$x_ij \in \{0,1\}\quad \forall i = 1, 2, \dots n, \forall j = 1, 2, \dots, n$$
+$$x_{ij} \in \{0,1\}\quad \forall i = 1, 2, \dots n, \forall j = 1, 2, \dots, n$$
 
 where $x_{ij} = 1$ if resource $i$ is assigned to task $j$, and 0 otherwise, and $c_{ij}$ is the cost associated with resource $i$ completing task $j$.
 
@@ -119,7 +119,7 @@ The algorithm is complete with an optimal solution found when the number of line
 knitr::include_graphics("Hungarian ex 4.jpg")
 ```
 
-If the number of lines does not equal $n!$, we perform adjusting operations to further reduce the cost matrix. Specifically, we:
+If the number of lines does not equal $n$, we perform adjusting operations to further reduce the cost matrix. Specifically, we:
 
 - Identify the minimum uncovered value, $k$, in the matrix
 - Subtract $k$ from all uncovered values

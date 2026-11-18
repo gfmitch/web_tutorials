@@ -11,7 +11,7 @@
 
 <meta name="author" content="Gary Mitchell" />
 
-<meta name="date" content="2026-10-06" />
+<meta name="date" content="2026-11-03" />
 
 <title>The Assignment Problem and the Hungarian Algorithm</title>
 
@@ -353,7 +353,7 @@ display: none;
 <h1 class="title toc-ignore">The Assignment Problem and the Hungarian
 Algorithm</h1>
 <h4 class="author">Gary Mitchell</h4>
-<h4 class="date">2026-10-06</h4>
+<h4 class="date">2026-11-03</h4>
 
 </div>
 
@@ -361,16 +361,17 @@ Algorithm</h1>
 <p>The <em>assignment</em> appears in many common business situations.
 For example, given a set of <span class="math inline">\(n\)</span>
 resources <span class="math inline">\(i \in \{A, B, \dots \}\)</span>
-and <span class="math inline">\(n\)</span> tasks $j {1, 2, }, we wish to
-assign resources to tasks (one to each) in such a way as to minimize our
-total costs to complete all tasks. In other words, we wish to</p>
+and <span class="math inline">\(n\)</span> tasks <span class="math inline">\(j \in \{1, 2, \dots \}\)</span>, we wish to assign
+resources to tasks (one to each) in such a way as to minimize our total
+costs to complete all tasks. In other words, we wish to</p>
 <p><span class="math display">\[min \sum_i \sum_j
 c_{ij}x_{ij}\]</span></p>
 <p><span class="math display">\[s.t. \sum_j x_{ij} = 1 \quad \forall i =
 1, 2, \dots, n\]</span></p>
 <p><span class="math display">\[\sum_i x_{ij} = 1 \quad \forall j = 1,
-2, \dots, n\]</span> <span class="math display">\[x_ij \in \{0,1\}\quad
-\forall i = 1, 2, \dots n, \forall j = 1, 2, \dots, n\]</span></p>
+2, \dots, n\]</span> <span class="math display">\[x_{ij} \in
+\{0,1\}\quad \forall i = 1, 2, \dots n, \forall j = 1, 2, \dots,
+n\]</span></p>
 <p>where <span class="math inline">\(x_{ij} = 1\)</span> if resource
 <span class="math inline">\(i\)</span> is assigned to task <span class="math inline">\(j\)</span>, and 0 otherwise, and <span class="math inline">\(c_{ij}\)</span> is the cost associated with
 resource <span class="math inline">\(i\)</span> completing task <span class="math inline">\(j\)</span>.</p>
@@ -498,7 +499,7 @@ solution.</p>
 Cost matrix showing coverage lines - not optimal
 </p>
 </div>
-<p>If the number of lines does not equal <span class="math inline">\(n!\)</span>, we perform adjusting operations to
+<p>If the number of lines does not equal <span class="math inline">\(n\)</span>, we perform adjusting operations to
 further reduce the cost matrix. Specifically, we:</p>
 <ul>
 <li>Identify the minimum uncovered value, <span class="math inline">\(k\)</span>, in the matrix</li>
