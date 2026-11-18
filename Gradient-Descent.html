@@ -11,7 +11,7 @@
 
 <meta name="author" content="Gary Mitchell" />
 
-<meta name="date" content="2026-10-05" />
+<meta name="date" content="2026-11-18" />
 
 <title>Gradient Descent</title>
 
@@ -576,7 +576,7 @@ display: none;
 
 <h1 class="title toc-ignore">Gradient Descent</h1>
 <h4 class="author">Gary Mitchell</h4>
-<h4 class="date">2026-10-05</h4>
+<h4 class="date">2026-11-18</h4>
 
 </div>
 
@@ -629,6 +629,9 @@ def gradient_descent(f, grad, initial_guess, eta=0.01, iter_limit=500, epsilon=0
     if math.isclose(f(x[i+1]), 0, abs_tol=epsilon) or \
        math.isclose(x[i+1] - x[i], 0, abs_tol=epsilon):
       n = np.arange(i+2)
+      fx[i+1] = f(x[i+1])
+      fpx[i+1] = grad(x[i+1])
+      
       df = pd.DataFrame({&#39;n&#39;: n,
                          &#39;$x_n$&#39;: x[:i+2],
                          &#39;$f(x)$&#39;: fx[:i+2],
@@ -861,10 +864,10 @@ Step Size
 -0.9995144
 </td>
 <td style="text-align:center;">
-NaN
+-6.00000
 </td>
 <td style="text-align:center;">
-NaN
+0.0009712
 </td>
 <td style="text-align:center;">
 NaN
@@ -1082,10 +1085,10 @@ Step Size
 -0.9999673
 </td>
 <td style="text-align:center;">
-NaN
+-6.000000
 </td>
 <td style="text-align:center;">
-NaN
+0.0000655
 </td>
 <td style="text-align:center;">
 NaN
@@ -1343,10 +1346,10 @@ Step Size
 1485.3251
 </td>
 <td style="text-align:center;">
-NaN
+6732.384
 </td>
 <td style="text-align:center;">
-NaN
+-0.0001000
 </td>
 <td style="text-align:center;">
 NaN
@@ -1561,10 +1564,10 @@ Step Size
 1485.325
 </td>
 <td style="text-align:center;">
-NaN
+6732.384
 </td>
 <td style="text-align:center;">
-NaN
+-0.0001000
 </td>
 <td style="text-align:center;">
 NaN
@@ -1776,10 +1779,10 @@ Step Size
 1485.355
 </td>
 <td style="text-align:center;">
-NaN
+6732.384
 </td>
 <td style="text-align:center;">
-NaN
+-0.0000100
 </td>
 <td style="text-align:center;">
 NaN
@@ -1990,10 +1993,10 @@ Step Size
 1485.357
 </td>
 <td style="text-align:center;">
-NaN
+6732.384
 </td>
 <td style="text-align:center;">
-NaN
+-0.0000020
 </td>
 <td style="text-align:center;">
 NaN
