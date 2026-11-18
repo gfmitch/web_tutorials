@@ -1,5 +1,5 @@
 ---
-title: "Common Discrete Distributions"
+title: "Common Continuous Distributions"
 author: "Gary Mitchell"
 date: "November 3, 2020"
 output: html_document
@@ -433,3 +433,213 @@ alpha<-0.95
 a + (b-a)*(1-alpha)
 ```
 
+## The Triangle Distribution
+
+The triangle distribution is a continuous distribution bounded above and below. It is described by three parameters:
+
+- $a$ - the lower bound
+- $b$ - the upper bound
+- $c$ - the mode (i.e., most likely value).
+
+When we have a random variable that follows a triangle distribution, we denote it:
+
+$$X \sim \text{triangle}(a, b, c)$$
+
+
+The shape of the triangle distribution depends on the location of $c$ relative to $a$ and $b$. It can be symmetrical, skewed right, or skewed left, depending on the proximity of $c$ to $a$ or $b$. The following shows a variety of triangle distributions, all with lower bound $a = `r a`$ and upper bound $b = `r b`:
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.width=12, fig.height=9}
+require(triangle)
+
+alpha<-0.75
+a<-10
+b<-80
+xmin<-0
+xmax<-90
+midpoint<-(a+b)/2
+
+cvals<-c(a, a+5, a+10, a+17.5, (a+b)/2, b-17.5, b-10, b-5, b)
+
+saveoma<-par("oma")
+par(mfrow=c(3,3))
+
+par(oma = c(0, 0, 4, 0)) 
+
+
+for (c in cvals)
+{
+  d<-round(qtriangle(alpha, a, b, c), 4)
+  
+  # curve(dtriangle(x, a, b, c), xmin, xmax,
+  #       xlim=c(xmin, xmax),
+  #       ylab='f(x)',
+  #       main=paste('X ~ triangle(', 
+  #                  a, ',',
+  #                  b, ',',
+  #                  c, ')',
+  #                  sep=""),
+  #       sub=bquote(Pr * "{" * X <= .(d) * "}"))
+  
+  x1<-seq(xmin, b, 0.01)
+  x2<-seq(b, xmax, 0.01)
+  x<-c(x1, x2)
+  
+  y1<-dtriangle(x1, a, b, c)
+  y2<-c(dtriangle(x2, a, b, c))
+  y2[1] <- 0
+  y<-c(y1, y2)
+  
+  plot(x, y,
+      xlim=c(xmin, xmax),
+      ylab='f(x)',
+      main=paste('X ~ triangle(', 
+                 a, ',',
+                 b, ',',
+                 c, ')',
+                 sep=""),
+      type='l')
+  
+  x<-seq(a, midpoint, 0.01)
+  cord.x <- c(0, a, x , midpoint)
+  cord.y <- c(0, 0, dtriangle(x, a, b, c), 0)
+
+  polygon(cord.x,cord.y,col='lightblue')
+  
+  
+  # text(c,.005,cex=1.5,expression(paste("Pr{", bquote(X <= ),"}")))
+  # bquote(beta[1] == .(val))
+}
+
+mtext(bquote(Pr * group("{", X <= .(midpoint), "}")), 
+      side = 3,      # 3 = top
+      line = 1,      # Distance from inner plot area (adjust if cut off)
+      outer = TRUE,  # Place in the outer margin
+      cex = 1.5,     # Font size multiplier
+      font = 2)      # 2 = bold
+
+par(mfrow=c(1,1))
+par(oma=saveoma)
+```
+
+  
+### Facts about the Triangle Distribution
+
+The following are facts about a random variable $X$ that follows an exponential distribution with rate $\lambda$:
+
+$$E[X] =\mu= \frac{1}{3}(a + b + c)$$
+$$V[X] =\sigma^2 =  \frac{a^2 + b^2 + c^2 - ab - ac - bc}{18}$$
+$$S[x] = \sigma = \sqrt{V[X]}$$
+
+$$\tilde{x} = 
+\begin{cases}
+    a + \sqrt{\frac{(b-a)(c-a)}{2}}    & \frac{a+b}{2} \leq c\\
+    b - \sqrt{\frac{(b-a)(b-c)}{2}}    & c \leq \frac{a+b}{2}\\
+\end{cases}$$
+
+where $\tilde{x}$ is a convention for the median.
+
+$$ f(x)= 
+\begin{cases}
+    0                            & x < a\\
+    \frac{2(x-a)}{(b-a)(c-a)}    & a\leq x \leq c\\
+    \frac{2}{b-a}                & x = c\\
+    \frac{2(b-x)}{(b-a)(b-c)}    & c \leq x \leq b\\
+    0                            & b < x
+\end{cases}$$
+
+$$ F(x)= 
+\begin{cases}
+    \frac{(x-a)^2}{(b-a)(c-a)}    & a\leq x \leq c\\
+    1-\frac{(b-x)^2}{(b-a)(b-c)}    & c \leq x \leq b
+\end{cases}$$
+
+$$ F^{-1}(x)= 
+\begin{cases}
+    a+\sqrt{p(b-a)(c-a)}        & 0 \leq p \leq F(c)\\
+    b-\sqrt{(1-p)(b-a)(b-a)}    & F(c) \leq p \leq 1
+\end{cases}$$
+
+R's distribution abbreviation for the exponential distribution is *triangle* (e.g. ptriangle, qtriangle, etc.). However, the triangle distribution is not part of the base R implementation. To use the triangle distribution you must install and load (using *require* or *library*) the triangle package. Adding the following at the beginning of your program will insure that the triangle distribution package is loaded and ready for use:
+
+```{r} 
+
+# specify which packages must be loaded
+required<-c("triangle")
+
+# obtain list of installed packages
+installed<-installed.packages()[,'Package']
+
+for (pkg in required)
+{
+  if (!pkg %in% installed)
+  {
+    # install package if not already installed
+    cat("Installing package:", pkg, "\n")
+    install.packages(pkg)
+  }
+  
+  # load package - uncomment the cat statement below if you want printed
+  # confirmation of package load on the console
+  #cat("Loading package", pkg, "\n")
+  require(pkg, character.only=TRUE)
+}
+```
+
+Note: once the *triangle* package is installed (which you *can* do manually using the *Packages* pane in RStudio), you only need to include the following in your R program:
+
+```{r, eval=FALSE}
+require(triangle)
+```
+
+
+### The Triangle Distribution in Use
+
+```{r, echo=FALSE}
+a<-24
+b<-120
+c<-60
+x<-80
+alpha<-0.95
+```
+
+Consider a task in a software development project. The *work content* (i.e., the hours required to complete the project by 1 worker) is unknown, but the project manager estimates the most likely time required to complete the task is `r c` hours. The minimum time observed for similar tasks in the past is `r a` hours. However, the project manager knows there are some *tricky* requirements for this particular task and therefore believes it could take as long as `r b` hours.
+
+This is a perfect example for using the triangle distribution. The actual distribution is unknown, but we have estimates for the three triangle distribution parameters:
+
+$$
+\begin{align}
+\text{lower bound} = a = `r a`\\
+\text{upper bound} = b = `r b`\\
+\text{mode} = c = `r c`
+\end{align}
+$$
+
+Thus we'd say that the task work content, $W$ is a random variable that follows a triangle distribution with lower bound $`r a`$, upper bound $`r b`$, and mode $`r c`$, or using conventional notation:
+
+$$W \sim \text{triangle}(`r a`, `r b`, `r c`)$$
+
+Let's say the project manager wants to know the probability the task is completed within $`r x`$ hours, i.e., $Pr\{W \leq `r x`\}$. We'll use R to calculate this (because the triangle distribution's conditional expressions are a bit of a pain to write in Excel):
+
+
+```{r}
+w <- 80
+p_W_le_w <- ptriangle(w, a, b, c)
+
+```
+
+$$Pr\{W \leq `r w`\} \approx `r round(p_W_le_w, 4)`$$
+
+Now, let's say the project manager wants to determine a work content estimate that allows her to be $`r 100 * alpha`\%$ sure the she has allocated enough time for completing the task. In other words, the project manager wants to know:
+
+$$w: Pr\{W \leq w\} \geq `r alpha` = F^{-1}(`r alpha`)$$
+Again, this is simple in R:
+
+```{r}
+alpha <- 0.95
+inv_CDF_alpha <- qtriangle(alpha, a, b, c)
+
+```
+
+$$F^{-1}(`r alpha`) \approx `r round(inv_CDF_alpha, 1)`$$
+
+This tells us that even though the project manager believes the most likely (i.e. mode) time to complete the task will be $`r c`$ hours, she should estimate $`r round(inv_CDF_alpha, 1)`$ hours if she wants to be $`r 100*alpha` \%$ confident she has allocated enough hours for the task.
